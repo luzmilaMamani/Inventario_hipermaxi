@@ -85,4 +85,27 @@ function validarActualizarProducto(req, _res, next) {
   return next();
 }
 
-module.exports = { validarCrearProducto, validarActualizarProducto };
+function validarCambioEstado(req, _res, next) {
+  const { estado } = req.body;
+
+  if (!estado) {
+    return next(new ApiError(400, "El campo 'estado' es obligatorio"));
+  }
+
+  if (!ESTADOS_VALIDOS.includes(estado)) {
+    return next(
+      new ApiError(
+        400,
+        `Estado inválido. Permitidos: ${ESTADOS_VALIDOS.join(", ")}`,
+      ),
+    );
+  }
+
+  return next();
+}
+
+module.exports = {
+  validarCrearProducto,
+  validarActualizarProducto,
+  validarCambioEstado,
+};
