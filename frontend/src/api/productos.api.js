@@ -18,3 +18,9 @@ export const cambiarEstadoProducto = (id, estado, motivo) =>
   api
     .put(`/productos/${id}/estado`, { estado, motivo })
     .then((r) => r.data);
+
+export const crearProducto = (data) =>
+  api.post("/productos", data).then((r) => r.data);
+
+export const actualizarProducto = (id, data) =>
+  api.put(`/productos/${id}`, data).then((r) => r.data);

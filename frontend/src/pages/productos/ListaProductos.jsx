@@ -5,6 +5,7 @@ import Modal from "../../components/ui/Modal";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
 import DetalleProducto from "./DetalleProducto";
+import FormProducto from "./FormProducto";
 import {
   listarProductos,
   cambiarEstadoProducto,
@@ -60,6 +61,10 @@ export default function ListaProductos() {
   // Modal de detalle (HIP-12)
   const [detalleId, setDetalleId] = useState(null);
 
+  // Modal de crear/editar producto
+  const [formOpen, setFormOpen] = useState(false);
+  const [productoEditar, setProductoEditar] = useState(null);
+
   // Cargar catálogos al montar
   useEffect(() => {
     listarCategorias()
@@ -91,7 +96,6 @@ export default function ListaProductos() {
         orderBy: filtros.orderBy,
         order: filtros.order,
       };
-      // Solo incluir filtros con valor
       for (const [key, value] of Object.entries(filtros)) {
         if (value !== "" && key !== "orderBy" && key !== "order") {
           params[key] = value;
@@ -122,6 +126,16 @@ export default function ListaProductos() {
     setNuevoEstado(producto.estado);
     setMotivo("");
     setModalOpen(true);
+  };
+
+  const abrirCrear = () => {
+    setProductoEditar(null);
+    setFormOpen(true);
+  };
+
+  const abrirEditar = (producto) => {
+    setProductoEditar(producto);
+    setFormOpen(true);
   };
 
   const confirmarCambio = async () => {
@@ -167,11 +181,16 @@ export default function ListaProductos() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Productos</h1>
-          <p className="text-sm text-gray-500">
-            Consulta y gestión de productos (RF03, RF06)
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold">Productos</h1>
+            <p className="text-sm text-gray-500">
+              Consulta y gestión de productos (RF03, RF06)
+            </p>
+          </div>
+          <button className="btn-primary" onClick={abrirCrear}>
+            + Nuevo producto
+          </button>
         </div>
 
         <div className="card">
@@ -348,6 +367,12 @@ export default function ListaProductos() {
                           Ver
                         </button>
                         <button
+                          onClick={() => abrirEditar(p)}
+                          className="text-green-600 hover:underline text-sm font-medium mr-3"
+                        >
+                          Editar
+                        </button>
+                        <button
                           onClick={() => abrirModalEstado(p)}
                           className="text-brand-red hover:underline text-sm font-medium"
                         >
@@ -441,6 +466,18 @@ export default function ListaProductos() {
         productoId={detalleId}
         onClose={() => setDetalleId(null)}
       />
+
+      {/* Modal crear/editar producto */}
+      {formOpen && (
+        <FormProducto
+          producto={productoEditar}
+          onClose={() => setFormOpen(false)}
+          onSaved={() => {
+            setFormOpen(false);
+            cargar(pagination.page);
+          }}
+        />
+      )}
     </Layout>
   );
 }

@@ -4,6 +4,7 @@ const links = [
   { to: "/", label: "Dashboard", icon: "📊" },
   { to: "/productos", label: "Productos", icon: "📦" },
   { to: "/almacenes", label: "Almacenes", icon: "🏬" },
+  { to: "/ubicaciones", label: "Ubicaciones", icon: "📍" },
 ];
 
 export default function Sidebar() {

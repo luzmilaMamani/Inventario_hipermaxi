@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ListaProductos from "./pages/productos/ListaProductos";
 import ListaAlmacenes from "./pages/almacenes/ListaAlmacenes";
+import ListaUbicaciones from "./pages/ubicaciones/ListaUbicaciones";
 
 export default function App() {
   return (
@@ -33,6 +34,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ListaAlmacenes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ubicaciones"
+            element={
+              <ProtectedRoute>
+                <ListaUbicaciones />
               </ProtectedRoute>
             }
           />
