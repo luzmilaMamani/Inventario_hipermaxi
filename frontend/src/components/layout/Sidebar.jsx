@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 const links = [
   { to: "/", label: "Dashboard", icon: "📊" },
   { to: "/productos", label: "Productos", icon: "📦" },
+  { to: "/almacenes", label: "Almacenes", icon: "🏬" },
 ];
 
 export default function Sidebar() {

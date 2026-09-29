@@ -4,6 +4,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ListaProductos from "./pages/productos/ListaProductos";
+import ListaAlmacenes from "./pages/almacenes/ListaAlmacenes";
 
 export default function App() {
   return (
@@ -24,6 +25,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ListaProductos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/almacenes"
+            element={
+              <ProtectedRoute>
+                <ListaAlmacenes />
               </ProtectedRoute>
             }
           />
