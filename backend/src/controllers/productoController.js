@@ -51,10 +51,7 @@ const crearProducto = asyncHandler(async (req, res) => {
     punto_reposicion = 0,
   } = req.body;
 
-  //  Validar coherencia categoría/subcategoría
   await validarSubcategoria(id_categoria, id_subcategoria);
-
-  // Validar código de barras único
   await validarCodigoBarrasUnico(codigo_barras);
 
   const result = await db.query(
@@ -113,19 +110,16 @@ const actualizarProducto = asyncHandler(async (req, res) => {
     estado,
   } = req.body;
 
-  // Validar coherencia si cambia categoría/subcategoría
   const catFinal = id_categoria ?? actual.id_categoria;
   const subFinal = id_subcategoria ?? actual.id_subcategoria;
   if (id_categoria !== undefined || id_subcategoria !== undefined) {
     await validarSubcategoria(catFinal, subFinal);
   }
 
-  // Código de barras único
   if (codigo_barras !== undefined && codigo_barras !== actual.codigo_barras) {
     await validarCodigoBarrasUnico(codigo_barras, id);
   }
 
-  // Validación stock máximo vs mínimo
   const smMin = stock_minimo ?? actual.stock_minimo;
   const smMax = stock_maximo ?? actual.stock_maximo;
   if (Number(smMax) < Number(smMin)) {
@@ -174,11 +168,51 @@ const actualizarProducto = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * Lista productos con filtros, paginación y ordenamiento.
+ * HIP-12 / RF03
+ *
+ * Query params soportados:
+ * - search         (busca en nombre, código, código_barras)
+ * - id_categoria
+ * - id_subcategoria
+ * - id_marca
+ * - id_unidad
+ * - estado
+ * - controla_vencimiento (true/false)
+ * - orderBy        (id_producto, codigo, nombre, fecha_creacion, estado)
+ * - order          (ASC | DESC)
+ * - page, limit
+ */
 const listarProductos = asyncHandler(async (req, res) => {
-  const { search, id_categoria, id_marca, estado } = req.query;
+  const {
+    search,
+    id_categoria,
+    id_subcategoria,
+    id_marca,
+    id_unidad,
+    estado,
+    controla_vencimiento,
+  } = req.query;
+
   const limit = Math.min(Math.max(Number(req.query.limit || 50), 1), 200);
   const page = Math.max(Number(req.query.page || 1), 1);
   const offset = (page - 1) * limit;
+
+  // Columnas permitidas para ordenar (evita SQL injection)
+  const allowedOrderBy = [
+    "id_producto",
+    "codigo",
+    "codigo_barras",
+    "nombre",
+    "estado",
+    "fecha_creacion",
+  ];
+  const orderBy = allowedOrderBy.includes(req.query.orderBy)
+    ? req.query.orderBy
+    : "fecha_creacion";
+  const order =
+    String(req.query.order || "DESC").toUpperCase() === "ASC" ? "ASC" : "DESC";
 
   const condiciones = [];
   const valores = [];
@@ -195,13 +229,25 @@ const listarProductos = asyncHandler(async (req, res) => {
     condiciones.push(`p.id_categoria = $${i++}`);
     valores.push(id_categoria);
   }
+  if (id_subcategoria) {
+    condiciones.push(`p.id_subcategoria = $${i++}`);
+    valores.push(id_subcategoria);
+  }
   if (id_marca) {
     condiciones.push(`p.id_marca = $${i++}`);
     valores.push(id_marca);
   }
+  if (id_unidad) {
+    condiciones.push(`p.id_unidad = $${i++}`);
+    valores.push(id_unidad);
+  }
   if (estado) {
     condiciones.push(`p.estado = $${i++}`);
     valores.push(estado);
+  }
+  if (controla_vencimiento !== undefined && controla_vencimiento !== "") {
+    condiciones.push(`p.controla_vencimiento = $${i++}`);
+    valores.push(controla_vencimiento === "true");
   }
 
   const whereSql = condiciones.length
@@ -224,12 +270,18 @@ const listarProductos = asyncHandler(async (req, res) => {
        LEFT JOIN marcas m ON p.id_marca = m.id_marca
        INNER JOIN unidades_medida u ON p.id_unidad = u.id_unidad
        ${whereSql}
-       ORDER BY p.fecha_creacion DESC
+       ORDER BY p.${orderBy} ${order}
        LIMIT $${i++} OFFSET $${i++}`,
       [...valores, limit, offset],
     ),
     db.query(
-      `SELECT COUNT(*)::int AS total FROM productos p ${whereSql}`,
+      `SELECT COUNT(*)::int AS total
+       FROM productos p
+       INNER JOIN categorias c ON p.id_categoria = c.id_categoria
+       LEFT JOIN subcategorias s ON p.id_subcategoria = s.id_subcategoria
+       LEFT JOIN marcas m ON p.id_marca = m.id_marca
+       INNER JOIN unidades_medida u ON p.id_unidad = u.id_unidad
+       ${whereSql}`,
       valores,
     ),
   ]);
@@ -239,6 +291,40 @@ const listarProductos = asyncHandler(async (req, res) => {
     data: dataResult.rows,
     pagination: { page, limit, total: countResult.rows[0].total },
   });
+});
+
+/**
+ * Búsqueda rápida de productos (sin paginación, para autocompletar).
+ * GET /api/productos/buscar?q=texto&limit=10
+ * HIP-12 / RF03
+ */
+const buscarProductosRapido = asyncHandler(async (req, res) => {
+  const { q } = req.query;
+  const limit = Math.min(Math.max(Number(req.query.limit || 10), 1), 50);
+
+  if (!q || !String(q).trim()) {
+    return res.json({ ok: true, data: [] });
+  }
+
+  const result = await db.query(
+    `SELECT
+       p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.estado,
+       c.nombre AS categoria, m.nombre AS marca,
+       u.abreviatura AS unidad
+     FROM productos p
+     INNER JOIN categorias c ON p.id_categoria = c.id_categoria
+     LEFT JOIN marcas m ON p.id_marca = m.id_marca
+     INNER JOIN unidades_medida u ON p.id_unidad = u.id_unidad
+     WHERE
+       p.nombre ILIKE $1
+       OR p.codigo ILIKE $1
+       OR p.codigo_barras ILIKE $1
+     ORDER BY p.nombre ASC
+     LIMIT $2`,
+    [`%${q}%`, limit],
+  );
+
+  res.json({ ok: true, data: result.rows });
 });
 
 const obtenerProducto = asyncHandler(async (req, res) => {
@@ -303,6 +389,7 @@ module.exports = {
   crearProducto,
   actualizarProducto,
   listarProductos,
+  buscarProductosRapido,
   obtenerProducto,
   buscarPorCodigoDeBarras: buscarPorCodigoBarras,
   buscarPorCodigoBarras,

@@ -9,6 +9,9 @@ const {
 
 const router = express.Router();
 
+// Búsqueda rápida (HIP-12 / RF03) - debe ir ANTES de /:id
+router.get("/buscar", productoController.buscarProductosRapido);
+
 // Búsqueda por código de barras
 router.get("/barcode/:codigo", productoController.buscarPorCodigoBarras);
 
