@@ -138,6 +138,17 @@ export default function ListaProductos() {
     setFormOpen(true);
   };
 
+  const abrirDuplicar = (producto) => {
+    setProductoEditar({
+      ...producto,
+      id_producto: null,
+      codigo: "",
+      codigo_barras: "",
+      nombre: `${producto.nombre} (copia)`,
+    });
+    setFormOpen(true);
+  };
+
   const confirmarCambio = async () => {
     if (!nuevoEstado || nuevoEstado === productoSeleccionado.estado) {
       setError("Selecciona un estado diferente al actual");
@@ -185,7 +196,7 @@ export default function ListaProductos() {
           <div>
             <h1 className="text-2xl font-bold">Productos</h1>
             <p className="text-sm text-gray-500">
-              Consulta y gestión de productos (RF03, RF06)
+              Consulta y gestión de productos (RF01, RF02, RF03, RF06)
             </p>
           </div>
           <button className="btn-primary" onClick={abrirCrear}>
@@ -301,7 +312,6 @@ export default function ListaProductos() {
             </div>
           </div>
 
-          {/* Contador de resultados */}
           <div className="flex justify-between items-center mb-3 text-sm text-gray-600">
             <span>
               {pagination.total} resultado{pagination.total !== 1 && "s"}
@@ -373,10 +383,16 @@ export default function ListaProductos() {
                           Editar
                         </button>
                         <button
+                          onClick={() => abrirDuplicar(p)}
+                          className="text-purple-600 hover:underline text-sm font-medium mr-3"
+                        >
+                          Duplicar
+                        </button>
+                        <button
                           onClick={() => abrirModalEstado(p)}
                           className="text-brand-red hover:underline text-sm font-medium"
                         >
-                          Cambiar estado
+                          Estado
                         </button>
                       </td>
                     </tr>
@@ -467,7 +483,7 @@ export default function ListaProductos() {
         onClose={() => setDetalleId(null)}
       />
 
-      {/* Modal crear/editar producto */}
+      {/* Modal crear/editar/duplicar producto */}
       {formOpen && (
         <FormProducto
           producto={productoEditar}
