@@ -37,7 +37,8 @@ export default function FormProducto({ producto, onClose, onSaved }) {
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  const esEdicion = !!producto;
+  // Si tiene id_producto, es edición. Si no, es creación (o duplicado)
+  const esEdicion = !!producto?.id_producto;
 
   // Cargar catálogos
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function FormProducto({ producto, onClose, onSaved }) {
       .catch(() => setSubcategorias([]));
   }, [form.id_categoria]);
 
-  // Cargar datos si es edición
+  // Cargar datos si es edición o duplicado
   useEffect(() => {
     if (producto) {
       setForm({
@@ -96,6 +97,21 @@ export default function FormProducto({ producto, onClose, onSaved }) {
     if (!form.nombre.trim()) return setError("El nombre es obligatorio");
     if (!form.id_categoria) return setError("La categoría es obligatoria");
     if (!form.id_unidad) return setError("La unidad es obligatoria");
+
+    if (Number(form.stock_maximo) < Number(form.stock_minimo)) {
+      return setError(
+        "El stock máximo debe ser mayor o igual al stock mínimo"
+      );
+    }
+
+    if (
+      Number(form.stock_maximo) > 0 &&
+      Number(form.punto_reposicion) > Number(form.stock_maximo)
+    ) {
+      return setError(
+        "El punto de reposición no puede ser mayor que el stock máximo"
+      );
+    }
 
     setGuardando(true);
     try {
