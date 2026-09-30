@@ -1,27 +1,40 @@
 const express = require("express");
 const productoController = require("../controllers/productoController");
+const estadoProductoController = require("../controllers/estadoProductoController");
 const {
   validarCrearProducto,
   validarActualizarProducto,
+  validarCambioEstado,
 } = require("../middleware/validateProducto");
 
 const router = express.Router();
 
-//- Búsqueda por código de barras
+// Búsqueda rápida (HIP-12 / RF03) - debe ir ANTES de /:id
+router.get("/buscar", productoController.buscarProductosRapido);
+
+// Búsqueda por código de barras
 router.get("/barcode/:codigo", productoController.buscarPorCodigoBarras);
 
-//  Consultas
+// Consultas
 router.get("/", productoController.listarProductos);
 router.get("/:id", productoController.obtenerProducto);
 
-//  Registro
+// Estado del producto (HIP-15 / RF06)
+router.get("/:id/estado", estadoProductoController.obtenerEstadoProducto);
+router.put(
+  "/:id/estado",
+  validarCambioEstado,
+  estadoProductoController.cambiarEstadoProducto
+);
+
+// Registro
 router.post("/", validarCrearProducto, productoController.crearProducto);
 
-//  Modificación
+// Modificación
 router.put(
   "/:id",
   validarActualizarProducto,
-  productoController.actualizarProducto,
+  productoController.actualizarProducto
 );
 
 // Borrado lógico
