@@ -3,8 +3,10 @@ import { NavLink } from "react-router-dom";
 const links = [
   { to: "/", label: "Dashboard", icon: "📊" },
   { to: "/productos", label: "Productos", icon: "📦" },
+  { to: "/clasificacion", label: "Clasificación", icon: "🏷️" },
   { to: "/almacenes", label: "Almacenes", icon: "🏬" },
   { to: "/ubicaciones", label: "Ubicaciones", icon: "📍" },
+  { to: "/barcode", label: "Buscar por código", icon: "🔍" },
 ];
 
 export default function Sidebar() {
