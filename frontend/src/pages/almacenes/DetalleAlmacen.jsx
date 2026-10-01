@@ -115,7 +115,7 @@ export default function DetalleAlmacen({ almacen, onClose }) {
                   <tr className="text-left border-b border-gray-200 text-gray-500">
                     <th className="py-2">Producto</th>
                     <th className="py-2 text-right">Cantidad</th>
-                    <th className="py-2 text-right">Reservado</th>
+                    <th className="py-2 text-right">Stock reservado</th>
                     <th className="py-2 text-right">Disponible</th>
                     <th className="py-2 text-right">Stock mínimo</th>
                     <th className="py-2 text-right">Stock máximo</th>

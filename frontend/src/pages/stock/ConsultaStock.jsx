@@ -127,7 +127,7 @@ export default function ConsultaStock() {
                   <th className="py-2">Almacén</th>
                   <th className="py-2">Origen / ubicación</th>
                   <th className="py-2 text-right">Cantidad</th>
-                  <th className="py-2 text-right">Reservada</th>
+                  <th className="py-2 text-right">Stock reservado</th>
                   <th className="py-2 text-right">Disponible</th>
                   <th className="py-2 text-right">Stock mínimo</th>
                   <th className="py-2 text-right">Stock máximo</th>

@@ -123,6 +123,30 @@ export default function BuscarCodigoBarras() {
                     {producto.controla_vencimiento ? "Sí" : "No"}
                   </p>
                 </div>
+                <div>
+                  <p className="text-gray-500">Stock mínimo</p>
+                  <p className="font-medium">
+                    {Number(producto.stock_minimo ?? 0).toLocaleString("es-BO")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Stock máximo</p>
+                  <p className="font-medium">
+                    {Number(producto.stock_maximo ?? 0).toLocaleString("es-BO")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Punto de reposición</p>
+                  <p className="font-medium">
+                    {Number(producto.punto_reposicion ?? 0).toLocaleString("es-BO")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Stock reservado</p>
+                  <p className="font-medium">
+                    {Number(producto.cantidad_reservada ?? 0).toLocaleString("es-BO")}
+                  </p>
+                </div>
               </div>
             </div>
           )}
