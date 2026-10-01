@@ -333,6 +333,7 @@ export default function ListaProductos() {
                   <th className="py-2">Categoría</th>
                   <th className="py-2">Subcategoría</th>
                   <th className="py-2">Marca</th>
+                  <th className="py-2 text-right">Stock mínimo</th>
                   <th className="py-2">Estado</th>
                   <th className="py-2 text-right">Acciones</th>
                 </tr>
@@ -340,13 +341,13 @@ export default function ListaProductos() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-500">
+                    <td colSpan="8" className="py-6 text-center text-gray-500">
                       Cargando...
                     </td>
                   </tr>
                 ) : productos.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-500">
+                    <td colSpan="8" className="py-6 text-center text-gray-500">
                       No se encontraron productos con esos filtros
                     </td>
                   </tr>
@@ -366,6 +367,9 @@ export default function ListaProductos() {
                       <td className="py-2">{p.categoria}</td>
                       <td className="py-2">{p.subcategoria || "-"}</td>
                       <td className="py-2">{p.marca || "-"}</td>
+                      <td className="py-2 text-right">
+                        {Number(p.stock_minimo ?? 0).toLocaleString("es-BO")}
+                      </td>
                       <td className="py-2">
                         <Badge estado={p.estado} />
                       </td>

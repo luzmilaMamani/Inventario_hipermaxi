@@ -1,7 +1,10 @@
 import api from "./axios";
+import { esVistaPrevia, productosPreview } from "./preview";
 
-export const listarProductos = (params) =>
-  api.get("/productos", { params }).then((r) => r.data);
+export const listarProductos = (params) => {
+  if (esVistaPrevia) return Promise.resolve(productosPreview);
+  return api.get("/productos", { params }).then((r) => r.data);
+};
 
 export const buscarProductosRapido = (q, limit = 10) =>
   api
