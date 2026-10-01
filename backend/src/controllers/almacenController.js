@@ -74,7 +74,11 @@ const listarAlmacenes = asyncHandler(async (req, res) => {
     db.query(
       `SELECT
          id_almacen, codigo, nombre, tipo, direccion, ciudad,
-         capacidad, activo, fecha_creacion
+        capacidad,
+        (SELECT COALESCE(SUM(s.cantidad), 0)
+         FROM stock s
+         WHERE s.id_almacen = almacenes.id_almacen) AS ocupacion,
+        activo, fecha_creacion
        FROM almacenes
        ${whereSql}
        ORDER BY ${orderBy} ${order}
