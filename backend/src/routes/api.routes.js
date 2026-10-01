@@ -8,6 +8,7 @@ const catalogosRouter = require("./catalogos.routes");
 const almacenRouter = require("./almacen.routes");
 const ubicacionRouter = require("./ubicacion.routes");
 const stockUbicacionRouter = require("./stockUbicacion.routes");
+const consultaStockRouter = require("./consultaStock.routes");
 
 const router = express.Router();
 
@@ -18,6 +19,7 @@ router.use("/catalogos", authenticate, catalogosRouter);
 router.use("/almacenes", authenticate, almacenRouter);
 router.use("/ubicaciones", authenticate, ubicacionRouter);
 router.use("/stock-ubicaciones", authenticate, stockUbicacionRouter);
+router.use("/stock", authenticate, consultaStockRouter);
 
 for (const [path, resource] of Object.entries(resources)) {
   if (

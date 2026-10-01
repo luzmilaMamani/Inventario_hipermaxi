@@ -6,6 +6,7 @@ const links = [
   { to: "/clasificacion", label: "Clasificación", icon: "🏷️" },
   { to: "/almacenes", label: "Almacenes", icon: "🏬" },
   { to: "/ubicaciones", label: "Ubicaciones", icon: "📍" },
+  { to: "/stock", label: "Consulta de stock", icon: "📈" },
   { to: "/barcode", label: "Buscar por código", icon: "🔍" },
 ];
 
