@@ -4,6 +4,7 @@ import { obtenerStockAlmacen } from "../../api/almacenes.api";
 
 export default function DetalleAlmacen({ almacen, onClose }) {
   const [stock, setStock] = useState([]);
+  const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -14,6 +15,7 @@ export default function DetalleAlmacen({ almacen, onClose }) {
     setLoading(true);
     setError("");
     setStock([]);
+    setBusqueda("");
 
     obtenerStockAlmacen(almacen.id_almacen)
       .then((res) => {
@@ -33,6 +35,14 @@ export default function DetalleAlmacen({ almacen, onClose }) {
       activo = false;
     };
   }, [almacen]);
+
+  const stockFiltrado = stock.filter((item) =>
+    [item.producto, item.producto_codigo, item.categoria, item.marca]
+      .filter(Boolean)
+      .some((valor) =>
+        valor.toLowerCase().includes(busqueda.trim().toLowerCase())
+      )
+  );
 
   return (
     <Modal
@@ -68,13 +78,37 @@ export default function DetalleAlmacen({ almacen, onClose }) {
             </p>
           )}
 
+          {!loading && !error && stock.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="buscar-stock-almacen">
+                Buscar producto
+              </label>
+              <input
+                id="buscar-stock-almacen"
+                className="input-field"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Nombre, código, categoría o marca"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                {stockFiltrado.length} de {stock.length} productos
+              </p>
+            </div>
+          )}
+
           {!loading && !error && stock.length === 0 && (
             <p className="text-gray-500 text-sm">
               Este almacén no tiene stock registrado.
             </p>
           )}
 
-          {!loading && !error && stock.length > 0 && (
+          {!loading && !error && stock.length > 0 && stockFiltrado.length === 0 && (
+            <p className="text-gray-500 text-sm">
+              No se encontraron productos con esa búsqueda.
+            </p>
+          )}
+
+          {!loading && !error && stockFiltrado.length > 0 && (
             <div className="max-h-80 overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -86,7 +120,7 @@ export default function DetalleAlmacen({ almacen, onClose }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {stock.map((s) => (
+                  {stockFiltrado.map((s) => (
                     <tr
                       key={s.id_stock}
                       className="border-b border-gray-100"
