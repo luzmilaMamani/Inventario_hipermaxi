@@ -4,7 +4,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+    <header className="bg-brand-panel border-b border-blue-100 px-6 py-3 flex items-center justify-between">
       <div>
         <h2 className="font-semibold text-brand-dark">
           Bienvenido, {user?.nombre_completo || user?.nombre_usuario}
