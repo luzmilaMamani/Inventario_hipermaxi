@@ -18,6 +18,7 @@ export const productosPreview = {
       marca: "Hipermaxi",
       estado: "ACTIVO",
       stock_minimo: 20,
+      stock_maximo: 80,
     },
     {
       id_producto: 2,
@@ -28,6 +29,7 @@ export const productosPreview = {
       marca: "Pil",
       estado: "ACTIVO",
       stock_minimo: 15,
+      stock_maximo: 30,
     },
     {
       id_producto: 3,
@@ -38,6 +40,7 @@ export const productosPreview = {
       marca: "Fino",
       estado: "ACTIVO",
       stock_minimo: 8,
+      stock_maximo: 40,
     },
   ],
   pagination: { page: 1, limit: 10, total: 3 },
@@ -72,6 +75,7 @@ export const stockAlmacenPreview = {
       cantidad_disponible: 10,
       unidad: "kg",
       stock_minimo: 20,
+      stock_maximo: 80,
     },
     {
       id_stock: 2,
@@ -82,6 +86,7 @@ export const stockAlmacenPreview = {
       cantidad_disponible: 40,
       unidad: "un",
       stock_minimo: 15,
+      stock_maximo: 30,
     },
   ],
 };
@@ -101,6 +106,7 @@ export const consultaStockPreview = {
       cantidad_disponible: 10,
       unidad: "kg",
       stock_minimo: 20,
+      stock_maximo: 80,
     },
     {
       origen: "ALMACEN",
@@ -114,6 +120,7 @@ export const consultaStockPreview = {
       cantidad_disponible: 40,
       unidad: "un",
       stock_minimo: 15,
+      stock_maximo: 30,
     },
   ],
   pagination: { page: 1, limit: 20, total: 2 },
