@@ -105,7 +105,7 @@ export default function DetalleProducto({ productoId, onClose }) {
               <p className="font-semibold">{producto.stock_maximo}</p>
             </div>
             <div>
-              <p className="text-gray-500">Punto reposición</p>
+              <p className="text-gray-500">Punto de reposición</p>
               <p className="font-semibold">{producto.punto_reposicion}</p>
             </div>
           </div>

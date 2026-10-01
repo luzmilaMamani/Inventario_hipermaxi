@@ -119,6 +119,7 @@ export default function DetalleAlmacen({ almacen, onClose }) {
                     <th className="py-2 text-right">Disponible</th>
                     <th className="py-2 text-right">Stock mínimo</th>
                     <th className="py-2 text-right">Stock máximo</th>
+                    <th className="py-2 text-right">Punto de reposición</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -157,6 +158,15 @@ export default function DetalleAlmacen({ almacen, onClose }) {
                           Number(s.cantidad_disponible) >= Number(s.stock_maximo) && (
                           <span className="text-xs font-medium text-amber-700">
                             Sobre el máximo
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <div>{Number(s.punto_reposicion ?? 0).toFixed(2)}</div>
+                        {Number(s.punto_reposicion) > 0 &&
+                          Number(s.cantidad_disponible) <= Number(s.punto_reposicion) && (
+                          <span className="text-xs font-medium text-amber-700">
+                            Reponer
                           </span>
                         )}
                       </td>
