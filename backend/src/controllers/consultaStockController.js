@@ -71,6 +71,11 @@ const consultarStock = asyncHandler(async (req, res) => {
     valores.push(req.query.origen);
     condiciones.push(`origen = $${valores.length}`);
   }
+  if (req.query.disponible === "true") {
+    condiciones.push("cantidad_disponible > 0");
+  } else if (req.query.disponible === "false") {
+    condiciones.push("cantidad_disponible <= 0");
+  }
 
   const whereSql = condiciones.length
     ? `WHERE ${condiciones.join(" AND ")}`

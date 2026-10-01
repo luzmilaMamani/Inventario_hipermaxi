@@ -5,7 +5,12 @@ import Select from "../../components/ui/Select";
 import { consultarStock } from "../../api/stock.api";
 import { listarAlmacenes } from "../../api/almacenes.api";
 
-const FILTROS_INICIALES = { search: "", id_almacen: "", origen: "" };
+const FILTROS_INICIALES = {
+  search: "",
+  id_almacen: "",
+  origen: "",
+  disponible: "",
+};
 
 export default function ConsultaStock() {
   const [registros, setRegistros] = useState([]);
@@ -60,7 +65,7 @@ export default function ConsultaStock() {
         </div>
 
         <section className="card">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
             <div className="md:col-span-2">
               <label className="mb-1 block text-sm font-medium" htmlFor="buscar-stock">
                 Producto o ubicación
@@ -89,6 +94,18 @@ export default function ConsultaStock() {
                 { value: "UBICACION", label: "Por ubicación" },
               ]}
               placeholder="Todos los registros"
+            />
+            <Select
+              label="Disponibilidad"
+              value={filtros.disponible}
+              onChange={(e) =>
+                setFiltros({ ...filtros, disponible: e.target.value })
+              }
+              options={[
+                { value: "true", label: "Con disponibilidad" },
+                { value: "false", label: "Agotado" },
+              ]}
+              placeholder="Cualquiera"
             />
           </div>
 
@@ -161,7 +178,20 @@ export default function ConsultaStock() {
                           : `${Number(registro.cantidad_reservada).toLocaleString("es-BO")} ${registro.unidad}`}
                       </td>
                       <td className="py-2 text-right font-semibold">
-                        {Number(registro.cantidad_disponible).toLocaleString("es-BO")} {registro.unidad}
+                        <div
+                          className={
+                            Number(registro.cantidad_disponible) > 0
+                              ? "text-green-700"
+                              : "text-red-600"
+                          }
+                        >
+                          {Number(registro.cantidad_disponible).toLocaleString("es-BO")} {registro.unidad}
+                        </div>
+                        <span className="text-xs font-normal text-gray-500">
+                          {Number(registro.cantidad_disponible) > 0
+                            ? "Disponible"
+                            : "Agotado"}
+                        </span>
                       </td>
                     </tr>
                   ))
