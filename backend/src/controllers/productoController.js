@@ -260,6 +260,11 @@ const listarProductos = asyncHandler(async (req, res) => {
          p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.descripcion,
          p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
          p.punto_reposicion, p.fecha_creacion,
+         COALESCE((
+           SELECT SUM(st.cantidad_reservada)
+           FROM stock st
+           WHERE st.id_producto = p.id_producto
+         ), 0) AS cantidad_reservada,
          c.id_categoria, c.nombre AS categoria,
          s.id_subcategoria, s.nombre AS subcategoria,
          m.id_marca, m.nombre AS marca,
@@ -333,7 +338,12 @@ const obtenerProducto = asyncHandler(async (req, res) => {
   const result = await db.query(
     `SELECT
        p.*, c.nombre AS categoria, s.nombre AS subcategoria,
-       m.nombre AS marca, u.nombre AS unidad, u.abreviatura
+       m.nombre AS marca, u.nombre AS unidad, u.abreviatura,
+       COALESCE((
+         SELECT SUM(st.cantidad_reservada)
+         FROM stock st
+         WHERE st.id_producto = p.id_producto
+       ), 0) AS cantidad_reservada
      FROM productos p
      INNER JOIN categorias c ON p.id_categoria = c.id_categoria
      LEFT JOIN subcategorias s ON p.id_subcategoria = s.id_subcategoria
@@ -353,7 +363,13 @@ const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
   const result = await db.query(
     `SELECT
        p.id_producto, p.codigo, p.codigo_barras, p.nombre,
-       p.estado, p.controla_vencimiento,
+       p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
+       p.punto_reposicion,
+       COALESCE((
+         SELECT SUM(st.cantidad_reservada)
+         FROM stock st
+         WHERE st.id_producto = p.id_producto
+       ), 0) AS cantidad_reservada,
        c.nombre AS categoria, m.nombre AS marca,
        u.abreviatura AS unidad
      FROM productos p

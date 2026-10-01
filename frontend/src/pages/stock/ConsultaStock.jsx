@@ -127,20 +127,23 @@ export default function ConsultaStock() {
                   <th className="py-2">Almacén</th>
                   <th className="py-2">Origen / ubicación</th>
                   <th className="py-2 text-right">Cantidad</th>
-                  <th className="py-2 text-right">Reservada</th>
+                  <th className="py-2 text-right">Stock reservado</th>
                   <th className="py-2 text-right">Disponible</th>
+                  <th className="py-2 text-right">Stock mínimo</th>
+                  <th className="py-2 text-right">Stock máximo</th>
+                  <th className="py-2 text-right">Punto de reposición</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="py-6 text-center text-gray-500">
+                    <td colSpan="9" className="py-6 text-center text-gray-500">
                       Consultando stock...
                     </td>
                   </tr>
                 ) : registros.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="py-6 text-center text-gray-500">
+                    <td colSpan="9" className="py-6 text-center text-gray-500">
                       No hay registros de stock para esos filtros.
                     </td>
                   </tr>
@@ -192,6 +195,33 @@ export default function ConsultaStock() {
                             ? "Disponible"
                             : "Agotado"}
                         </span>
+                      </td>
+                      <td className="py-2 text-right">
+                        <div>{Number(registro.stock_minimo ?? 0).toLocaleString("es-BO")}</div>
+                        {Number(registro.stock_minimo) > 0 &&
+                          Number(registro.cantidad_disponible) <= Number(registro.stock_minimo) && (
+                          <span className="text-xs font-medium text-amber-700">
+                            Bajo el mínimo
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <div>{Number(registro.stock_maximo ?? 0).toLocaleString("es-BO")}</div>
+                        {Number(registro.stock_maximo) > 0 &&
+                          Number(registro.cantidad_disponible) >= Number(registro.stock_maximo) && (
+                          <span className="text-xs font-medium text-amber-700">
+                            Sobre el máximo
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <div>{Number(registro.punto_reposicion ?? 0).toLocaleString("es-BO")}</div>
+                        {Number(registro.punto_reposicion) > 0 &&
+                          Number(registro.cantidad_disponible) <= Number(registro.punto_reposicion) && (
+                          <span className="text-xs font-medium text-amber-700">
+                            Reponer
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))

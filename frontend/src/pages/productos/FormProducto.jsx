@@ -294,7 +294,7 @@ export default function FormProducto({ producto, onClose, onSaved }) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
-              Punto reposición
+              Punto de reposición
             </label>
             <input
               className="input-field"

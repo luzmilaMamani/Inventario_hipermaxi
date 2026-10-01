@@ -138,7 +138,7 @@ const obtenerStockAlmacen = asyncHandler(async (req, res) => {
        (s.cantidad - s.cantidad_reservada) AS cantidad_disponible,
        s.fecha_actualizacion,
        p.id_producto, p.codigo AS producto_codigo, p.nombre AS producto,
-       p.stock_minimo, p.punto_reposicion,
+       p.stock_minimo, p.stock_maximo, p.punto_reposicion,
        c.nombre AS categoria,
        m.nombre AS marca,
        u.abreviatura AS unidad
