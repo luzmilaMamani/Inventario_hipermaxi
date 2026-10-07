@@ -13,6 +13,8 @@ import { listarAlmacenes } from "../../api/almacenes.api";
 
 const FILTROS_INICIALES = {
   id_almacen: "",
+  zona: "",
+  pasillo: "",
   search: "",
   activo: "",
 };
@@ -116,12 +118,12 @@ export default function ListaUbicaciones() {
         </div>
 
         <div className="card">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Buscar</label>
               <input
                 className="input-field"
-                placeholder="Zona, pasillo, estante o descripción"
+                placeholder="Zona, pasillo, estante, nivel o descripción"
                 value={filtros.search}
                 onChange={(e) =>
                   setFiltros({ ...filtros, search: e.target.value })
@@ -137,6 +139,24 @@ export default function ListaUbicaciones() {
               options={opcionesAlmacenes}
               placeholder="Todos los almacenes"
             />
+            <div>
+              <label className="block text-sm font-medium mb-1">Zona</label>
+              <input
+                className="input-field"
+                value={filtros.zona}
+                onChange={(e) => setFiltros({ ...filtros, zona: e.target.value })}
+                placeholder="Ej. A"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Pasillo</label>
+              <input
+                className="input-field"
+                value={filtros.pasillo}
+                onChange={(e) => setFiltros({ ...filtros, pasillo: e.target.value })}
+                placeholder="Ej. P1"
+              />
+            </div>
             <Select
               label="Activo"
               value={filtros.activo}
@@ -176,10 +196,7 @@ export default function ListaUbicaciones() {
               <thead>
                 <tr className="text-left border-b border-gray-200 text-gray-500">
                   <th className="py-2">Almacén</th>
-                  <th className="py-2">Zona</th>
-                  <th className="py-2">Pasillo</th>
-                  <th className="py-2">Estante</th>
-                  <th className="py-2">Nivel</th>
+                  <th className="py-2">Dirección</th>
                   <th className="py-2 text-right">Unidades</th>
                   <th className="py-2">Estado</th>
                   <th className="py-2 text-right">Acciones</th>
@@ -188,13 +205,13 @@ export default function ListaUbicaciones() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="py-6 text-center text-gray-500">
+                    <td colSpan="5" className="py-6 text-center text-gray-500">
                       Cargando...
                     </td>
                   </tr>
                 ) : ubicaciones.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="py-6 text-center text-gray-500">
+                    <td colSpan="5" className="py-6 text-center text-gray-500">
                       No hay ubicaciones registradas
                     </td>
                   </tr>
@@ -205,10 +222,11 @@ export default function ListaUbicaciones() {
                       className="border-b border-gray-100 hover:bg-gray-50"
                     >
                       <td className="py-2">{u.almacen}</td>
-                      <td className="py-2">{u.zona || "-"}</td>
-                      <td className="py-2">{u.pasillo || "-"}</td>
-                      <td className="py-2">{u.estante || "-"}</td>
-                      <td className="py-2">{u.nivel || "-"}</td>
+                      <td className="py-2 font-mono text-xs">
+                        {[u.zona, u.pasillo, u.estante, u.nivel]
+                          .filter(Boolean)
+                          .join(" / ") || "-"}
+                      </td>
                       <td className="py-2 text-right">
                         {Number(u.total_productos).toFixed(0)}
                       </td>

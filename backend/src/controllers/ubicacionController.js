@@ -2,6 +2,50 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 
+const CAMPOS_DIRECCION = ["zona", "pasillo", "estante", "nivel"];
+
+function normalizarDireccion(datos) {
+  return Object.fromEntries(
+    CAMPOS_DIRECCION.map((campo) => [
+      campo,
+      datos[campo] === undefined
+        ? undefined
+        : String(datos[campo]).trim() || null,
+    ]),
+  );
+}
+
+async function validarDireccionUnica(id_almacen, direccion, idExcluir = null) {
+  const valores = [
+    id_almacen,
+    ...CAMPOS_DIRECCION.map((campo) => direccion[campo] || ""),
+  ];
+  const condicionesDireccion = CAMPOS_DIRECCION.map(
+    (campo, indice) =>
+      `LOWER(BTRIM(COALESCE(${campo}, ''))) = LOWER($${indice + 2})`,
+  );
+  let condicionExcluir = "";
+
+  if (idExcluir !== null) {
+    valores.push(idExcluir);
+    condicionExcluir = `AND id_ubicacion <> $${valores.length}`;
+  }
+
+  const result = await db.query(
+    `SELECT id_ubicacion
+     FROM ubicaciones
+     WHERE id_almacen = $1
+       AND ${condicionesDireccion.join(" AND ")}
+       ${condicionExcluir}
+     LIMIT 1`,
+    valores,
+  );
+
+  if (result.rowCount) {
+    throw new ApiError(409, "Ya existe una ubicación con esa dirección en el almacén");
+  }
+}
+
 async function validarAlmacen(id_almacen) {
   const result = await db.query(
     "SELECT id_almacen FROM almacenes WHERE id_almacen = $1",
@@ -41,7 +85,7 @@ const listarUbicaciones = asyncHandler(async (req, res) => {
   }
   if (search) {
     condiciones.push(
-      `(u.zona ILIKE $${i} OR u.pasillo ILIKE $${i} OR u.estante ILIKE $${i} OR u.descripcion ILIKE $${i})`,
+      `(u.zona ILIKE $${i} OR u.pasillo ILIKE $${i} OR u.estante ILIKE $${i} OR u.nivel ILIKE $${i} OR u.descripcion ILIKE $${i})`,
     );
     valores.push(`%${search}%`);
     i++;
@@ -130,8 +174,10 @@ const obtenerStockUbicacion = asyncHandler(async (req, res) => {
 const crearUbicacion = asyncHandler(async (req, res) => {
   const { id_almacen, zona, pasillo, estante, nivel, descripcion, activo = true } =
     req.body;
+  const direccion = normalizarDireccion({ zona, pasillo, estante, nivel });
 
   await validarAlmacen(id_almacen);
+  await validarDireccionUnica(id_almacen, direccion);
 
   const result = await db.query(
     `INSERT INTO ubicaciones
@@ -140,10 +186,10 @@ const crearUbicacion = asyncHandler(async (req, res) => {
      RETURNING *`,
     [
       id_almacen,
-      zona || null,
-      pasillo || null,
-      estante || null,
-      nivel || null,
+      direccion.zona,
+      direccion.pasillo,
+      direccion.estante,
+      direccion.nivel,
       descripcion || null,
       activo,
     ],
@@ -167,28 +213,46 @@ const actualizarUbicacion = asyncHandler(async (req, res) => {
 
   const { id_almacen, zona, pasillo, estante, nivel, descripcion, activo } =
     req.body;
+  const direccionRecibida = normalizarDireccion({ zona, pasillo, estante, nivel });
 
   if (id_almacen !== undefined) {
     await validarAlmacen(id_almacen);
   }
 
+  const direccionActualizada = {
+    id_almacen: id_almacen ?? existe.rows[0].id_almacen,
+    ...Object.fromEntries(
+      CAMPOS_DIRECCION.map((campo) => [
+        campo,
+        direccionRecibida[campo] === undefined
+          ? existe.rows[0][campo]
+          : direccionRecibida[campo],
+      ]),
+    ),
+  };
+  await validarDireccionUnica(
+    direccionActualizada.id_almacen,
+    direccionActualizada,
+    id,
+  );
+
   const result = await db.query(
     `UPDATE ubicaciones SET
-      id_almacen = COALESCE($1, id_almacen),
-      zona = COALESCE($2, zona),
-      pasillo = COALESCE($3, pasillo),
-      estante = COALESCE($4, estante),
-      nivel = COALESCE($5, nivel),
+      id_almacen = $1,
+      zona = $2,
+      pasillo = $3,
+      estante = $4,
+      nivel = $5,
       descripcion = COALESCE($6, descripcion),
       activo = COALESCE($7, activo)
      WHERE id_ubicacion = $8
      RETURNING *`,
     [
-      id_almacen ?? null,
-      zona ?? null,
-      pasillo ?? null,
-      estante ?? null,
-      nivel ?? null,
+      direccionActualizada.id_almacen,
+      direccionActualizada.zona,
+      direccionActualizada.pasillo,
+      direccionActualizada.estante,
+      direccionActualizada.nivel,
       descripcion ?? null,
       activo ?? null,
       id,

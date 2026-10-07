@@ -2,6 +2,16 @@ const ApiError = require("../utils/apiError");
 
 const TIPOS_VALIDOS = ["CENTRAL", "SUCURSAL", "DEPOSITO"];
 
+function capacidadInvalida(capacidad) {
+  return (
+    capacidad !== undefined &&
+    capacidad !== null &&
+    (String(capacidad).trim() === "" ||
+      !Number.isFinite(Number(capacidad)) ||
+      Number(capacidad) < 0)
+  );
+}
+
 function validarCrearAlmacen(req, _res, next) {
   const { codigo, nombre, tipo, capacidad } = req.body;
 
@@ -19,8 +29,8 @@ function validarCrearAlmacen(req, _res, next) {
       ),
     );
   }
-  if (capacidad !== undefined && capacidad !== null && Number(capacidad) < 0) {
-    return next(new ApiError(400, "La capacidad no puede ser negativa"));
+  if (capacidadInvalida(capacidad)) {
+    return next(new ApiError(400, "La capacidad debe ser un número igual o mayor a 0"));
   }
   return next();
 }
@@ -36,8 +46,8 @@ function validarActualizarAlmacen(req, _res, next) {
       ),
     );
   }
-  if (capacidad !== undefined && capacidad !== null && Number(capacidad) < 0) {
-    return next(new ApiError(400, "La capacidad no puede ser negativa"));
+  if (capacidadInvalida(capacidad)) {
+    return next(new ApiError(400, "La capacidad debe ser un número igual o mayor a 0"));
   }
   return next();
 }

@@ -151,7 +151,7 @@ export default function FormAlmacen({ almacen, onClose, onSaved }) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
-              Capacidad
+              Capacidad máxima
             </label>
             <input
               className="input-field"
@@ -162,6 +162,9 @@ export default function FormAlmacen({ almacen, onClose, onSaved }) {
               placeholder="10000"
               min="0"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Se compara con la suma de cantidades registradas en el stock del almacén.
+            </p>
           </div>
         </div>
 

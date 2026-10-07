@@ -5,11 +5,18 @@ export default {
     extend: {
       colors: {
         brand: {
-          red: "#E30613",
-          redDark: "#B00510",
-          yellow: "#FFC107",
-          gray: "#F5F5F5",
-          dark: "#1F2937",
+          blue: "#1769FF",
+          blueDark: "#0D4FC4",
+          orange: "#F47B20",
+          orangeDark: "#C95A0A",
+          red: "#F47B20",
+          redDark: "#C95A0A",
+          yellow: "#FFC247",
+          gray: "#E7EDF6",
+          dark: "#15233D",
+          panel: "#F5F8FD",
+          nav: "#101D35",
+          navMuted: "#AABBD4",
         },
       },
       fontFamily: {

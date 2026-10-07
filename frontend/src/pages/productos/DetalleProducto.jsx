@@ -95,7 +95,7 @@ export default function DetalleProducto({ productoId, onClose }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 border-t pt-3">
+          <div className="grid grid-cols-2 gap-3 border-t pt-3">
             <div>
               <p className="text-gray-500">Stock mínimo</p>
               <p className="font-semibold">{producto.stock_minimo}</p>
@@ -105,8 +105,14 @@ export default function DetalleProducto({ productoId, onClose }) {
               <p className="font-semibold">{producto.stock_maximo}</p>
             </div>
             <div>
-              <p className="text-gray-500">Punto reposición</p>
+              <p className="text-gray-500">Punto de reposición</p>
               <p className="font-semibold">{producto.punto_reposicion}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Stock reservado</p>
+              <p className="font-semibold">
+                {Number(producto.cantidad_reservada ?? 0).toLocaleString("es-BO")}
+              </p>
             </div>
           </div>
 
