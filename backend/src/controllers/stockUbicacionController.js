@@ -20,17 +20,12 @@ async function validarUbicacion(id_ubicacion) {
   }
 }
 
-/**
- * POST /api/stock-ubicaciones
- * Asigna un producto a una ubicación (o suma cantidad si ya existe).
- */
 const asignarProducto = asyncHandler(async (req, res) => {
   const { id_producto, id_ubicacion, cantidad } = req.body;
 
   await validarProducto(id_producto);
   await validarUbicacion(id_ubicacion);
 
-  // Upsert: si ya existe la combinación, sumar; si no, insertar
   const result = await db.query(
     `INSERT INTO stock_ubicaciones (id_producto, id_ubicacion, cantidad)
      VALUES ($1, $2, $3)
@@ -49,10 +44,6 @@ const asignarProducto = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * PUT /api/stock-ubicaciones/:id
- * Actualiza la cantidad exacta (no suma).
- */
 const actualizarCantidad = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { cantidad } = req.body;
@@ -80,10 +71,6 @@ const actualizarCantidad = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * DELETE /api/stock-ubicaciones/:id
- * Quita el producto de la ubicación.
- */
 const quitarProducto = asyncHandler(async (req, res) => {
   const { id } = req.params;
 

@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import Modal from "../../components/ui/Modal";
 import Select from "../../components/ui/Select";
-import {
-  obtenerStockUbicacion,
-} from "../../api/ubicaciones.api";
+import { obtenerStockUbicacion } from "../../api/ubicaciones.api";
 import {
   asignarProductoAUbicacion,
   actualizarCantidadUbicacion,
@@ -201,10 +199,7 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
           )}
 
           {mostrarForm && (
-            <form
-              onSubmit={asignar}
-              className="border-t pt-4 space-y-3"
-            >
+            <form onSubmit={asignar} className="border-t pt-4 space-y-3">
               <Select
                 label="Producto"
                 value={form.id_producto}

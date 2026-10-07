@@ -56,10 +56,6 @@ async function validarAlmacen(id_almacen) {
   }
 }
 
-/**
- * GET /api/ubicaciones
- * Filtros: id_almacen, zona, pasillo, activo, search, page, limit
- */
 const listarUbicaciones = asyncHandler(async (req, res) => {
   const { id_almacen, zona, pasillo, activo, search } = req.query;
 
@@ -126,9 +122,6 @@ const listarUbicaciones = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * GET /api/ubicaciones/:id
- */
 const obtenerUbicacion = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -147,10 +140,6 @@ const obtenerUbicacion = asyncHandler(async (req, res) => {
   res.json({ ok: true, data: result.rows[0] });
 });
 
-/**
- * GET /api/ubicaciones/:id/stock
- * Productos en esa ubicación.
- */
 const obtenerStockUbicacion = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -182,9 +171,6 @@ const obtenerStockUbicacion = asyncHandler(async (req, res) => {
   res.json({ ok: true, data: result.rows });
 });
 
-/**
- * POST /api/ubicaciones
- */
 const crearUbicacion = asyncHandler(async (req, res) => {
   const { id_almacen, zona, pasillo, estante, nivel, descripcion, activo = true } =
     req.body;
@@ -216,9 +202,6 @@ const crearUbicacion = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * PUT /api/ubicaciones/:id
- */
 const actualizarUbicacion = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -283,9 +266,6 @@ const actualizarUbicacion = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * DELETE /api/ubicaciones/:id (borrado lógico)
- */
 const eliminarUbicacion = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
