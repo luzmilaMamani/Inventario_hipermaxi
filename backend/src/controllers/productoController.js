@@ -168,22 +168,6 @@ const actualizarProducto = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * Lista productos con filtros, paginación y ordenamiento.
- * HIP-12 / RF03
- *
- * Query params soportados:
- * - search         (busca en nombre, código, código_barras)
- * - id_categoria
- * - id_subcategoria
- * - id_marca
- * - id_unidad
- * - estado
- * - controla_vencimiento (true/false)
- * - orderBy        (id_producto, codigo, nombre, fecha_creacion, estado)
- * - order          (ASC | DESC)
- * - page, limit
- */
 const listarProductos = asyncHandler(async (req, res) => {
   const {
     search,
@@ -199,7 +183,6 @@ const listarProductos = asyncHandler(async (req, res) => {
   const page = Math.max(Number(req.query.page || 1), 1);
   const offset = (page - 1) * limit;
 
-  // Columnas permitidas para ordenar (evita SQL injection)
   const allowedOrderBy = [
     "id_producto",
     "codigo",
@@ -260,6 +243,16 @@ const listarProductos = asyncHandler(async (req, res) => {
          p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.descripcion,
          p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
          p.punto_reposicion, p.fecha_creacion,
+         COALESCE((
+           SELECT SUM(st.cantidad_reservada)
+           FROM stock st
+           WHERE st.id_producto = p.id_producto
+         ), 0) AS cantidad_reservada,
+         COALESCE((
+           SELECT SUM(st.cantidad - st.cantidad_reservada)
+           FROM stock st
+           WHERE st.id_producto = p.id_producto
+         ), 0) AS cantidad_disponible,
          c.id_categoria, c.nombre AS categoria,
          s.id_subcategoria, s.nombre AS subcategoria,
          m.id_marca, m.nombre AS marca,
@@ -293,11 +286,6 @@ const listarProductos = asyncHandler(async (req, res) => {
   });
 });
 
-/**
- * Búsqueda rápida de productos (sin paginación, para autocompletar).
- * GET /api/productos/buscar?q=texto&limit=10
- * HIP-12 / RF03
- */
 const buscarProductosRapido = asyncHandler(async (req, res) => {
   const { q } = req.query;
   const limit = Math.min(Math.max(Number(req.query.limit || 10), 1), 50);
@@ -333,7 +321,17 @@ const obtenerProducto = asyncHandler(async (req, res) => {
   const result = await db.query(
     `SELECT
        p.*, c.nombre AS categoria, s.nombre AS subcategoria,
-       m.nombre AS marca, u.nombre AS unidad, u.abreviatura
+       m.nombre AS marca, u.nombre AS unidad, u.abreviatura,
+       COALESCE((
+         SELECT SUM(st.cantidad_reservada)
+         FROM stock st
+         WHERE st.id_producto = p.id_producto
+       ), 0) AS cantidad_reservada,
+       COALESCE((
+         SELECT SUM(st.cantidad - st.cantidad_reservada)
+         FROM stock st
+         WHERE st.id_producto = p.id_producto
+       ), 0) AS cantidad_disponible
      FROM productos p
      INNER JOIN categorias c ON p.id_categoria = c.id_categoria
      LEFT JOIN subcategorias s ON p.id_subcategoria = s.id_subcategoria
@@ -353,7 +351,18 @@ const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
   const result = await db.query(
     `SELECT
        p.id_producto, p.codigo, p.codigo_barras, p.nombre,
-       p.estado, p.controla_vencimiento,
+       p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
+       p.punto_reposicion,
+       COALESCE((
+         SELECT SUM(st.cantidad_reservada)
+         FROM stock st
+         WHERE st.id_producto = p.id_producto
+       ), 0) AS cantidad_reservada,
+       COALESCE((
+         SELECT SUM(st.cantidad - st.cantidad_reservada)
+         FROM stock st
+         WHERE st.id_producto = p.id_producto
+       ), 0) AS cantidad_disponible,
        c.nombre AS categoria, m.nombre AS marca,
        u.abreviatura AS unidad
      FROM productos p

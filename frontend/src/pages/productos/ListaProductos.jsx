@@ -46,26 +46,21 @@ export default function ListaProductos() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Catálogos
   const [categorias, setCategorias] = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
   const [marcas, setMarcas] = useState([]);
 
-  // Modal de cambio de estado (HIP-15)
   const [modalOpen, setModalOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [nuevoEstado, setNuevoEstado] = useState("");
   const [motivo, setMotivo] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  // Modal de detalle (HIP-12)
   const [detalleId, setDetalleId] = useState(null);
 
-  // Modal de crear/editar producto
   const [formOpen, setFormOpen] = useState(false);
   const [productoEditar, setProductoEditar] = useState(null);
 
-  // Cargar catálogos al montar
   useEffect(() => {
     listarCategorias()
       .then((res) => setCategorias(res.data))
@@ -75,7 +70,6 @@ export default function ListaProductos() {
       .catch(() => {});
   }, []);
 
-  // Cargar subcategorías cuando cambia la categoría
   useEffect(() => {
     if (!filtros.id_categoria) {
       setSubcategorias([]);
@@ -171,7 +165,6 @@ export default function ListaProductos() {
     }
   };
 
-  // Opciones para los selects
   const opcionesCategorias = categorias.map((c) => ({
     value: c.id_categoria,
     label: c.nombre,
@@ -205,12 +198,9 @@ export default function ListaProductos() {
         </div>
 
         <div className="card">
-          {/* Filtros */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">
-                Buscar
-              </label>
+              <label className="block text-sm font-medium mb-1">Buscar</label>
               <input
                 className="input-field"
                 placeholder="Nombre, código o código de barras"
@@ -333,6 +323,11 @@ export default function ListaProductos() {
                   <th className="py-2">Categoría</th>
                   <th className="py-2">Subcategoría</th>
                   <th className="py-2">Marca</th>
+                  <th className="py-2 text-right">Stock mínimo</th>
+                  <th className="py-2 text-right">Stock máximo</th>
+                  <th className="py-2 text-right">Punto de reposición</th>
+                  <th className="py-2 text-right">Stock reservado</th>
+                  <th className="py-2 text-right">Disponible</th>
                   <th className="py-2">Estado</th>
                   <th className="py-2 text-right">Acciones</th>
                 </tr>
@@ -340,13 +335,13 @@ export default function ListaProductos() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-500">
+                    <td colSpan="12" className="py-6 text-center text-gray-500">
                       Cargando...
                     </td>
                   </tr>
                 ) : productos.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-500">
+                    <td colSpan="12" className="py-6 text-center text-gray-500">
                       No se encontraron productos con esos filtros
                     </td>
                   </tr>
@@ -366,6 +361,40 @@ export default function ListaProductos() {
                       <td className="py-2">{p.categoria}</td>
                       <td className="py-2">{p.subcategoria || "-"}</td>
                       <td className="py-2">{p.marca || "-"}</td>
+                      <td className="py-2 text-right">
+                        {Number(p.stock_minimo ?? 0).toLocaleString("es-BO")}
+                      </td>
+                      <td className="py-2 text-right">
+                        {Number(p.stock_maximo ?? 0).toLocaleString("es-BO")}
+                      </td>
+                      <td className="py-2 text-right">
+                        {Number(p.punto_reposicion ?? 0).toLocaleString("es-BO")}
+                      </td>
+                      <td className="py-2 text-right">
+                        {Number(p.cantidad_reservada ?? 0).toLocaleString("es-BO")}
+                      </td>
+                      <td className="py-2 text-right font-semibold">
+                        <div
+                          className={
+                            Number(p.cantidad_disponible) < 2
+                              ? "text-red-600"
+                              : "text-green-700"
+                          }
+                        >
+                          {Number(p.cantidad_disponible ?? 0).toLocaleString("es-BO")}
+                        </div>
+                        <span
+                          className={`text-xs font-normal ${
+                            Number(p.cantidad_disponible) < 2
+                              ? "text-red-600 font-semibold"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {Number(p.cantidad_disponible) < 2
+                            ? "Stock crítico"
+                            : "Disponible"}
+                        </span>
+                      </td>
                       <td className="py-2">
                         <Badge estado={p.estado} />
                       </td>
@@ -411,7 +440,6 @@ export default function ListaProductos() {
         </div>
       </div>
 
-      {/* Modal cambio de estado (HIP-15) */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -477,13 +505,11 @@ export default function ListaProductos() {
         )}
       </Modal>
 
-      {/* Modal detalle (HIP-12) */}
       <DetalleProducto
         productoId={detalleId}
         onClose={() => setDetalleId(null)}
       />
 
-      {/* Modal crear/editar/duplicar producto */}
       {formOpen && (
         <FormProducto
           producto={productoEditar}
