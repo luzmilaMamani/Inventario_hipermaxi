@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
@@ -13,6 +14,7 @@ const FILTROS_INICIALES = {
 };
 
 export default function ConsultaStock() {
+  const navigate = useNavigate();
   const [registros, setRegistros] = useState([]);
   const [almacenes, setAlmacenes] = useState([]);
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
@@ -132,18 +134,19 @@ export default function ConsultaStock() {
                   <th className="py-2 text-right">Stock mínimo</th>
                   <th className="py-2 text-right">Stock máximo</th>
                   <th className="py-2 text-right">Punto de reposición</th>
+                  <th className="py-2 text-right">Historial</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="9" className="py-6 text-center text-gray-500">
+                    <td colSpan="10" className="py-6 text-center text-gray-500">
                       Consultando stock...
                     </td>
                   </tr>
                 ) : registros.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="py-6 text-center text-gray-500">
+                    <td colSpan="10" className="py-6 text-center text-gray-500">
                       No hay registros de stock para esos filtros.
                     </td>
                   </tr>
@@ -246,6 +249,16 @@ export default function ConsultaStock() {
                             Reponer urgente
                           </span>
                         )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <button
+                          className="btn-secondary text-xs"
+                          onClick={() =>
+                            navigate(`/stock/historial/${registro.id_producto}`)
+                          }
+                        >
+                          Ver movimientos
+                        </button>
                       </td>
                     </tr>
                   ))

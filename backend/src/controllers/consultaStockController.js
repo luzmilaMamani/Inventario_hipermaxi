@@ -1,5 +1,6 @@
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/apiError");
 
 const CTE_EXISTENCIAS = `
   WITH existencias AS (
@@ -110,4 +111,61 @@ const consultarStock = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { consultarStock };
+const consultarHistorialProducto = asyncHandler(async (req, res) => {
+  const idProducto = Number(req.params.id_producto);
+  if (!Number.isSafeInteger(idProducto) || idProducto <= 0) {
+    throw new ApiError(400, "El ID del producto no es válido");
+  }
+
+  const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 200);
+  const page = Math.max(Number(req.query.page || 1), 1);
+  const offset = (page - 1) * limit;
+
+  const productoResult = await db.query(
+    `SELECT p.id_producto, p.codigo, p.nombre, um.abreviatura AS unidad
+     FROM productos p
+     INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
+     WHERE p.id_producto = $1`,
+    [idProducto],
+  );
+
+  if (!productoResult.rowCount) {
+    throw new ApiError(404, "Producto no encontrado");
+  }
+
+  const [dataResult, countResult] = await Promise.all([
+    db.query(
+      `SELECT
+         m.id_movimiento,
+         m.fecha_movimiento,
+         m.tipo_movimiento,
+         m.cantidad,
+         m.stock_anterior,
+         m.stock_nuevo,
+         m.referencia,
+         m.observaciones,
+         a.nombre AS almacen,
+         u.nombre_completo AS usuario
+       FROM movimientos_inventario m
+       INNER JOIN almacenes a ON a.id_almacen = m.id_almacen
+       LEFT JOIN usuarios u ON u.id_usuario = m.id_usuario
+       WHERE m.id_producto = $1
+       ORDER BY m.fecha_movimiento DESC, m.id_movimiento DESC
+       LIMIT $2 OFFSET $3`,
+      [idProducto, limit, offset],
+    ),
+    db.query(
+      "SELECT COUNT(*)::int AS total FROM movimientos_inventario WHERE id_producto = $1",
+      [idProducto],
+    ),
+  ]);
+
+  res.json({
+    ok: true,
+    producto: productoResult.rows[0],
+    data: dataResult.rows,
+    pagination: { page, limit, total: countResult.rows[0].total },
+  });
+});
+
+module.exports = { consultarStock, consultarHistorialProducto };

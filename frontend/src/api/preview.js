@@ -129,6 +129,7 @@ export const consultaStockPreview = {
     {
       origen: "ALMACEN",
       id_registro: 1,
+      id_producto: 1,
       producto: "Arroz extra",
       producto_codigo: "ARZ-001",
       almacen: "Sucursal Centro",
@@ -144,6 +145,7 @@ export const consultaStockPreview = {
     {
       origen: "ALMACEN",
       id_registro: 2,
+      id_producto: 2,
       producto: "Leche entera",
       producto_codigo: "LEC-010",
       almacen: "Sucursal Centro",
@@ -159,6 +161,7 @@ export const consultaStockPreview = {
     {
       origen: "ALMACEN",
       id_registro: 3,
+      id_producto: 3,
       producto: "Aceite vegetal",
       producto_codigo: "ACE-003",
       almacen: "Sucursal Centro",
@@ -173,4 +176,29 @@ export const consultaStockPreview = {
     },
   ],
   pagination: { page: 1, limit: 20, total: 3 },
+};
+
+export const historialStockPreview = {
+  ok: true,
+  producto: {
+    id_producto: 1,
+    codigo: "ARZ-001",
+    nombre: "Arroz extra",
+    unidad: "kg",
+  },
+  data: [
+    {
+      id_movimiento: 1,
+      fecha_movimiento: "2026-10-12T10:30:00.000Z",
+      tipo_movimiento: "ENTRADA",
+      cantidad: 12,
+      stock_anterior: 0,
+      stock_nuevo: 12,
+      referencia: "ENT-0001",
+      observaciones: "Carga inicial",
+      almacen: "Sucursal Centro",
+      usuario: "Administrador",
+    },
+  ],
+  pagination: { page: 1, limit: 20, total: 1 },
 };

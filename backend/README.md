@@ -104,6 +104,7 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 - `GET /api/reportes/productos-proximo-vencimiento`
 - `GET /api/reportes/lotes-proximos-vencer`
 - `GET /api/reportes/stock-bajo`
+- `GET /api/stock/historial/:id_producto` (historial paginado de movimientos)
 
 ## Filtros y paginacion
 
