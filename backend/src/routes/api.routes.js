@@ -21,6 +21,11 @@ router.use("/almacenes", authenticate, almacenRouter);
 router.use("/ubicaciones", authenticate, ubicacionRouter);
 router.use("/stock-ubicaciones", authenticate, stockUbicacionRouter);
 router.use("/stock", authenticate, consultaStockRouter);
+router.use(
+  "/entradas-inventario",
+  authenticate,
+  require("./entradasInventario.routes"),
+);
 
 // Categorías, subcategorías y marcas con controladores dedicados
 router.use("/categorias", authenticate, (req, res, next) => {
