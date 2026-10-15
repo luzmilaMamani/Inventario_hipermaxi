@@ -1,7 +1,26 @@
+const { readFileSync } = require("node:fs");
 const { randomBytes } = require("node:crypto");
+const path = require("node:path");
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
+const {
+  evaluarLineaRecepcion,
+  resultadoVerificacion,
+} = require("../utils/verificacionRecepcion");
+
+let columnasVerificacionListas = false;
+
+async function asegurarColumnasVerificacion() {
+  if (columnasVerificacionListas) return;
+
+  const sql = readFileSync(
+    path.join(__dirname, "../../sql/rf20_verificacion_recepcion.sql"),
+    "utf8",
+  );
+  await db.query(sql);
+  columnasVerificacionListas = true;
+}
 
 const registrarRecepcion = asyncHandler(async (req, res) => {
   const { id_almacen, proveedor, referencia_externa, observaciones, detalles } =
@@ -24,22 +43,22 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
 
   const lineas = detalles.map((detalle, indice) => {
     const idProducto = Number(detalle.id_producto);
-    const cantidad = Number(detalle.cantidad_recibida);
 
     if (!Number.isSafeInteger(idProducto) || idProducto <= 0) {
       throw new ApiError(400, `El producto de la línea ${indice + 1} no es válido`);
     }
-    if (!Number.isFinite(cantidad) || cantidad <= 0) {
-      throw new ApiError(400, `La cantidad de la línea ${indice + 1} debe ser mayor a cero`);
-    }
+
+    const verificacion = evaluarLineaRecepcion(detalle, indice);
 
     return {
       id_producto: idProducto,
-      cantidad,
+      ...verificacion,
       observaciones: String(detalle.observaciones || "").trim() || null,
     };
   });
+  const resultado = resultadoVerificacion(lineas);
 
+  await asegurarColumnasVerificacion();
   const cliente = await db.pool.connect();
   try {
     await cliente.query("BEGIN");
@@ -65,15 +84,16 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
     const entradaResult = await cliente.query(
       `INSERT INTO entradas_inventario
          (numero_entrada, id_almacen, id_usuario, fecha_entrada, origen,
-          referencia_externa, estado, observaciones)
-       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, 'RECIBIDA', $6)
-       RETURNING id_entrada, numero_entrada, fecha_entrada, estado`,
+          referencia_externa, estado, resultado_verificacion, observaciones)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, 'RECIBIDA', $6, $7)
+       RETURNING id_entrada, numero_entrada, fecha_entrada, estado, resultado_verificacion`,
       [
         numeroEntrada,
         idAlmacen,
         req.user.id_usuario,
         nombreProveedor,
         String(referencia_externa || "").trim() || null,
+        resultado,
         String(observaciones || "").trim() || null,
       ],
     );
@@ -82,9 +102,17 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
     for (const linea of lineas) {
       await cliente.query(
         `INSERT INTO detalle_entradas
-           (id_entrada, id_producto, cantidad_solicitada, cantidad_recibida, observaciones)
-         VALUES ($1, $2, $3, $3, $4)`,
-        [entrada.id_entrada, linea.id_producto, linea.cantidad, linea.observaciones],
+           (id_entrada, id_producto, cantidad_solicitada, cantidad_recibida,
+            estado_verificacion, observaciones)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          entrada.id_entrada,
+          linea.id_producto,
+          linea.cantidad_solicitada,
+          linea.cantidad_recibida,
+          linea.estado_verificacion,
+          linea.observaciones,
+        ],
       );
 
       const stockResult = await cliente.query(
@@ -95,7 +123,7 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
            cantidad = stock.cantidad + EXCLUDED.cantidad,
            fecha_actualizacion = CURRENT_TIMESTAMP
          RETURNING cantidad, cantidad - $3::numeric AS stock_anterior`,
-        [linea.id_producto, idAlmacen, linea.cantidad],
+        [linea.id_producto, idAlmacen, linea.cantidad_recibida],
       );
       const { cantidad: stockNuevo, stock_anterior: stockAnterior } =
         stockResult.rows[0];
@@ -109,7 +137,7 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
           linea.id_producto,
           idAlmacen,
           req.user.id_usuario,
-          linea.cantidad,
+          linea.cantidad_recibida,
           stockAnterior,
           stockNuevo,
           entrada.numero_entrada,
@@ -121,8 +149,13 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
     await cliente.query("COMMIT");
     res.status(201).json({
       ok: true,
-      message: "Recepción registrada y stock actualizado",
-      data: { ...entrada, proveedor: nombreProveedor, detalles: lineas },
+      message: "Recepción registrada, verificación guardada y stock actualizado",
+      data: {
+        ...entrada,
+        proveedor: nombreProveedor,
+        resultado_verificacion: resultado,
+        detalles: lineas,
+      },
     });
   } catch (error) {
     try {

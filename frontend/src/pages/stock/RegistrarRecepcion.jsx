@@ -7,9 +7,63 @@ import { listarProductos } from "../../api/productos.api";
 
 const crearDetalleVacio = () => ({
   id_producto: "",
+  cantidad_solicitada: "",
   cantidad_recibida: "",
   observaciones: "",
 });
+
+function evaluarDetalle(detalle) {
+  const esperadaTexto = String(detalle.cantidad_solicitada ?? "").trim();
+  const recibidaTexto = String(detalle.cantidad_recibida ?? "").trim();
+  if (!esperadaTexto || !recibidaTexto) return { estado: "" };
+
+  const esperada = Number(esperadaTexto);
+  const recibida = Number(recibidaTexto);
+  if (!Number.isFinite(esperada) || !Number.isFinite(recibida)) {
+    return { estado: "INVALIDA" };
+  }
+  if (esperada < 0 || recibida < 0) return { estado: "NEGATIVA" };
+  if (esperada <= 0 || recibida <= 0) return { estado: "CERO" };
+  if (esperada === recibida) return { estado: "CONFORME" };
+
+  return { estado: "CON_DIFERENCIA", diferencia: recibida - esperada };
+}
+
+function formatearCantidad(valor) {
+  return Number(Number(valor).toFixed(3)).toString();
+}
+
+function EtiquetaVerificacion({ detalle }) {
+  const evaluacion = evaluarDetalle(detalle);
+
+  if (evaluacion.estado === "NEGATIVA") {
+    return <p className="text-sm font-medium text-red-600">Cantidad negativa</p>;
+  }
+  if (evaluacion.estado === "CERO") {
+    return <p className="text-sm font-medium text-red-600">Debe ser mayor a cero</p>;
+  }
+  if (evaluacion.estado === "INVALIDA") {
+    return <p className="text-sm font-medium text-red-600">Cantidad no válida</p>;
+  }
+  if (evaluacion.estado === "CONFORME") {
+    return (
+      <span className="inline-flex rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
+        Conforme
+      </span>
+    );
+  }
+  if (evaluacion.estado === "CON_DIFERENCIA") {
+    const signo = evaluacion.diferencia > 0 ? "+" : "";
+    return (
+      <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+        Con diferencia ({signo}
+        {formatearCantidad(evaluacion.diferencia)})
+      </span>
+    );
+  }
+
+  return <p className="text-sm text-gray-400">Pendiente</p>;
+}
 
 export default function RegistrarRecepcion() {
   const [almacenes, setAlmacenes] = useState([]);
@@ -69,16 +123,23 @@ export default function RegistrarRecepcion() {
 
     if (!form.id_almacen) return setError("Debe seleccionar un almacén");
     if (!form.proveedor.trim()) return setError("El proveedor es obligatorio");
+    if (detalles.some((detalle) => !detalle.id_producto)) {
+      return setError("Seleccione un producto en cada línea");
+    }
+    if (detalles.some((detalle) => evaluarDetalle(detalle).estado === "NEGATIVA")) {
+      return setError("No se permiten cantidades negativas");
+    }
+    if (detalles.some((detalle) => evaluarDetalle(detalle).estado === "CERO")) {
+      return setError("La cantidad esperada y la recibida deben ser mayores a cero");
+    }
     if (
-      detalles.some(
-        (detalle) =>
-          !detalle.id_producto ||
-          !Number.isFinite(Number(detalle.cantidad_recibida)) ||
-          Number(detalle.cantidad_recibida) <= 0,
-      )
+      detalles.some((detalle) => {
+        const estado = evaluarDetalle(detalle).estado;
+        return !estado || estado === "INVALIDA";
+      })
     ) {
       return setError(
-        "Seleccione un producto e indique una cantidad mayor a cero en cada línea",
+        "Indique la cantidad esperada y la cantidad recibida de cada producto",
       );
     }
 
@@ -88,13 +149,23 @@ export default function RegistrarRecepcion() {
         ...form,
         proveedor: form.proveedor.trim(),
         detalles: detalles.map((detalle) => ({
-          ...detalle,
+          id_producto: detalle.id_producto,
+          cantidad_solicitada: Number(detalle.cantidad_solicitada),
           cantidad_recibida: Number(detalle.cantidad_recibida),
           observaciones: detalle.observaciones.trim() || null,
         })),
       });
+      const conDiferencia = (respuesta.data.detalles || []).filter(
+        (detalle) => detalle.estado_verificacion === "CON_DIFERENCIA",
+      ).length;
+      const textoVerificacion =
+        respuesta.data.resultado_verificacion === "CONFORME"
+          ? "La verificación quedó conforme."
+          : `La verificación quedó con diferencia en ${conDiferencia} ${
+              conDiferencia === 1 ? "línea" : "líneas"
+            }.`;
       setConfirmacion(
-        `Recepción ${respuesta.data.numero_entrada} registrada correctamente. El stock fue actualizado.`,
+        `Recepción ${respuesta.data.numero_entrada} registrada. ${textoVerificacion} El stock fue actualizado.`,
       );
       setForm({
         id_almacen: "",
@@ -127,12 +198,12 @@ export default function RegistrarRecepcion() {
         <div>
           <h1 className="text-2xl font-bold">Recepción de mercadería</h1>
           <p className="text-sm text-gray-500">
-            Registra los productos recibidos de un proveedor y actualiza el
-            stock del almacén
+            Compara la cantidad recibida con la esperada y guarda el resultado
+            de la verificación
           </p>
         </div>
 
-        <form className="space-y-6" onSubmit={enviarRecepcion}>
+        <form className="space-y-6" noValidate onSubmit={enviarRecepcion}>
           <section className="card space-y-4">
             <h2 className="text-lg font-semibold">Datos de la recepción</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -207,7 +278,13 @@ export default function RegistrarRecepcion() {
 
           <section className="card space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">Productos recibidos</h2>
+              <div>
+                <h2 className="text-lg font-semibold">Verificación por producto</h2>
+                <p className="text-sm text-gray-500">
+                  Si las cantidades coinciden, la línea queda conforme. Si no,
+                  queda con diferencia.
+                </p>
+              </div>
               <button
                 type="button"
                 className="btn-secondary"
@@ -231,7 +308,7 @@ export default function RegistrarRecepcion() {
                     key={indice}
                     className="grid grid-cols-1 items-end gap-3 rounded-lg border border-gray-200 p-3 md:grid-cols-12"
                   >
-                    <div className="md:col-span-5">
+                    <div className="md:col-span-4">
                       <Select
                         label="Producto *"
                         value={detalle.id_producto}
@@ -250,9 +327,34 @@ export default function RegistrarRecepcion() {
                     <div className="md:col-span-2">
                       <label
                         className="mb-1 block text-sm font-medium"
+                        htmlFor={`esperada-${indice}`}
+                      >
+                        Cantidad esperada *
+                      </label>
+                      <input
+                        id={`esperada-${indice}`}
+                        className="input-field"
+                        type="number"
+                        min="0.001"
+                        step="any"
+                        required
+                        value={detalle.cantidad_solicitada}
+                        onChange={(event) =>
+                          actualizarDetalle(
+                            indice,
+                            "cantidad_solicitada",
+                            event.target.value,
+                          )
+                        }
+                        disabled={guardando}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label
+                        className="mb-1 block text-sm font-medium"
                         htmlFor={`cantidad-${indice}`}
                       >
-                        Cantidad *
+                        Cantidad recibida *
                       </label>
                       <input
                         id={`cantidad-${indice}`}
@@ -272,7 +374,28 @@ export default function RegistrarRecepcion() {
                         disabled={guardando}
                       />
                     </div>
-                    <div className="md:col-span-4">
+                    <div className="md:col-span-3">
+                      <p className="mb-1 block text-sm font-medium">Verificación</p>
+                      <div className="flex min-h-10 items-center">
+                        <EtiquetaVerificacion detalle={detalle} />
+                      </div>
+                    </div>
+                    <div className="md:col-span-1">
+                      <button
+                        type="button"
+                        className="btn-secondary w-full"
+                        aria-label={`Quitar producto ${indice + 1}`}
+                        disabled={guardando || detalles.length === 1}
+                        onClick={() =>
+                          setDetalles((actuales) =>
+                            actuales.filter((_, posicion) => posicion !== indice),
+                          )
+                        }
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="md:col-span-12">
                       <label
                         className="mb-1 block text-sm font-medium"
                         htmlFor={`observacion-${indice}`}
@@ -293,21 +416,6 @@ export default function RegistrarRecepcion() {
                         disabled={guardando}
                         placeholder="Opcional"
                       />
-                    </div>
-                    <div className="md:col-span-1">
-                      <button
-                        type="button"
-                        className="btn-secondary w-full"
-                        aria-label={`Quitar producto ${indice + 1}`}
-                        disabled={guardando || detalles.length === 1}
-                        onClick={() =>
-                          setDetalles((actuales) =>
-                            actuales.filter((_, posicion) => posicion !== indice),
-                          )
-                        }
-                      >
-                        ×
-                      </button>
                     </div>
                   </div>
                 ))}

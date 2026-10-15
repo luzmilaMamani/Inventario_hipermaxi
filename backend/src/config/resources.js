@@ -95,13 +95,14 @@ const resources = {
       'origen',
       'referencia_externa',
       'estado',
+      'resultado_verificacion',
       'observaciones'
     ]
   },
   detalle_entradas: {
     table: 'detalle_entradas',
     primaryKey: 'id_detalle_entrada',
-    columns: ['id_entrada', 'id_producto', 'id_lote', 'cantidad_solicitada', 'cantidad_recibida', 'observaciones']
+    columns: ['id_entrada', 'id_producto', 'id_lote', 'cantidad_solicitada', 'cantidad_recibida', 'estado_verificacion', 'observaciones']
   },
   salidas_inventario: {
     table: 'salidas_inventario',
