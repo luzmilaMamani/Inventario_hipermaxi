@@ -106,6 +106,11 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 - `GET /api/reportes/stock-bajo`
 - `GET /api/stock/historial/:id_producto` (historial paginado de movimientos)
 - `POST /api/entradas-inventario` (recepción de proveedor; registra entrada, detalle, stock y movimientos en una transacción)
+- `GET /api/salidas` y `GET /api/salidas/:id` (consulta de salidas)
+- `POST /api/salidas` (registra la salida y descuenta existencias; si no se especifica lote, consume primero los lotes próximos a vencer)
+- `GET /api/reportes/perdidas` (reporte de pérdidas con filtros por fecha, almacén y subtipo)
+
+Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 
 ## Filtros y paginacion
 
