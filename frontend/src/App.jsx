@@ -9,8 +9,8 @@ import ListaUbicaciones from "./pages/ubicaciones/ListaUbicaciones";
 import Clasificacion from "./pages/clasificacion/Clasificacion";
 import BuscarCodigoBarras from "./pages/barcode/BuscarCodigoBarras";
 import ConsultaStock from "./pages/stock/ConsultaStock";
-import HistorialStock from "./pages/stock/HistorialStock";
-import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
+import ListaSalidas from "./pages/salidas/ListaSalidas";
+import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 
 export default function App() {
   return (
@@ -18,15 +18,78 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/productos" element={<ProtectedRoute><ListaProductos /></ProtectedRoute>} />
-          <Route path="/almacenes" element={<ProtectedRoute><ListaAlmacenes /></ProtectedRoute>} />
-          <Route path="/ubicaciones" element={<ProtectedRoute><ListaUbicaciones /></ProtectedRoute>} />
-          <Route path="/stock" element={<ProtectedRoute><ConsultaStock /></ProtectedRoute>} />
-          <Route path="/stock/historial/:productoId" element={<ProtectedRoute><HistorialStock /></ProtectedRoute>} />
-          <Route path="/recepciones" element={<ProtectedRoute><RegistrarRecepcion /></ProtectedRoute>} />
-          <Route path="/clasificacion" element={<ProtectedRoute><Clasificacion /></ProtectedRoute>} />
-          <Route path="/barcode" element={<ProtectedRoute><BuscarCodigoBarras /></ProtectedRoute>} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/productos"
+            element={
+              <ProtectedRoute>
+                <ListaProductos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/almacenes"
+            element={
+              <ProtectedRoute>
+                <ListaAlmacenes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ubicaciones"
+            element={
+              <ProtectedRoute>
+                <ListaUbicaciones />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stock"
+            element={
+              <ProtectedRoute>
+                <ConsultaStock />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clasificacion"
+            element={
+              <ProtectedRoute>
+                <Clasificacion />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/barcode"
+            element={
+              <ProtectedRoute>
+                <BuscarCodigoBarras />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/salidas"
+            element={
+              <ProtectedRoute>
+                <ListaSalidas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes/perdidas"
+            element={
+              <ProtectedRoute>
+                <ReportePerdidas />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

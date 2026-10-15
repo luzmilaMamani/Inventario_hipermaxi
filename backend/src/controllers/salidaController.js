@@ -2,23 +2,17 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 
-async function generarNumeroSalida(client, tipo) {
-  const prefijo = tipo === "PERDIDA" ? "PER" : "SAL";
-  const yearResult = await client.query(
-    "SELECT EXTRACT(YEAR FROM CURRENT_DATE)::int AS year",
-  );
-  const year = yearResult.rows[0].year;
-  const claveBloqueo = `${prefijo}-${year}`;
+async function generarNumeroSalida(motivo) {
+  const prefijo = motivo === "PERDIDA" ? "PER" : "SAL";
+  const year = new Date().getFullYear();
 
-  await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
-    claveBloqueo,
-  ]);
-
-  const result = await client.query(
-    `SELECT COALESCE(MAX(SPLIT_PART(numero_salida, '-', 3)::int), 0)::int AS total
+  const result = await db.query(
+    `SELECT COUNT(*)::int AS total
      FROM salidas_inventario
-     WHERE numero_salida ~ $1`,
-    [`^${prefijo}-${year}-[0-9]+$`],
+     WHERE motivo = $1
+       AND fecha_salida >= $2
+       AND fecha_salida < $3`,
+    [motivo, `${year}-01-01 00:00:00`, `${year + 1}-01-01 00:00:00`],
   );
 
   const siguiente = result.rows[0].total + 1;
@@ -28,7 +22,7 @@ async function generarNumeroSalida(client, tipo) {
 const crearSalida = asyncHandler(async (req, res) => {
   const {
     id_almacen,
-    tipo_salida = "VENTA",
+    motivo = "VENTA",
     subtipo_perdida = null,
     observaciones = null,
     referencia_externa = null,
@@ -37,32 +31,23 @@ const crearSalida = asyncHandler(async (req, res) => {
 
   const id_usuario = req.user.id_usuario;
 
+  const alm = await db.query(
+    "SELECT id_almacen FROM almacenes WHERE id_almacen = $1 AND activo = TRUE",
+    [id_almacen],
+  );
+  if (!alm.rowCount) {
+    throw new ApiError(400, "El almacén no existe o está inactivo");
+  }
+
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
 
-    const almacenResult = await client.query(
-      "SELECT id_almacen FROM almacenes WHERE id_almacen = $1 AND activo = TRUE",
-      [id_almacen],
-    );
-    if (!almacenResult.rowCount) {
-      throw new ApiError(400, "El almacén no existe o está inactivo");
-    }
-
-    const idsProductos = [...new Set(detalles.map((detalle) => Number(detalle.id_producto)))];
-    const productosResult = await client.query(
-      "SELECT id_producto FROM productos WHERE id_producto = ANY($1::int[]) AND estado = 'ACTIVO'",
-      [idsProductos],
-    );
-    if (productosResult.rowCount !== idsProductos.length) {
-      throw new ApiError(400, "Uno o más productos no existen o están inactivos");
-    }
-
-    const numero_salida = await generarNumeroSalida(client, tipo_salida);
+    const numero_salida = await generarNumeroSalida(motivo);
 
     const salidaResult = await client.query(
       `INSERT INTO salidas_inventario
-        (numero_salida, id_almacen, id_usuario, tipo_salida, subtipo_perdida,
+        (numero_salida, id_almacen, id_usuario, motivo, subtipo_perdida,
          referencia_externa, observaciones, estado)
        VALUES ($1, $2, $3, $4, $5, $6, $7, 'CONFIRMADA')
        RETURNING *`,
@@ -70,7 +55,7 @@ const crearSalida = asyncHandler(async (req, res) => {
         numero_salida,
         id_almacen,
         id_usuario,
-        tipo_salida,
+        motivo,
         subtipo_perdida,
         referencia_externa,
         observaciones,
@@ -80,13 +65,33 @@ const crearSalida = asyncHandler(async (req, res) => {
 
     const detallesInsertados = [];
     for (const d of detalles) {
-      const cantidad = String(d.cantidad);
+      const cantidad = Number(d.cantidad);
       const id_producto = Number(d.id_producto);
-      const id_lote =
-        d.id_lote === undefined || d.id_lote === null || d.id_lote === ""
-          ? null
-          : Number(d.id_lote);
 
+      // Buscar un lote disponible (el más próximo a vencer primero)
+      const loteResult = await client.query(
+        `SELECT id_lote, cantidad_actual
+         FROM lotes_productos
+         WHERE id_producto = $1
+           AND id_almacen = $2
+           AND cantidad_actual >= $3
+           AND estado IN ('DISPONIBLE', 'PROXIMO_A_VENCER')
+         ORDER BY fecha_vencimiento ASC NULLS LAST, id_lote ASC
+         LIMIT 1
+         FOR UPDATE`,
+        [id_producto, id_almacen, cantidad],
+      );
+
+      if (!loteResult.rowCount) {
+        throw new ApiError(
+          400,
+          `No hay lote disponible para el producto ${id_producto} en este almacén (o cantidad insuficiente)`,
+        );
+      }
+
+      const lote = loteResult.rows[0];
+
+      // Verificar stock general
       const stockResult = await client.query(
         `SELECT id_stock, cantidad, cantidad_reservada
          FROM stock
@@ -98,129 +103,84 @@ const crearSalida = asyncHandler(async (req, res) => {
       if (!stockResult.rowCount) {
         throw new ApiError(
           400,
-          `No hay stock registrado para el producto ${id_producto} en este almacén`,
+          `No hay stock registrado para el producto ${id_producto}`,
         );
       }
 
       const stockActual = stockResult.rows[0];
-      const disponibilidadResult = await client.query(
-        `SELECT
-           $1::numeric > $2::numeric - $3::numeric AS insuficiente,
-           ($2::numeric - $3::numeric)::text AS disponible`,
-        [
-          cantidad,
-          stockActual.cantidad,
-          stockActual.cantidad_reservada || 0,
-        ],
-      );
-      const { insuficiente, disponible } = disponibilidadResult.rows[0];
+      const disponible =
+        Number(stockActual.cantidad) -
+        Number(stockActual.cantidad_reservada || 0);
 
-      if (insuficiente) {
+      if (cantidad > disponible) {
         throw new ApiError(
           400,
           `Stock insuficiente. Disponible: ${disponible}, solicitado: ${cantidad}`,
         );
       }
 
-      const lotesResult = id_lote
-        ? await client.query(
-            `SELECT id_lote, cantidad_actual
-             FROM lotes_productos
-             WHERE id_lote = $1
-               AND id_producto = $2
-               AND id_almacen = $3
-               AND cantidad_actual > 0
-               AND ($4 = 'PERDIDA' OR estado IN ('DISPONIBLE', 'PROXIMO_A_VENCER'))
-             FOR UPDATE`,
-            [id_lote, id_producto, id_almacen, tipo_salida],
-          )
-        : await client.query(
-            `SELECT id_lote, cantidad_actual
-             FROM lotes_productos
-             WHERE id_producto = $1
-               AND id_almacen = $2
-               AND cantidad_actual > 0
-               AND ($3 = 'PERDIDA' OR estado IN ('DISPONIBLE', 'PROXIMO_A_VENCER'))
-             ORDER BY fecha_vencimiento ASC NULLS LAST, fecha_ingreso ASC, id_lote ASC
-             FOR UPDATE`,
-            [id_producto, id_almacen, tipo_salida],
-          );
+      // Precio de referencia (por ahora 0; se puede mejorar consultando entradas)
+      const precio = 0;
+      const valor_total = precio * cantidad;
 
-      let cantidadPendiente = cantidad;
-      let stockEnProceso = String(stockActual.cantidad);
-      for (const lote of lotesResult.rows) {
-        const asignacionResult = await client.query(
-          `SELECT
-             LEAST($1::numeric, $2::numeric)::text AS cantidad_asignada,
-             GREATEST($1::numeric - $2::numeric, 0)::text AS cantidad_pendiente,
-             ($3::numeric - LEAST($1::numeric, $2::numeric))::text AS stock_nuevo`,
-          [cantidadPendiente, lote.cantidad_actual, stockEnProceso],
-        );
-        const {
-          cantidad_asignada: cantidadAsignada,
-          cantidad_pendiente: cantidadRestante,
-          stock_nuevo: stockNuevo,
-        } = asignacionResult.rows[0];
-        if (Number(cantidadAsignada) <= 0) break;
+      // Insertar detalle
+      const detalleResult = await client.query(
+        `INSERT INTO detalle_salidas
+          (id_salida, id_producto, id_lote, cantidad, precio_unitario, valor_total, observaciones)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          salida.id_salida,
+          id_producto,
+          lote.id_lote,
+          cantidad,
+          precio,
+          valor_total,
+          d.observaciones || null,
+        ],
+      );
+      detallesInsertados.push(detalleResult.rows[0]);
 
-        const detalleResult = await client.query(
-          `INSERT INTO detalle_salidas
-            (id_salida, id_producto, id_lote, cantidad, observaciones)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING *`,
-          [
-            salida.id_salida,
-            id_producto,
-            lote.id_lote,
-            cantidadAsignada,
-            d.observaciones || null,
-          ],
-        );
-        detallesInsertados.push(detalleResult.rows[0]);
-
-        await client.query(
-          `UPDATE lotes_productos
-           SET cantidad_actual = cantidad_actual - $1,
-               estado = CASE WHEN cantidad_actual - $1 = 0 THEN 'AGOTADO' ELSE estado END
-           WHERE id_lote = $2`,
-          [cantidadAsignada, lote.id_lote],
-        );
-
-        await client.query(
-          `INSERT INTO movimientos_inventario
-            (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento,
-             cantidad, stock_anterior, stock_nuevo, referencia, observaciones)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [
-            id_producto,
-            id_almacen,
-            lote.id_lote,
-            id_usuario,
-            tipo_salida === "PERDIDA" ? "SALIDA" : tipo_salida,
-            cantidadAsignada,
-            stockEnProceso,
-            stockNuevo,
-            numero_salida,
-            observaciones,
-          ],
-        );
-
-        stockEnProceso = stockNuevo;
-        cantidadPendiente = cantidadRestante;
-      }
-
-      if (cantidadPendiente > 0) {
-        throw new ApiError(
-          400,
-          `Stock por lote insuficiente para el producto ${id_producto}`,
-        );
-      }
-
+      // Descontar stock general
+      const stockNuevo = Number(stockActual.cantidad) - cantidad;
       await client.query(
         `UPDATE stock
          SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP
          WHERE id_stock = $2`,
-        [stockEnProceso, stockActual.id_stock],
+        [stockNuevo, stockActual.id_stock],
+      );
+
+      // Descontar del lote
+      const loteNuevo = Number(lote.cantidad_actual) - cantidad;
+      await client.query(
+        `UPDATE lotes_productos
+         SET cantidad_actual = $1,
+             estado = CASE
+               WHEN $2 THEN 'AGOTADO'
+               ELSE estado
+             END
+         WHERE id_lote = $3`,
+        [loteNuevo, loteNuevo === 0, lote.id_lote],
+      );
+
+      // Registrar movimiento
+      await client.query(
+        `INSERT INTO movimientos_inventario
+          (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento,
+           cantidad, stock_anterior, stock_nuevo, referencia, observaciones)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          id_producto,
+          id_almacen,
+          lote.id_lote,
+          id_usuario,
+          motivo === "PERDIDA" ? "SALIDA_PERDIDA" : "SALIDA",
+          cantidad,
+          Number(stockActual.cantidad),
+          stockNuevo,
+          numero_salida,
+          observaciones,
+        ],
       );
     }
 
@@ -229,7 +189,7 @@ const crearSalida = asyncHandler(async (req, res) => {
     res.status(201).json({
       ok: true,
       message:
-        tipo_salida === "PERDIDA"
+        motivo === "PERDIDA"
           ? "Pérdida registrada y stock actualizado"
           : "Salida registrada exitosamente",
       data: {
@@ -238,11 +198,7 @@ const crearSalida = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    try {
-      await client.query("ROLLBACK");
-    } catch (rollbackError) {
-      console.error("Error al revertir la salida de inventario:", rollbackError);
-    }
+    await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
@@ -250,8 +206,7 @@ const crearSalida = asyncHandler(async (req, res) => {
 });
 
 const listarSalidas = asyncHandler(async (req, res) => {
-  const { tipo_salida, id_almacen, fecha_desde, fecha_hasta, search } =
-    req.query;
+  const { motivo, id_almacen, fecha_desde, fecha_hasta, search } = req.query;
 
   const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 200);
   const page = Math.max(Number(req.query.page || 1), 1);
@@ -261,9 +216,9 @@ const listarSalidas = asyncHandler(async (req, res) => {
   const valores = [];
   let i = 1;
 
-  if (tipo_salida) {
-    condiciones.push(`s.tipo_salida = $${i++}`);
-    valores.push(tipo_salida);
+  if (motivo) {
+    condiciones.push(`s.motivo = $${i++}`);
+    valores.push(motivo);
   }
   if (id_almacen) {
     condiciones.push(`s.id_almacen = $${i++}`);
@@ -346,12 +301,14 @@ const obtenerSalida = asyncHandler(async (req, res) => {
        p.nombre AS producto,
        c.nombre AS categoria,
        m.nombre AS marca,
-       um.abreviatura AS unidad
+       um.abreviatura AS unidad,
+       lp.numero_lote
      FROM detalle_salidas ds
      INNER JOIN productos p ON p.id_producto = ds.id_producto
      INNER JOIN categorias c ON c.id_categoria = p.id_categoria
      LEFT JOIN marcas m ON m.id_marca = p.id_marca
      INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
+     LEFT JOIN lotes_productos lp ON lp.id_lote = ds.id_lote
      WHERE ds.id_salida = $1`,
     [id],
   );

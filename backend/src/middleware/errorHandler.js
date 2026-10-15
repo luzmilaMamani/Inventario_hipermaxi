@@ -5,6 +5,9 @@ function notFound(req, _res, next) {
 }
 
 function errorHandler(error, _req, res, _next) {
+  // 👇 Ver el error real en la terminal
+  console.error("🔥 ERROR REAL:", error);
+
   // Unique violation
   if (error.code === "23505") {
     const match = error.detail?.match(/Key \((.*?)\)=/);

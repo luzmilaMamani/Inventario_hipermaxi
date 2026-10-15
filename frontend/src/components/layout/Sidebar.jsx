@@ -7,7 +7,8 @@ const links = [
   { to: "/almacenes", label: "Almacenes", icon: "🏬" },
   { to: "/ubicaciones", label: "Ubicaciones", icon: "📍" },
   { to: "/stock", label: "Consulta de stock", icon: "📈" },
-  { to: "/recepciones", label: "Recepción de mercadería", icon: "📥" },
+  { to: "/salidas", label: "Salidas", icon: "📤" },
+  { to: "/reportes/perdidas", label: "Reporte pérdidas", icon: "🚨" },
   { to: "/barcode", label: "Buscar por código", icon: "🔍" },
 ];
 
