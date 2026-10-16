@@ -1,27 +1,33 @@
-const express = require('express');
-const db = require('../config/db');
-const asyncHandler = require('../utils/asyncHandler');
+const express = require("express");
+const db = require("../config/db");
+const asyncHandler = require("../utils/asyncHandler");
+const {
+  reportePerdidas,
+  reporteDanos,
+} = require("../controllers/salidaController");
 
 const router = express.Router();
 
 router.get(
-  '/productos-proximo-vencimiento',
+  "/productos-proximo-vencimiento",
   asyncHandler(async (_req, res) => {
-    const result = await db.query('SELECT * FROM vw_productos_proximo_vencimiento ORDER BY proximo_vencimiento ASC');
+    const result = await db.query(
+      "SELECT * FROM vw_productos_proximo_vencimiento ORDER BY proximo_vencimiento ASC",
+    );
     res.json({ ok: true, data: result.rows });
-  })
+  }),
 );
 
 router.get(
-  '/lotes-proximos-vencer',
+  "/lotes-proximos-vencer",
   asyncHandler(async (_req, res) => {
-    const result = await db.query('SELECT * FROM vw_lotes_proximos_vencer');
+    const result = await db.query("SELECT * FROM vw_lotes_proximos_vencer");
     res.json({ ok: true, data: result.rows });
-  })
+  }),
 );
 
 router.get(
-  '/stock-bajo',
+  "/stock-bajo",
   asyncHandler(async (_req, res) => {
     const result = await db.query(
       `SELECT
@@ -38,11 +44,16 @@ router.get(
       INNER JOIN almacenes a ON a.id_almacen = s.id_almacen
       WHERE s.cantidad <= NULLIF(p.punto_reposicion, 0)
         OR s.cantidad <= p.stock_minimo
-      ORDER BY s.cantidad ASC`
+      ORDER BY s.cantidad ASC`,
     );
-
     res.json({ ok: true, data: result.rows });
-  })
+  }),
 );
+
+// RF46: Reporte de pérdidas
+router.get("/perdidas", reportePerdidas);
+
+// RF26: Reporte de daños
+router.get("/danos", reporteDanos);
 
 module.exports = router;

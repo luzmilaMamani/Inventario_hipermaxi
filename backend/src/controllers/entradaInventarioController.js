@@ -3,13 +3,34 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 
+function esFechaValida(fecha) {
+  if (typeof fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    return false;
+  }
+
+  const fechaParseada = new Date(`${fecha}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(fechaParseada.getTime()) &&
+    fechaParseada.toISOString().slice(0, 10) === fecha
+  );
+}
+
 const registrarRecepcion = asyncHandler(async (req, res) => {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    throw new ApiError(400, "El cuerpo de la solicitud no es válido");
+  }
+
   const { id_almacen, proveedor, referencia_externa, observaciones, detalles } =
     req.body;
   const idAlmacen = Number(id_almacen);
-  const nombreProveedor = String(proveedor || "").trim();
+  const nombreProveedor =
+    typeof proveedor === "string" ? proveedor.trim() : "";
 
-  if (!Number.isSafeInteger(idAlmacen) || idAlmacen <= 0) {
+  if (
+    typeof id_almacen === "boolean" ||
+    !Number.isSafeInteger(idAlmacen) ||
+    idAlmacen <= 0
+  ) {
     throw new ApiError(400, "Debe seleccionar un almacén válido");
   }
   if (!nombreProveedor) {
@@ -23,19 +44,54 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
   }
 
   const lineas = detalles.map((detalle, indice) => {
+    if (!detalle || typeof detalle !== "object" || Array.isArray(detalle)) {
+      throw new ApiError(400, `El detalle de la línea ${indice + 1} no es válido`);
+    }
+
     const idProducto = Number(detalle.id_producto);
     const cantidad = Number(detalle.cantidad_recibida);
+    const idLote =
+      detalle.id_lote === undefined || detalle.id_lote === null || detalle.id_lote === ""
+        ? null
+        : Number(detalle.id_lote);
 
-    if (!Number.isSafeInteger(idProducto) || idProducto <= 0) {
+    if (
+      typeof detalle.id_producto === "boolean" ||
+      !Number.isSafeInteger(idProducto) ||
+      idProducto <= 0
+    ) {
       throw new ApiError(400, `El producto de la línea ${indice + 1} no es válido`);
     }
-    if (!Number.isFinite(cantidad) || cantidad <= 0) {
+    if (
+      typeof detalle.cantidad_recibida === "boolean" ||
+      !Number.isFinite(cantidad) ||
+      cantidad <= 0
+    ) {
       throw new ApiError(400, `La cantidad de la línea ${indice + 1} debe ser mayor a cero`);
+    }
+    if (
+      idLote !== null &&
+      (typeof detalle.id_lote === "boolean" ||
+        !Number.isSafeInteger(idLote) ||
+        idLote <= 0)
+    ) {
+      throw new ApiError(400, `El lote de la línea ${indice + 1} no es válido`);
+    }
+    const fechaVencimiento =
+      String(detalle.fecha_vencimiento || "").trim() || null;
+    if (fechaVencimiento && !esFechaValida(fechaVencimiento)) {
+      throw new ApiError(
+        400,
+        `La fecha de vencimiento de la línea ${indice + 1} no es válida`,
+      );
     }
 
     return {
       id_producto: idProducto,
       cantidad,
+      id_lote: idLote,
+      numero_lote: String(detalle.numero_lote || "").trim() || null,
+      fecha_vencimiento: fechaVencimiento,
       observaciones: String(detalle.observaciones || "").trim() || null,
     };
   });
@@ -79,13 +135,69 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
     );
     const entrada = entradaResult.rows[0];
 
-    for (const linea of lineas) {
+    const detallesRegistrados = [];
+    for (const [indice, linea] of lineas.entries()) {
+      let lote;
+      if (linea.id_lote) {
+        const loteResult = await cliente.query(
+          `SELECT id_lote, numero_lote
+           FROM lotes_productos
+           WHERE id_lote = $1 AND id_producto = $2 AND id_almacen = $3
+           FOR UPDATE`,
+          [linea.id_lote, linea.id_producto, idAlmacen],
+        );
+        if (!loteResult.rowCount) {
+          throw new ApiError(
+            400,
+            `El lote de la línea ${indice + 1} no corresponde al producto y almacén`,
+          );
+        }
+        lote = loteResult.rows[0];
+        await cliente.query(
+          `UPDATE lotes_productos
+           SET cantidad_inicial = cantidad_inicial + $1,
+               cantidad_actual = cantidad_actual + $1,
+               estado = CASE WHEN estado = 'AGOTADO' THEN 'DISPONIBLE' ELSE estado END
+           WHERE id_lote = $2`,
+          [linea.cantidad, lote.id_lote],
+        );
+      } else {
+        const numeroLote =
+          linea.numero_lote || `${entrada.numero_entrada}-${indice + 1}`;
+        const loteResult = await cliente.query(
+          `INSERT INTO lotes_productos
+             (id_producto, id_almacen, numero_lote, fecha_ingreso,
+              fecha_vencimiento, cantidad_inicial, cantidad_actual)
+           VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $5)
+           RETURNING id_lote, numero_lote`,
+          [
+            linea.id_producto,
+            idAlmacen,
+            numeroLote,
+            linea.fecha_vencimiento,
+            linea.cantidad,
+          ],
+        );
+        lote = loteResult.rows[0];
+      }
+
       await cliente.query(
         `INSERT INTO detalle_entradas
-           (id_entrada, id_producto, cantidad_solicitada, cantidad_recibida, observaciones)
-         VALUES ($1, $2, $3, $3, $4)`,
-        [entrada.id_entrada, linea.id_producto, linea.cantidad, linea.observaciones],
+           (id_entrada, id_producto, id_lote, cantidad_solicitada, cantidad_recibida, observaciones)
+         VALUES ($1, $2, $3, $4, $4, $5)`,
+        [
+          entrada.id_entrada,
+          linea.id_producto,
+          lote.id_lote,
+          linea.cantidad,
+          linea.observaciones,
+        ],
       );
+      detallesRegistrados.push({
+        ...linea,
+        id_lote: lote.id_lote,
+        numero_lote: lote.numero_lote,
+      });
 
       const stockResult = await cliente.query(
         `INSERT INTO stock (id_producto, id_almacen, cantidad, cantidad_reservada)
@@ -102,12 +214,13 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
 
       await cliente.query(
         `INSERT INTO movimientos_inventario
-           (id_producto, id_almacen, id_usuario, tipo_movimiento, cantidad,
+           (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento, cantidad,
             stock_anterior, stock_nuevo, referencia, observaciones)
-         VALUES ($1, $2, $3, 'ENTRADA', $4, $5, $6, $7, $8)`,
+         VALUES ($1, $2, $3, $4, 'ENTRADA', $5, $6, $7, $8, $9)`,
         [
           linea.id_producto,
           idAlmacen,
+          lote.id_lote,
           req.user.id_usuario,
           linea.cantidad,
           stockAnterior,
@@ -122,7 +235,11 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
     res.status(201).json({
       ok: true,
       message: "Recepción registrada y stock actualizado",
-      data: { ...entrada, proveedor: nombreProveedor, detalles: lineas },
+      data: {
+        ...entrada,
+        proveedor: nombreProveedor,
+        detalles: detallesRegistrados,
+      },
     });
   } catch (error) {
     try {

@@ -10,6 +10,7 @@ const ubicacionRouter = require("./ubicacion.routes");
 const stockUbicacionRouter = require("./stockUbicacion.routes");
 const clasificacionRouter = require("./clasificacion.routes");
 const consultaStockRouter = require("./consultaStock.routes");
+const salidaRouter = require("./salida.routes");
 
 const router = express.Router();
 
@@ -26,8 +27,6 @@ router.use(
   authenticate,
   require("./entradasInventario.routes"),
 );
-
-// Categorías, subcategorías y marcas con controladores dedicados
 router.use("/categorias", authenticate, (req, res, next) => {
   req.url = `/categorias${req.url}`;
   clasificacionRouter(req, res, next);
@@ -40,6 +39,7 @@ router.use("/marcas", authenticate, (req, res, next) => {
   req.url = `/marcas${req.url}`;
   clasificacionRouter(req, res, next);
 });
+router.use("/salidas", authenticate, salidaRouter);
 
 for (const [path, resource] of Object.entries(resources)) {
   if (
@@ -47,10 +47,12 @@ for (const [path, resource] of Object.entries(resources)) {
     path === "almacenes" ||
     path === "ubicaciones" ||
     path === "stock_ubicaciones" ||
-    path === "stock" ||
+    path === "entradas_inventario" ||
     path === "categorias" ||
     path === "subcategorias" ||
-    path === "marcas"
+    path === "marcas" ||
+    path === "salidas_inventario" ||
+    path === "detalle_salidas"
   ) {
     continue;
   }

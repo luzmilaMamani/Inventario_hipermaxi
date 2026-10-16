@@ -34,11 +34,7 @@ export default function DetalleProducto({ productoId, onClose }) {
   }, [productoId]);
 
   return (
-    <Modal
-      open={!!productoId}
-      onClose={onClose}
-      title="Detalle del producto"
-    >
+    <Modal open={!!productoId} onClose={onClose} title="Detalle del producto">
       {loading && <p className="text-gray-500">Cargando...</p>}
 
       {error && (
@@ -97,6 +93,12 @@ export default function DetalleProducto({ productoId, onClose }) {
 
           <div className="grid grid-cols-2 gap-3 border-t pt-3">
             <div>
+              <p className="text-gray-500">Precio unitario</p>
+              <p className="font-semibold">
+                Bs {Number(producto.precio || 0).toFixed(2)}
+              </p>
+            </div>
+            <div>
               <p className="text-gray-500">Stock mínimo</p>
               <p className="font-semibold">{producto.stock_minimo}</p>
             </div>
@@ -111,7 +113,9 @@ export default function DetalleProducto({ productoId, onClose }) {
             <div>
               <p className="text-gray-500">Stock reservado</p>
               <p className="font-semibold">
-                {Number(producto.cantidad_reservada ?? 0).toLocaleString("es-BO")}
+                {Number(producto.cantidad_reservada ?? 0).toLocaleString(
+                  "es-BO",
+                )}
               </p>
             </div>
           </div>
