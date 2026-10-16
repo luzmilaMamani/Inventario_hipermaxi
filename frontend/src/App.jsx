@@ -11,6 +11,7 @@ import BuscarCodigoBarras from "./pages/barcode/BuscarCodigoBarras";
 import ConsultaStock from "./pages/stock/ConsultaStock";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 import ReportePerdidas from "./pages/reportes/ReportePerdidas";
+import ReporteDanos from "./pages/reportes/ReporteDanos";
 
 export default function App() {
   return (
@@ -87,6 +88,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReportePerdidas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes/danos"
+            element={
+              <ProtectedRoute>
+                <ReporteDanos />
               </ProtectedRoute>
             }
           />

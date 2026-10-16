@@ -32,7 +32,7 @@ export default function DetalleSalida({ salidaId, onClose }) {
   }, [salidaId]);
 
   const totalGeneral = salida?.detalles?.reduce(
-    (acc, d) => acc + Number(d.valor_total || 0),
+    (acc, d) => acc + Number(d.cantidad) * Number(d.precio_unitario || 0),
     0,
   );
 
@@ -107,28 +107,33 @@ export default function DetalleSalida({ salidaId, onClose }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {salida.detalles.map((d) => (
-                    <tr key={d.id_detalle_salida} className="border-t">
-                      <td className="py-2 px-3">
-                        <div className="font-medium">{d.producto}</div>
-                        <div className="text-xs text-gray-500 font-mono">
-                          {d.producto_codigo}
-                        </div>
-                      </td>
-                      <td className="py-2 px-3 font-mono text-xs">
-                        {d.numero_lote || "-"}
-                      </td>
-                      <td className="py-2 px-3 text-right">
-                        {Number(d.cantidad).toLocaleString("es-BO")} {d.unidad}
-                      </td>
-                      <td className="py-2 px-3 text-right">
-                        Bs {Number(d.precio_unitario || 0).toFixed(2)}
-                      </td>
-                      <td className="py-2 px-3 text-right font-semibold">
-                        Bs {Number(d.valor_total || 0).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
+                  {salida.detalles.map((d) => {
+                    const valor =
+                      Number(d.cantidad) * Number(d.precio_unitario || 0);
+                    return (
+                      <tr key={d.id_detalle_salida} className="border-t">
+                        <td className="py-2 px-3">
+                          <div className="font-medium">{d.producto}</div>
+                          <div className="text-xs text-gray-500 font-mono">
+                            {d.producto_codigo}
+                          </div>
+                        </td>
+                        <td className="py-2 px-3 font-mono text-xs">
+                          {d.numero_lote || "-"}
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          {Number(d.cantidad).toLocaleString("es-BO")}{" "}
+                          {d.unidad}
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          Bs {Number(d.precio_unitario || 0).toFixed(2)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-semibold">
+                          Bs {valor.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="border-t bg-gray-50">

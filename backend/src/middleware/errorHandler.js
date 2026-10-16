@@ -31,6 +31,7 @@ function errorHandler(error, _req, res, _next) {
     return res.status(400).json({
       ok: false,
       message: "Valor inválido según las reglas del sistema",
+      constraint: error.constraint,
       detail: error.detail,
     });
   }

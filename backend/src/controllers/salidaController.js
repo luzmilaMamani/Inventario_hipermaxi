@@ -3,7 +3,10 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 
 async function generarNumeroSalida(motivo) {
-  const prefijo = motivo === "PERDIDA" ? "PER" : "SAL";
+  let prefijo = "SAL";
+  if (motivo === "PERDIDA") prefijo = "PER";
+  else if (motivo === "DANO") prefijo = "DAN";
+
   const year = new Date().getFullYear();
 
   const result = await db.query(
@@ -68,7 +71,6 @@ const crearSalida = asyncHandler(async (req, res) => {
       const cantidad = Number(d.cantidad);
       const id_producto = Number(d.id_producto);
 
-      // Buscar un lote disponible (el más próximo a vencer primero)
       const loteResult = await client.query(
         `SELECT id_lote, cantidad_actual
          FROM lotes_productos
@@ -91,12 +93,14 @@ const crearSalida = asyncHandler(async (req, res) => {
 
       const lote = loteResult.rows[0];
 
-      // Verificar stock general
       const stockResult = await client.query(
-        `SELECT id_stock, cantidad, cantidad_reservada
-         FROM stock
-         WHERE id_producto = $1 AND id_almacen = $2
-         FOR UPDATE`,
+        `SELECT st.id_stock, st.cantidad, st.cantidad_reservada, p.precio
+         FROM stock st
+         INNER JOIN productos p ON p.id_producto = st.id_producto
+         WHERE st.id_producto = $1
+           AND st.id_almacen = $2
+           AND p.estado = 'ACTIVO'
+         FOR UPDATE OF st`,
         [id_producto, id_almacen],
       );
 
@@ -119,11 +123,12 @@ const crearSalida = asyncHandler(async (req, res) => {
         );
       }
 
-      // Precio de referencia (por ahora 0; se puede mejorar consultando entradas)
-      const precio = 0;
+      const precio =
+        d.precio_unitario === undefined || d.precio_unitario === null
+          ? Number(stockActual.precio || 0)
+          : Number(d.precio_unitario);
       const valor_total = precio * cantidad;
 
-      // Insertar detalle
       const detalleResult = await client.query(
         `INSERT INTO detalle_salidas
           (id_salida, id_producto, id_lote, cantidad, precio_unitario, valor_total, observaciones)
@@ -141,7 +146,6 @@ const crearSalida = asyncHandler(async (req, res) => {
       );
       detallesInsertados.push(detalleResult.rows[0]);
 
-      // Descontar stock general
       const stockNuevo = Number(stockActual.cantidad) - cantidad;
       await client.query(
         `UPDATE stock
@@ -150,7 +154,6 @@ const crearSalida = asyncHandler(async (req, res) => {
         [stockNuevo, stockActual.id_stock],
       );
 
-      // Descontar del lote
       const loteNuevo = Number(lote.cantidad_actual) - cantidad;
       await client.query(
         `UPDATE lotes_productos
@@ -163,7 +166,6 @@ const crearSalida = asyncHandler(async (req, res) => {
         [loteNuevo, loteNuevo === 0, lote.id_lote],
       );
 
-      // Registrar movimiento
       await client.query(
         `INSERT INTO movimientos_inventario
           (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento,
@@ -186,12 +188,14 @@ const crearSalida = asyncHandler(async (req, res) => {
 
     await client.query("COMMIT");
 
+    let mensaje = "Salida registrada exitosamente";
+    if (motivo === "PERDIDA")
+      mensaje = "Pérdida registrada y stock actualizado";
+    else if (motivo === "DANO") mensaje = "Daño registrado y stock actualizado";
+
     res.status(201).json({
       ok: true,
-      message:
-        motivo === "PERDIDA"
-          ? "Pérdida registrada y stock actualizado"
-          : "Salida registrada exitosamente",
+      message: mensaje,
       data: {
         ...salida,
         detalles: detallesInsertados,
@@ -374,9 +378,81 @@ const reportePerdidas = asyncHandler(async (req, res) => {
   });
 });
 
+const reporteDanos = asyncHandler(async (req, res) => {
+  const { fecha_desde, fecha_hasta, id_almacen, subtipo_dano } = req.query;
+
+  const condiciones = ["s.motivo = 'DANO'"];
+  const valores = [];
+  let i = 1;
+
+  if (fecha_desde) {
+    condiciones.push(`s.fecha_salida >= $${i++}`);
+    valores.push(fecha_desde);
+  }
+  if (fecha_hasta) {
+    condiciones.push(`s.fecha_salida < ($${i++}::date + INTERVAL '1 day')`);
+    valores.push(fecha_hasta);
+  }
+  if (id_almacen) {
+    condiciones.push(`s.id_almacen = $${i++}`);
+    valores.push(id_almacen);
+  }
+  if (subtipo_dano) {
+    condiciones.push(`s.subtipo_perdida = $${i++}`);
+    valores.push(subtipo_dano);
+  }
+
+  const whereSql = `WHERE ${condiciones.join(" AND ")}`;
+  const fromSql = `
+    FROM salidas_inventario s
+    INNER JOIN detalle_salidas ds ON ds.id_salida = s.id_salida
+    INNER JOIN productos p ON p.id_producto = ds.id_producto
+    INNER JOIN almacenes a ON a.id_almacen = s.id_almacen
+    INNER JOIN usuarios u ON u.id_usuario = s.id_usuario
+    INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
+    ${whereSql}`;
+
+  const [detalle, resumen] = await Promise.all([
+    db.query(
+      `SELECT
+         s.id_salida,
+         s.numero_salida,
+         s.fecha_salida,
+         s.subtipo_perdida AS subtipo_dano,
+         a.nombre AS almacen,
+         p.nombre AS producto,
+         p.codigo AS producto_codigo,
+         ds.cantidad,
+         um.abreviatura AS unidad,
+         ds.precio_unitario,
+         ds.valor_total,
+         u.nombre_completo AS usuario_registra
+       ${fromSql}
+       ORDER BY s.fecha_salida DESC, s.id_salida DESC`,
+      valores,
+    ),
+    db.query(
+      `SELECT
+         COUNT(*)::int AS total_registros,
+         COUNT(DISTINCT s.id_salida)::int AS total_salidas,
+         COALESCE(SUM(ds.cantidad), 0)::numeric AS total_unidades,
+         COALESCE(SUM(ds.valor_total), 0)::numeric AS total_valorizado
+       ${fromSql}`,
+      valores,
+    ),
+  ]);
+
+  res.json({
+    ok: true,
+    data: detalle.rows,
+    resumen: resumen.rows[0],
+  });
+});
+
 module.exports = {
   crearSalida,
   listarSalidas,
   obtenerSalida,
   reportePerdidas,
+  reporteDanos,
 };

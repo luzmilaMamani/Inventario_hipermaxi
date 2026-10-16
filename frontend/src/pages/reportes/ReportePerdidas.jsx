@@ -25,6 +25,7 @@ export default function ReportePerdidas() {
     total_registros: 0,
     total_salidas: 0,
     total_unidades: 0,
+    total_valorizado: 0,
   });
   const [almacenes, setAlmacenes] = useState([]);
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
@@ -52,6 +53,7 @@ export default function ReportePerdidas() {
           total_registros: 0,
           total_salidas: 0,
           total_unidades: 0,
+          total_valorizado: 0,
         },
       );
     } catch (err) {
@@ -79,7 +81,7 @@ export default function ReportePerdidas() {
         <div>
           <h1 className="text-2xl font-bold">Reporte de pérdidas</h1>
           <p className="text-sm text-gray-500">
-            Pérdidas registradas en el inventario (RF46)
+            Pérdidas registradas con valorización (RF46)
           </p>
         </div>
 
@@ -132,7 +134,7 @@ export default function ReportePerdidas() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
             <div className="bg-blue-50 p-3 rounded border border-blue-100">
               <p className="text-xs text-gray-600">Salidas registradas</p>
               <p className="text-xl font-bold text-blue-700">
@@ -149,6 +151,12 @@ export default function ReportePerdidas() {
               <p className="text-xs text-gray-600">Unidades perdidas</p>
               <p className="text-xl font-bold text-purple-700">
                 {Number(resumen.total_unidades || 0).toLocaleString("es-BO")}
+              </p>
+            </div>
+            <div className="bg-red-50 p-3 rounded border border-red-100">
+              <p className="text-xs text-gray-600">Valor total perdido</p>
+              <p className="text-xl font-bold text-red-700">
+                Bs {Number(resumen.total_valorizado || 0).toFixed(2)}
               </p>
             </div>
           </div>
@@ -169,19 +177,21 @@ export default function ReportePerdidas() {
                   <th className="py-2">Almacén</th>
                   <th className="py-2">Producto</th>
                   <th className="py-2 text-right">Cantidad</th>
+                  <th className="py-2 text-right">Precio unit.</th>
+                  <th className="py-2 text-right">Valor total</th>
                   <th className="py-2">Usuario</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-500">
+                    <td colSpan="9" className="py-6 text-center text-gray-500">
                       Cargando...
                     </td>
                   </tr>
                 ) : registros.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-500">
+                    <td colSpan="9" className="py-6 text-center text-gray-500">
                       No hay pérdidas registradas con esos filtros
                     </td>
                   </tr>
@@ -211,6 +221,12 @@ export default function ReportePerdidas() {
                       </td>
                       <td className="py-2 text-right">
                         {Number(r.cantidad).toLocaleString("es-BO")} {r.unidad}
+                      </td>
+                      <td className="py-2 text-right">
+                        Bs {Number(r.precio_unitario || 0).toFixed(2)}
+                      </td>
+                      <td className="py-2 text-right font-semibold">
+                        Bs {Number(r.valor_total || 0).toFixed(2)}
                       </td>
                       <td className="py-2">{r.usuario_registra}</td>
                     </tr>

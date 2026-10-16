@@ -11,6 +11,7 @@ function validarCrearProducto(req, _res, next) {
     stock_minimo,
     stock_maximo,
     punto_reposicion,
+    precio,
     estado,
   } = req.body;
 
@@ -43,6 +44,12 @@ function validarCrearProducto(req, _res, next) {
       new ApiError(400, "El punto de reposición no puede ser negativo"),
     );
   }
+  if (
+    precio !== undefined &&
+    (!Number.isFinite(Number(precio)) || Number(precio) < 0)
+  ) {
+    return next(new ApiError(400, "El precio debe ser un número mayor o igual a 0"));
+  }
   if (estado && !ESTADOS_VALIDOS.includes(estado)) {
     return next(
       new ApiError(
@@ -55,7 +62,8 @@ function validarCrearProducto(req, _res, next) {
 }
 
 function validarActualizarProducto(req, _res, next) {
-  const { stock_minimo, stock_maximo, punto_reposicion, estado } = req.body;
+  const { stock_minimo, stock_maximo, punto_reposicion, precio, estado } =
+    req.body;
 
   if (stock_minimo !== undefined && Number(stock_minimo) < 0) {
     return next(new ApiError(400, "El stock mínimo no puede ser negativo"));
@@ -73,6 +81,12 @@ function validarActualizarProducto(req, _res, next) {
     return next(
       new ApiError(400, "El punto de reposición no puede ser negativo"),
     );
+  }
+  if (
+    precio !== undefined &&
+    (!Number.isFinite(Number(precio)) || Number(precio) < 0)
+  ) {
+    return next(new ApiError(400, "El precio debe ser un número mayor o igual a 0"));
   }
   if (estado && !ESTADOS_VALIDOS.includes(estado)) {
     return next(

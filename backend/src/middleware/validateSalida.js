@@ -10,13 +10,13 @@ const MOTIVOS_VALIDOS = [
   "OTRO",
 ];
 
-const SUBTIPOS_PERDIDA = [
-  "ROBO",
-  "EXTRAVIO",
-  "DETERIORO",
-  "VENCIMIENTO",
-  "OTRO",
-];
+const MOTIVOS_CON_OBSERVACION = ["PERDIDA", "DANO"];
+
+// Subtipos de pérdida: solo cosas que "desaparecen"
+const SUBTIPOS_PERDIDA = ["ROBO", "EXTRAVIO", "OTRO"];
+
+// Subtipos de daño: solo cosas que se rompen/deterioran
+const SUBTIPOS_DANO = ["ROTO", "DETERIORO", "INUTILIZABLE", "OTRO"];
 
 function validarCrearSalida(req, _res, next) {
   const { id_almacen, motivo, observaciones, subtipo_perdida, detalles } =
@@ -39,23 +39,40 @@ function validarCrearSalida(req, _res, next) {
     );
   }
 
-  if (motivo === "PERDIDA") {
+  if (MOTIVOS_CON_OBSERVACION.includes(motivo)) {
     if (!observaciones || String(observaciones).trim().length < 5) {
       return next(
         new ApiError(
           400,
-          "Para salidas por PÉRDIDA la observación es obligatoria (mínimo 5 caracteres)",
+          `Para salidas por ${motivo} la observación es obligatoria (mínimo 5 caracteres)`,
         ),
       );
     }
-    if (subtipo_perdida && !SUBTIPOS_PERDIDA.includes(subtipo_perdida)) {
-      return next(
-        new ApiError(
-          400,
-          `Subtipo inválido. Permitidos: ${SUBTIPOS_PERDIDA.join(", ")}`,
-        ),
-      );
-    }
+  }
+
+  if (
+    motivo === "PERDIDA" &&
+    subtipo_perdida &&
+    !SUBTIPOS_PERDIDA.includes(subtipo_perdida)
+  ) {
+    return next(
+      new ApiError(
+        400,
+        `Subtipo de pérdida inválido. Permitidos: ${SUBTIPOS_PERDIDA.join(", ")}`,
+      ),
+    );
+  }
+  if (
+    motivo === "DANO" &&
+    subtipo_perdida &&
+    !SUBTIPOS_DANO.includes(subtipo_perdida)
+  ) {
+    return next(
+      new ApiError(
+        400,
+        `Subtipo de daño inválido. Permitidos: ${SUBTIPOS_DANO.join(", ")}`,
+      ),
+    );
   }
 
   for (const [i, d] of detalles.entries()) {
@@ -74,4 +91,10 @@ function validarCrearSalida(req, _res, next) {
   return next();
 }
 
-module.exports = { validarCrearSalida, MOTIVOS_VALIDOS, SUBTIPOS_PERDIDA };
+module.exports = {
+  validarCrearSalida,
+  MOTIVOS_VALIDOS,
+  MOTIVOS_CON_OBSERVACION,
+  SUBTIPOS_PERDIDA,
+  SUBTIPOS_DANO,
+};

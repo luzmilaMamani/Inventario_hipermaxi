@@ -9,6 +9,7 @@ const links = [
   { to: "/stock", label: "Consulta de stock", icon: "📈" },
   { to: "/salidas", label: "Salidas", icon: "📤" },
   { to: "/reportes/perdidas", label: "Reporte pérdidas", icon: "🚨" },
+  { to: "/reportes/danos", label: "Reporte daños", icon: "⚠️" },
   { to: "/barcode", label: "Buscar por código", icon: "🔍" },
 ];
 

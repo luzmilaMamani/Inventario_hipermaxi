@@ -11,3 +11,6 @@ export const crearSalida = (data) =>
 
 export const reportePerdidas = (params) =>
   api.get("/reportes/perdidas", { params }).then((r) => r.data);
+
+export const reporteDanos = (params) =>
+  api.get("/reportes/danos", { params }).then((r) => r.data);

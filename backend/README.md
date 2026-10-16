@@ -114,6 +114,20 @@ Las recepciones crean automáticamente un lote por línea si no se proporciona u
 
 ## Filtros y paginacion
 
+### Precio de productos
+
+Para guardar precios en productos existentes, ejecutar una vez en PostgreSQL:
+
+```sql
+ALTER TABLE productos
+ADD COLUMN IF NOT EXISTS precio NUMERIC(12, 2) NOT NULL DEFAULT 0;
+```
+
+El mismo cambio está disponible en `migrations/20261016_add_precio_productos.sql`.
+Los productos existentes comienzan con precio `0`; actualiza sus precios desde
+el formulario de productos. El precio queda guardado en cada detalle de salida
+al registrarla, para conservar el valor usado en ese momento.
+
 Ejemplo:
 
 ```http

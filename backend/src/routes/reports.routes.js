@@ -1,7 +1,10 @@
 const express = require("express");
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
-const { reportePerdidas } = require("../controllers/salidaController");
+const {
+  reportePerdidas,
+  reporteDanos,
+} = require("../controllers/salidaController");
 
 const router = express.Router();
 
@@ -43,12 +46,14 @@ router.get(
         OR s.cantidad <= p.stock_minimo
       ORDER BY s.cantidad ASC`,
     );
-
     res.json({ ok: true, data: result.rows });
   }),
 );
 
 // RF46: Reporte de pérdidas
 router.get("/perdidas", reportePerdidas);
+
+// RF26: Reporte de daños
+router.get("/danos", reporteDanos);
 
 module.exports = router;

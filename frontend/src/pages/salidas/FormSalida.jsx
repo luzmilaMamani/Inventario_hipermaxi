@@ -15,11 +15,18 @@ const MOTIVOS = [
   { value: "OTRO", label: "Otro" },
 ];
 
+// Subtipos de pérdida: solo cosas que "desaparecen"
 const SUBTIPOS_PERDIDA = [
   { value: "ROBO", label: "Robo" },
   { value: "EXTRAVIO", label: "Extravío" },
-  { value: "DETERIORO", label: "Deterioro" },
-  { value: "VENCIMIENTO", label: "Vencimiento" },
+  { value: "OTRO", label: "Otro" },
+];
+
+// Subtipos de daño: solo cosas que se rompen/deterioran
+const SUBTIPOS_DANO = [
+  { value: "ROTO", label: "Roto" },
+  { value: "DETERIORO", label: "Deteriorado" },
+  { value: "INUTILIZABLE", label: "Inutilizable" },
   { value: "OTRO", label: "Otro" },
 ];
 
@@ -45,6 +52,9 @@ export default function FormSalida({ onClose, onSaved }) {
   const [guardando, setGuardando] = useState(false);
 
   const esPerdida = form.motivo === "PERDIDA";
+  const esDano = form.motivo === "DANO";
+  const requiereSubtipo = esPerdida || esDano;
+  const requiereObservacion = esPerdida || esDano;
 
   useEffect(() => {
     listarAlmacenes({
@@ -64,6 +74,15 @@ export default function FormSalida({ onClose, onSaved }) {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm({ ...form, [name]: value });
+  };
+
+  const handleMotivoChange = (e) => {
+    const nuevoMotivo = e.target.value;
+    setForm({
+      ...form,
+      motivo: nuevoMotivo,
+      subtipo_perdida: "",
+    });
   };
 
   const agregarDetalle = () => {
@@ -101,10 +120,12 @@ export default function FormSalida({ onClose, onSaved }) {
     if (!form.id_almacen) return setError("El almacén es obligatorio");
     if (detalles.length === 0) return setError("Agrega al menos un producto");
 
-    if (esPerdida) {
+    if (requiereObservacion) {
       if (!form.observaciones || form.observaciones.trim().length < 5) {
         return setError(
-          "Para pérdidas la observación es obligatoria (mínimo 5 caracteres)",
+          `Para ${
+            esDano ? "daños" : "pérdidas"
+          } la observación es obligatoria (mínimo 5 caracteres)`,
         );
       }
     }
@@ -114,7 +135,7 @@ export default function FormSalida({ onClose, onSaved }) {
       const payload = {
         id_almacen: Number(form.id_almacen),
         motivo: form.motivo,
-        subtipo_perdida: esPerdida ? form.subtipo_perdida || null : null,
+        subtipo_perdida: requiereSubtipo ? form.subtipo_perdida || null : null,
         observaciones: form.observaciones.trim() || null,
         referencia_externa: form.referencia_externa.trim() || null,
         detalles: detalles.map((d) => ({
@@ -146,12 +167,12 @@ export default function FormSalida({ onClose, onSaved }) {
     return p ? `${p.codigo} - ${p.nombre}` : `Producto #${id}`;
   };
 
+  let titulo = "Registrar salida";
+  if (esPerdida) titulo = "Registrar pérdida";
+  else if (esDano) titulo = "Registrar daño";
+
   return (
-    <Modal
-      open={true}
-      onClose={onClose}
-      title={esPerdida ? "Registrar pérdida" : "Registrar salida"}
-    >
+    <Modal open={true} onClose={onClose} title={titulo}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <Select
@@ -164,7 +185,7 @@ export default function FormSalida({ onClose, onSaved }) {
           <Select
             label="Motivo *"
             value={form.motivo}
-            onChange={(e) => setForm({ ...form, motivo: e.target.value })}
+            onChange={handleMotivoChange}
             options={MOTIVOS}
             placeholder="Selecciona motivo"
           />
@@ -182,9 +203,21 @@ export default function FormSalida({ onClose, onSaved }) {
           />
         )}
 
+        {esDano && (
+          <Select
+            label="Subtipo de daño"
+            value={form.subtipo_perdida}
+            onChange={(e) =>
+              setForm({ ...form, subtipo_perdida: e.target.value })
+            }
+            options={SUBTIPOS_DANO}
+            placeholder="Selecciona subtipo (opcional)"
+          />
+        )}
+
         <div>
           <label className="block text-sm font-medium mb-1">
-            Observaciones {esPerdida && "*"}
+            Observaciones {requiereObservacion && "*"}
           </label>
           <textarea
             className="input-field"
@@ -193,11 +226,13 @@ export default function FormSalida({ onClose, onSaved }) {
             value={form.observaciones}
             onChange={handleChange}
             placeholder={
-              esPerdida
-                ? "Describe el motivo de la pérdida (obligatorio, mín. 5 caracteres)"
-                : "Observaciones (opcional)"
+              esDano
+                ? "Describe el daño (obligatorio, mín. 5 caracteres)"
+                : esPerdida
+                  ? "Describe el motivo de la pérdida (obligatorio, mín. 5 caracteres)"
+                  : "Observaciones (opcional)"
             }
-            required={esPerdida}
+            required={requiereObservacion}
           />
         </div>
 
@@ -307,9 +342,11 @@ export default function FormSalida({ onClose, onSaved }) {
           <button type="submit" className="btn-primary" disabled={guardando}>
             {guardando
               ? "Guardando..."
-              : esPerdida
-                ? "Registrar pérdida"
-                : "Registrar salida"}
+              : esDano
+                ? "Registrar daño"
+                : esPerdida
+                  ? "Registrar pérdida"
+                  : "Registrar salida"}
           </button>
         </div>
       </form>
