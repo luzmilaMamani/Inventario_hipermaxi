@@ -4,6 +4,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const {
   reportePerdidas,
   reporteDanos,
+  reporteVencimientos,
 } = require("../controllers/salidaController");
 
 const router = express.Router();
@@ -50,10 +51,8 @@ router.get(
   }),
 );
 
-// RF46: Reporte de pérdidas
 router.get("/perdidas", reportePerdidas);
-
-// RF26: Reporte de daños
 router.get("/danos", reporteDanos);
+router.get("/vencimientos", reporteVencimientos);
 
 module.exports = router;

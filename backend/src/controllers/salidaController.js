@@ -6,6 +6,7 @@ async function generarNumeroSalida(motivo) {
   let prefijo = "SAL";
   if (motivo === "PERDIDA") prefijo = "PER";
   else if (motivo === "DANO") prefijo = "DAN";
+  else if (motivo === "VENCIMIENTO") prefijo = "VEN";
 
   const year = new Date().getFullYear();
 
@@ -71,36 +72,59 @@ const crearSalida = asyncHandler(async (req, res) => {
       const cantidad = Number(d.cantidad);
       const id_producto = Number(d.id_producto);
 
-      const loteResult = await client.query(
-        `SELECT id_lote, cantidad_actual
-         FROM lotes_productos
-         WHERE id_producto = $1
-           AND id_almacen = $2
-           AND cantidad_actual >= $3
-           AND estado IN ('DISPONIBLE', 'PROXIMO_A_VENCER')
-         ORDER BY fecha_vencimiento ASC NULLS LAST, id_lote ASC
-         LIMIT 1
-         FOR UPDATE`,
-        [id_producto, id_almacen, cantidad],
-      );
+      let loteResult;
 
-      if (!loteResult.rowCount) {
-        throw new ApiError(
-          400,
-          `No hay lote disponible para el producto ${id_producto} en este almacén (o cantidad insuficiente)`,
+      if (motivo === "VENCIMIENTO") {
+        loteResult = await client.query(
+          `SELECT lp.id_lote, lp.cantidad_actual, lp.fecha_vencimiento
+           FROM lotes_productos lp
+           INNER JOIN productos p ON p.id_producto = lp.id_producto
+           WHERE lp.id_producto = $1
+             AND lp.id_almacen = $2
+             AND lp.cantidad_actual >= $3
+             AND p.controla_vencimiento = TRUE
+             AND lp.fecha_vencimiento <= CURRENT_DATE
+           ORDER BY lp.fecha_vencimiento ASC
+           LIMIT 1
+           FOR UPDATE`,
+          [id_producto, id_almacen, cantidad],
         );
+
+        if (!loteResult.rowCount) {
+          throw new ApiError(
+            400,
+            `El producto ${id_producto} no tiene lotes vencidos disponibles para dar de baja. Verifique que controle vencimiento y que el lote haya expirado.`,
+          );
+        }
+      } else {
+        loteResult = await client.query(
+          `SELECT id_lote, cantidad_actual
+           FROM lotes_productos
+           WHERE id_producto = $1
+             AND id_almacen = $2
+             AND cantidad_actual >= $3
+             AND estado IN ('DISPONIBLE', 'PROXIMO_A_VENCER')
+           ORDER BY fecha_vencimiento ASC NULLS LAST, id_lote ASC
+           LIMIT 1
+           FOR UPDATE`,
+          [id_producto, id_almacen, cantidad],
+        );
+
+        if (!loteResult.rowCount) {
+          throw new ApiError(
+            400,
+            `No hay lote disponible para el producto ${id_producto} en este almacén (o cantidad insuficiente)`,
+          );
+        }
       }
 
       const lote = loteResult.rows[0];
 
       const stockResult = await client.query(
-        `SELECT st.id_stock, st.cantidad, st.cantidad_reservada, p.precio
-         FROM stock st
-         INNER JOIN productos p ON p.id_producto = st.id_producto
-         WHERE st.id_producto = $1
-           AND st.id_almacen = $2
-           AND p.estado = 'ACTIVO'
-         FOR UPDATE OF st`,
+        `SELECT id_stock, cantidad, cantidad_reservada
+         FROM stock
+         WHERE id_producto = $1 AND id_almacen = $2
+         FOR UPDATE`,
         [id_producto, id_almacen],
       );
 
@@ -123,10 +147,11 @@ const crearSalida = asyncHandler(async (req, res) => {
         );
       }
 
-      const precio =
-        d.precio_unitario === undefined || d.precio_unitario === null
-          ? Number(stockActual.precio || 0)
-          : Number(d.precio_unitario);
+      const precioResult = await client.query(
+        "SELECT COALESCE(precio, 0) AS precio FROM productos WHERE id_producto = $1",
+        [id_producto],
+      );
+      const precio = Number(precioResult.rows[0]?.precio || 0);
       const valor_total = precio * cantidad;
 
       const detalleResult = await client.query(
@@ -159,12 +184,17 @@ const crearSalida = asyncHandler(async (req, res) => {
         `UPDATE lotes_productos
          SET cantidad_actual = $1,
              estado = CASE
-               WHEN $2 THEN 'AGOTADO'
+               WHEN $1 = 0 THEN 'AGOTADO'
                ELSE estado
              END
-         WHERE id_lote = $3`,
-        [loteNuevo, loteNuevo === 0, lote.id_lote],
+         WHERE id_lote = $2`,
+        [loteNuevo, lote.id_lote],
       );
+
+      let tipoMovimiento = "SALIDA";
+      if (motivo === "PERDIDA") tipoMovimiento = "SALIDA_PERDIDA";
+      else if (motivo === "DANO") tipoMovimiento = "SALIDA_DANO";
+      else if (motivo === "VENCIMIENTO") tipoMovimiento = "SALIDA_VENCIMIENTO";
 
       await client.query(
         `INSERT INTO movimientos_inventario
@@ -176,7 +206,7 @@ const crearSalida = asyncHandler(async (req, res) => {
           id_almacen,
           lote.id_lote,
           id_usuario,
-          motivo === "PERDIDA" ? "SALIDA_PERDIDA" : "SALIDA",
+          tipoMovimiento,
           cantidad,
           Number(stockActual.cantidad),
           stockNuevo,
@@ -192,14 +222,13 @@ const crearSalida = asyncHandler(async (req, res) => {
     if (motivo === "PERDIDA")
       mensaje = "Pérdida registrada y stock actualizado";
     else if (motivo === "DANO") mensaje = "Daño registrado y stock actualizado";
+    else if (motivo === "VENCIMIENTO")
+      mensaje = "Vencimiento registrado y stock actualizado";
 
     res.status(201).json({
       ok: true,
       message: mensaje,
-      data: {
-        ...salida,
-        detalles: detallesInsertados,
-      },
+      data: { ...salida, detalles: detallesInsertados },
     });
   } catch (error) {
     await client.query("ROLLBACK");
@@ -256,7 +285,7 @@ const listarSalidas = asyncHandler(async (req, res) => {
          a.nombre AS almacen,
          u.nombre_completo AS usuario_registra,
          (SELECT COUNT(*)::int FROM detalle_salidas ds WHERE ds.id_salida = s.id_salida) AS total_items,
-         (SELECT COALESCE(SUM(valor_total), 0) FROM detalle_salidas ds WHERE ds.id_salida = s.id_salida) AS valor_total
+         (SELECT COALESCE(SUM(cantidad * precio_unitario), 0) FROM detalle_salidas ds WHERE ds.id_salida = s.id_salida) AS valor_total
        FROM salidas_inventario s
        INNER JOIN almacenes a ON a.id_almacen = s.id_almacen
        INNER JOIN usuarios u ON u.id_usuario = s.id_usuario
@@ -301,6 +330,7 @@ const obtenerSalida = asyncHandler(async (req, res) => {
   const detalles = await db.query(
     `SELECT
        ds.*,
+       (ds.cantidad * ds.precio_unitario) AS valor_total,
        p.codigo AS producto_codigo,
        p.nombre AS producto,
        c.nombre AS categoria,
@@ -319,16 +349,12 @@ const obtenerSalida = asyncHandler(async (req, res) => {
 
   res.json({
     ok: true,
-    data: {
-      ...cabecera.rows[0],
-      detalles: detalles.rows,
-    },
+    data: { ...cabecera.rows[0], detalles: detalles.rows },
   });
 });
 
 const reportePerdidas = asyncHandler(async (req, res) => {
   const { fecha_desde, fecha_hasta, id_almacen, subtipo_perdida } = req.query;
-
   const condiciones = [];
   const valores = [];
   let i = 1;
@@ -356,8 +382,7 @@ const reportePerdidas = asyncHandler(async (req, res) => {
 
   const [detalle, resumen] = await Promise.all([
     db.query(
-      `SELECT * FROM vw_perdidas ${whereSql}
-       ORDER BY fecha_salida DESC`,
+      `SELECT * FROM vw_perdidas ${whereSql} ORDER BY fecha_salida DESC`,
       valores,
     ),
     db.query(
@@ -371,82 +396,95 @@ const reportePerdidas = asyncHandler(async (req, res) => {
     ),
   ]);
 
-  res.json({
-    ok: true,
-    data: detalle.rows,
-    resumen: resumen.rows[0],
-  });
+  res.json({ ok: true, data: detalle.rows, resumen: resumen.rows[0] });
 });
 
 const reporteDanos = asyncHandler(async (req, res) => {
   const { fecha_desde, fecha_hasta, id_almacen, subtipo_dano } = req.query;
-
-  const condiciones = ["s.motivo = 'DANO'"];
+  const condiciones = [];
   const valores = [];
   let i = 1;
 
   if (fecha_desde) {
-    condiciones.push(`s.fecha_salida >= $${i++}`);
+    condiciones.push(`fecha_salida >= $${i++}`);
     valores.push(fecha_desde);
   }
   if (fecha_hasta) {
-    condiciones.push(`s.fecha_salida < ($${i++}::date + INTERVAL '1 day')`);
+    condiciones.push(`fecha_salida <= $${i++}`);
     valores.push(fecha_hasta);
   }
   if (id_almacen) {
-    condiciones.push(`s.id_almacen = $${i++}`);
+    condiciones.push(`id_almacen = $${i++}`);
     valores.push(id_almacen);
   }
   if (subtipo_dano) {
-    condiciones.push(`s.subtipo_perdida = $${i++}`);
+    condiciones.push(`subtipo_dano = $${i++}`);
     valores.push(subtipo_dano);
   }
 
-  const whereSql = `WHERE ${condiciones.join(" AND ")}`;
-  const fromSql = `
-    FROM salidas_inventario s
-    INNER JOIN detalle_salidas ds ON ds.id_salida = s.id_salida
-    INNER JOIN productos p ON p.id_producto = ds.id_producto
-    INNER JOIN almacenes a ON a.id_almacen = s.id_almacen
-    INNER JOIN usuarios u ON u.id_usuario = s.id_usuario
-    INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
-    ${whereSql}`;
+  const whereSql = condiciones.length
+    ? `WHERE ${condiciones.join(" AND ")}`
+    : "";
 
   const [detalle, resumen] = await Promise.all([
     db.query(
-      `SELECT
-         s.id_salida,
-         s.numero_salida,
-         s.fecha_salida,
-         s.subtipo_perdida AS subtipo_dano,
-         a.nombre AS almacen,
-         p.nombre AS producto,
-         p.codigo AS producto_codigo,
-         ds.cantidad,
-         um.abreviatura AS unidad,
-         ds.precio_unitario,
-         ds.valor_total,
-         u.nombre_completo AS usuario_registra
-       ${fromSql}
-       ORDER BY s.fecha_salida DESC, s.id_salida DESC`,
+      `SELECT * FROM vw_danos ${whereSql} ORDER BY fecha_salida DESC`,
       valores,
     ),
     db.query(
       `SELECT
          COUNT(*)::int AS total_registros,
-         COUNT(DISTINCT s.id_salida)::int AS total_salidas,
-         COALESCE(SUM(ds.cantidad), 0)::numeric AS total_unidades,
-         COALESCE(SUM(ds.valor_total), 0)::numeric AS total_valorizado
-       ${fromSql}`,
+         COUNT(DISTINCT id_salida)::int AS total_salidas,
+         COALESCE(SUM(cantidad), 0)::numeric AS total_unidades,
+         COALESCE(SUM(valor_total), 0)::numeric AS total_valorizado
+       FROM vw_danos ${whereSql}`,
       valores,
     ),
   ]);
 
-  res.json({
-    ok: true,
-    data: detalle.rows,
-    resumen: resumen.rows[0],
-  });
+  res.json({ ok: true, data: detalle.rows, resumen: resumen.rows[0] });
+});
+
+const reporteVencimientos = asyncHandler(async (req, res) => {
+  const { fecha_desde, fecha_hasta, id_almacen } = req.query;
+  const condiciones = [];
+  const valores = [];
+  let i = 1;
+
+  if (fecha_desde) {
+    condiciones.push(`fecha_salida >= $${i++}`);
+    valores.push(fecha_desde);
+  }
+  if (fecha_hasta) {
+    condiciones.push(`fecha_salida <= $${i++}`);
+    valores.push(fecha_hasta);
+  }
+  if (id_almacen) {
+    condiciones.push(`id_almacen = $${i++}`);
+    valores.push(id_almacen);
+  }
+
+  const whereSql = condiciones.length
+    ? `WHERE ${condiciones.join(" AND ")}`
+    : "";
+
+  const [detalle, resumen] = await Promise.all([
+    db.query(
+      `SELECT * FROM vw_vencimientos ${whereSql} ORDER BY fecha_salida DESC`,
+      valores,
+    ),
+    db.query(
+      `SELECT
+         COUNT(*)::int AS total_registros,
+         COUNT(DISTINCT id_salida)::int AS total_salidas,
+         COALESCE(SUM(cantidad), 0)::numeric AS total_unidades,
+         COALESCE(SUM(valor_total), 0)::numeric AS total_valorizado
+       FROM vw_vencimientos ${whereSql}`,
+      valores,
+    ),
+  ]);
+
+  res.json({ ok: true, data: detalle.rows, resumen: resumen.rows[0] });
 });
 
 module.exports = {
@@ -455,4 +493,5 @@ module.exports = {
   obtenerSalida,
   reportePerdidas,
   reporteDanos,
+  reporteVencimientos,
 };

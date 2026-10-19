@@ -14,3 +14,6 @@ export const reportePerdidas = (params) =>
 
 export const reporteDanos = (params) =>
   api.get("/reportes/danos", { params }).then((r) => r.data);
+
+export const reporteVencimientos = (params) =>
+  api.get("/reportes/vencimientos", { params }).then((r) => r.data);

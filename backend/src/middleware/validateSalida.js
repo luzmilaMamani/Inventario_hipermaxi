@@ -10,12 +10,10 @@ const MOTIVOS_VALIDOS = [
   "OTRO",
 ];
 
-const MOTIVOS_CON_OBSERVACION = ["PERDIDA", "DANO"];
+// Motivos que requieren observación obligatoria (mínimo 5 caracteres)
+const MOTIVOS_CON_OBSERVACION = ["PERDIDA", "DANO", "VENCIMIENTO", "OTRO"];
 
-// Subtipos de pérdida: solo cosas que "desaparecen"
 const SUBTIPOS_PERDIDA = ["ROBO", "EXTRAVIO", "OTRO"];
-
-// Subtipos de daño: solo cosas que se rompen/deterioran
 const SUBTIPOS_DANO = ["ROTO", "DETERIORO", "INUTILIZABLE", "OTRO"];
 
 function validarCrearSalida(req, _res, next) {
