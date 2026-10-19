@@ -20,6 +20,7 @@ const ESTADOS = ["ACTIVO", "INACTIVO", "DESCONTINUADO"];
 const ORDENES = [
   { value: "nombre", label: "Nombre" },
   { value: "codigo", label: "Código" },
+  { value: "precio", label: "Precio" },
   { value: "fecha_creacion", label: "Fecha de creación" },
   { value: "estado", label: "Estado" },
 ];
@@ -154,7 +155,7 @@ export default function ListaProductos() {
       await cambiarEstadoProducto(
         productoSeleccionado.id_producto,
         nuevoEstado,
-        motivo
+        motivo,
       );
       setModalOpen(false);
       cargar(pagination.page);
@@ -293,10 +294,7 @@ export default function ListaProductos() {
             />
 
             <div className="flex items-end">
-              <button
-                onClick={limpiarFiltros}
-                className="btn-secondary w-full"
-              >
+              <button onClick={limpiarFiltros} className="btn-secondary w-full">
                 Limpiar filtros
               </button>
             </div>
@@ -323,11 +321,11 @@ export default function ListaProductos() {
                   <th className="py-2">Categoría</th>
                   <th className="py-2">Subcategoría</th>
                   <th className="py-2">Marca</th>
+                  <th className="py-2 text-right">Precio</th>
                   <th className="py-2 text-right">Stock mínimo</th>
                   <th className="py-2 text-right">Stock máximo</th>
                   <th className="py-2 text-right">Punto de reposición</th>
                   <th className="py-2 text-right">Stock reservado</th>
-                  <th className="py-2 text-right">Disponible</th>
                   <th className="py-2">Estado</th>
                   <th className="py-2 text-right">Acciones</th>
                 </tr>
@@ -362,38 +360,23 @@ export default function ListaProductos() {
                       <td className="py-2">{p.subcategoria || "-"}</td>
                       <td className="py-2">{p.marca || "-"}</td>
                       <td className="py-2 text-right">
+                        Bs {Number(p.precio || 0).toFixed(2)}
+                      </td>
+                      <td className="py-2 text-right">
                         {Number(p.stock_minimo ?? 0).toLocaleString("es-BO")}
                       </td>
                       <td className="py-2 text-right">
                         {Number(p.stock_maximo ?? 0).toLocaleString("es-BO")}
                       </td>
                       <td className="py-2 text-right">
-                        {Number(p.punto_reposicion ?? 0).toLocaleString("es-BO")}
+                        {Number(p.punto_reposicion ?? 0).toLocaleString(
+                          "es-BO",
+                        )}
                       </td>
                       <td className="py-2 text-right">
-                        {Number(p.cantidad_reservada ?? 0).toLocaleString("es-BO")}
-                      </td>
-                      <td className="py-2 text-right font-semibold">
-                        <div
-                          className={
-                            Number(p.cantidad_disponible) < 2
-                              ? "text-red-600"
-                              : "text-green-700"
-                          }
-                        >
-                          {Number(p.cantidad_disponible ?? 0).toLocaleString("es-BO")}
-                        </div>
-                        <span
-                          className={`text-xs font-normal ${
-                            Number(p.cantidad_disponible) < 2
-                              ? "text-red-600 font-semibold"
-                              : "text-gray-500"
-                          }`}
-                        >
-                          {Number(p.cantidad_disponible) < 2
-                            ? "Stock crítico"
-                            : "Disponible"}
-                        </span>
+                        {Number(p.cantidad_reservada ?? 0).toLocaleString(
+                          "es-BO",
+                        )}
                       </td>
                       <td className="py-2">
                         <Badge estado={p.estado} />

@@ -49,6 +49,7 @@ const crearProducto = asyncHandler(async (req, res) => {
     stock_minimo = 0,
     stock_maximo = 0,
     punto_reposicion = 0,
+    precio = 0,
   } = req.body;
 
   await validarSubcategoria(id_categoria, id_subcategoria);
@@ -58,8 +59,8 @@ const crearProducto = asyncHandler(async (req, res) => {
     `INSERT INTO productos
       (codigo, codigo_barras, nombre, descripcion, id_categoria, id_subcategoria,
        id_marca, id_unidad, controla_vencimiento, stock_minimo, stock_maximo,
-       punto_reposicion, estado)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'ACTIVO')
+       punto_reposicion, precio, estado)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'ACTIVO')
      RETURNING *`,
     [
       codigo,
@@ -74,6 +75,7 @@ const crearProducto = asyncHandler(async (req, res) => {
       stock_minimo,
       stock_maximo,
       punto_reposicion,
+      precio ?? 0,
     ],
   );
 
@@ -107,6 +109,7 @@ const actualizarProducto = asyncHandler(async (req, res) => {
     stock_minimo,
     stock_maximo,
     punto_reposicion,
+    precio,
     estado,
   } = req.body;
 
@@ -140,8 +143,9 @@ const actualizarProducto = asyncHandler(async (req, res) => {
       stock_minimo = COALESCE($10, stock_minimo),
       stock_maximo = COALESCE($11, stock_maximo),
       punto_reposicion = COALESCE($12, punto_reposicion),
-      estado = COALESCE($13, estado)
-     WHERE id_producto = $14
+      precio = COALESCE($13, precio),
+      estado = COALESCE($14, estado)
+     WHERE id_producto = $15
      RETURNING *`,
     [
       codigo ?? null,
@@ -156,6 +160,7 @@ const actualizarProducto = asyncHandler(async (req, res) => {
       stock_minimo ?? null,
       stock_maximo ?? null,
       punto_reposicion ?? null,
+      precio ?? null,
       estado ?? null,
       id,
     ],
@@ -188,6 +193,7 @@ const listarProductos = asyncHandler(async (req, res) => {
     "codigo",
     "codigo_barras",
     "nombre",
+    "precio",
     "estado",
     "fecha_creacion",
   ];
@@ -241,7 +247,7 @@ const listarProductos = asyncHandler(async (req, res) => {
     db.query(
       `SELECT
          p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.descripcion,
-         p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
+         p.precio, p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
          p.punto_reposicion, p.fecha_creacion,
          COALESCE((
            SELECT SUM(st.cantidad_reservada)
@@ -296,7 +302,7 @@ const buscarProductosRapido = asyncHandler(async (req, res) => {
 
   const result = await db.query(
     `SELECT
-       p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.estado,
+       p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.precio, p.estado,
        c.nombre AS categoria, m.nombre AS marca,
        u.abreviatura AS unidad
      FROM productos p
@@ -351,7 +357,7 @@ const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
   const result = await db.query(
     `SELECT
        p.id_producto, p.codigo, p.codigo_barras, p.nombre,
-       p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
+       p.precio, p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
        p.punto_reposicion,
        COALESCE((
          SELECT SUM(st.cantidad_reservada)

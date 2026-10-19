@@ -106,8 +106,27 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 - `GET /api/reportes/stock-bajo`
 - `GET /api/stock/historial/:id_producto` (historial paginado de movimientos)
 - `POST /api/entradas-inventario` (recepción de proveedor; registra entrada, detalle, stock y movimientos en una transacción)
+- `GET /api/salidas` y `GET /api/salidas/:id` (consulta de salidas)
+- `POST /api/salidas` (registra la salida y descuenta existencias; si no se especifica lote, consume primero los lotes próximos a vencer)
+- `GET /api/reportes/perdidas` (reporte de pérdidas con filtros por fecha, almacén y subtipo)
+
+Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 
 ## Filtros y paginacion
+
+### Precio de productos
+
+Para guardar precios en productos existentes, ejecutar una vez en PostgreSQL:
+
+```sql
+ALTER TABLE productos
+ADD COLUMN IF NOT EXISTS precio NUMERIC(12, 2) NOT NULL DEFAULT 0;
+```
+
+El mismo cambio está disponible en `migrations/20261016_add_precio_productos.sql`.
+Los productos existentes comienzan con precio `0`; actualiza sus precios desde
+el formulario de productos. El precio queda guardado en cada detalle de salida
+al registrarla, para conservar el valor usado en ese momento.
 
 Ejemplo:
 
