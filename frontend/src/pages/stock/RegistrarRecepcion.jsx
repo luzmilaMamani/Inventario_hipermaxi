@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Select from "../../components/ui/Select";
 import { listarAlmacenes } from "../../api/almacenes.api";
-import { registrarRecepcion } from "../../api/entradas.api";
+import { listarRecepciones, registrarRecepcion } from "../../api/entradas.api";
 import { listarProductos } from "../../api/productos.api";
 
 const crearDetalleVacio = () => ({
@@ -79,6 +80,9 @@ export default function RegistrarRecepcion() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [confirmacion, setConfirmacion] = useState("");
+  const [recepcionGuardada, setRecepcionGuardada] = useState(null);
+  const [recepciones, setRecepciones] = useState([]);
+  const [errorLista, setErrorLista] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -107,6 +111,19 @@ export default function RegistrarRecepcion() {
       })
       .finally(() => setLoadingCatalogos(false));
   }, []);
+
+  useEffect(() => {
+    listarRecepciones({ limit: 8, orderBy: "fecha_entrada", order: "DESC" })
+      .then((respuesta) => {
+        setRecepciones(respuesta.data || []);
+        setErrorLista("");
+      })
+      .catch((err) => {
+        setErrorLista(
+          err.response?.data?.message || "No se pudieron cargar las recepciones",
+        );
+      });
+  }, [recepcionGuardada]);
 
   const actualizarDetalle = (indice, campo, valor) => {
     setDetalles((actuales) =>
@@ -164,6 +181,10 @@ export default function RegistrarRecepcion() {
           : `La verificación quedó con diferencia en ${conDiferencia} ${
               conDiferencia === 1 ? "línea" : "líneas"
             }.`;
+      setRecepcionGuardada({
+        id_entrada: respuesta.data.id_entrada,
+        numero_entrada: respuesta.data.numero_entrada,
+      });
       setConfirmacion(
         `Recepción ${respuesta.data.numero_entrada} registrada. ${textoVerificacion} El stock fue actualizado.`,
       );
@@ -430,7 +451,15 @@ export default function RegistrarRecepcion() {
           )}
           {confirmacion && (
             <p className="rounded bg-green-50 p-3 text-sm text-green-700">
-              {confirmacion}
+              {confirmacion}{" "}
+              {recepcionGuardada?.id_entrada && (
+                <Link
+                  className="font-semibold underline"
+                  to={`/recepciones/${recepcionGuardada.id_entrada}`}
+                >
+                  Registrar o consultar diferencias
+                </Link>
+              )}
             </p>
           )}
 
@@ -444,6 +473,62 @@ export default function RegistrarRecepcion() {
             </button>
           </div>
         </form>
+
+        <section className="card space-y-3">
+          <h2 className="text-lg font-semibold">Recepciones registradas</h2>
+          <p className="text-sm text-gray-500">
+            Abre una recepción para registrar faltantes, sobrantes o productos
+            dañados y consultar las diferencias.
+          </p>
+          {errorLista && (
+            <p className="rounded bg-red-50 p-3 text-sm text-red-600">{errorLista}</p>
+          )}
+          {recepciones.length === 0 ? (
+            <p className="text-sm text-gray-500">Todavía no hay recepciones registradas.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-gray-500">
+                    <th className="py-2 pr-3">Número</th>
+                    <th className="py-2 pr-3">Fecha</th>
+                    <th className="py-2 pr-3">Proveedor</th>
+                    <th className="py-2 pr-3">Verificación</th>
+                    <th className="py-2">Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recepciones.map((recepcion) => (
+                    <tr key={recepcion.id_entrada} className="border-b border-gray-100">
+                      <td className="py-2 pr-3 font-medium">{recepcion.numero_entrada}</td>
+                      <td className="whitespace-nowrap py-2 pr-3">
+                        {recepcion.fecha_entrada
+                          ? new Date(recepcion.fecha_entrada).toLocaleString("es-BO")
+                          : "-"}
+                      </td>
+                      <td className="py-2 pr-3">{recepcion.origen || "-"}</td>
+                      <td className="py-2 pr-3">
+                        {recepcion.resultado_verificacion === "CONFORME"
+                          ? "Conforme"
+                          : recepcion.resultado_verificacion === "CON_DIFERENCIA"
+                            ? "Con diferencia"
+                            : "Pendiente"}
+                      </td>
+                      <td className="py-2">
+                        <Link
+                          className="font-semibold text-brand-blue"
+                          to={`/recepciones/${recepcion.id_entrada}`}
+                        >
+                          Ver detalle
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </div>
     </Layout>
   );
