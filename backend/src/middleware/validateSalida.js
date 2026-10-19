@@ -10,7 +10,8 @@ const MOTIVOS_VALIDOS = [
   "OTRO",
 ];
 
-const MOTIVOS_CON_OBSERVACION = ["PERDIDA", "DANO", "VENCIMIENTO"];
+// Motivos que requieren observación obligatoria (mínimo 5 caracteres)
+const MOTIVOS_CON_OBSERVACION = ["PERDIDA", "DANO", "VENCIMIENTO", "OTRO"];
 
 const SUBTIPOS_PERDIDA = ["ROBO", "EXTRAVIO", "OTRO"];
 const SUBTIPOS_DANO = ["ROTO", "DETERIORO", "INUTILIZABLE", "OTRO"];

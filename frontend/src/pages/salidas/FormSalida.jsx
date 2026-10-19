@@ -52,8 +52,10 @@ export default function FormSalida({ onClose, onSaved }) {
   const esPerdida = form.motivo === "PERDIDA";
   const esDano = form.motivo === "DANO";
   const esVencimiento = form.motivo === "VENCIMIENTO";
+  const esOtro = form.motivo === "OTRO";
+
   const requiereSubtipo = esPerdida || esDano;
-  const requiereObservacion = esPerdida || esDano || esVencimiento;
+  const requiereObservacion = esPerdida || esDano || esVencimiento || esOtro;
 
   useEffect(() => {
     listarAlmacenes({
@@ -122,7 +124,7 @@ export default function FormSalida({ onClose, onSaved }) {
     if (requiereObservacion) {
       if (!form.observaciones || form.observaciones.trim().length < 5) {
         return setError(
-          `Para este tipo de salida la observación es obligatoria (mínimo 5 caracteres)`,
+          `Para este tipo de salida (${form.motivo}) la observación es obligatoria (mínimo 5 caracteres)`,
         );
       }
     }
@@ -230,7 +232,9 @@ export default function FormSalida({ onClose, onSaved }) {
                   ? "Describe el motivo de la pérdida (obligatorio)"
                   : esVencimiento
                     ? "Describe el lote vencido (obligatorio)"
-                    : "Observaciones (opcional)"
+                    : esOtro
+                      ? "Explica el motivo de la salida (obligatorio)"
+                      : "Observaciones (opcional)"
             }
             required={requiereObservacion}
           />
