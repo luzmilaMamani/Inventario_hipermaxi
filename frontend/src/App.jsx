@@ -12,6 +12,7 @@ import ConsultaStock from "./pages/stock/ConsultaStock";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
+import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 
 export default function App() {
   return (
@@ -96,6 +97,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteDanos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes/vencimientos"
+            element={
+              <ProtectedRoute>
+                <ReporteVencimientos />
               </ProtectedRoute>
             }
           />

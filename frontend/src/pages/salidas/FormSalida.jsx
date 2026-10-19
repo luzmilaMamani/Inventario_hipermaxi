@@ -15,14 +15,12 @@ const MOTIVOS = [
   { value: "OTRO", label: "Otro" },
 ];
 
-// Subtipos de pérdida: solo cosas que "desaparecen"
 const SUBTIPOS_PERDIDA = [
   { value: "ROBO", label: "Robo" },
   { value: "EXTRAVIO", label: "Extravío" },
   { value: "OTRO", label: "Otro" },
 ];
 
-// Subtipos de daño: solo cosas que se rompen/deterioran
 const SUBTIPOS_DANO = [
   { value: "ROTO", label: "Roto" },
   { value: "DETERIORO", label: "Deteriorado" },
@@ -53,8 +51,9 @@ export default function FormSalida({ onClose, onSaved }) {
 
   const esPerdida = form.motivo === "PERDIDA";
   const esDano = form.motivo === "DANO";
+  const esVencimiento = form.motivo === "VENCIMIENTO";
   const requiereSubtipo = esPerdida || esDano;
-  const requiereObservacion = esPerdida || esDano;
+  const requiereObservacion = esPerdida || esDano || esVencimiento;
 
   useEffect(() => {
     listarAlmacenes({
@@ -123,9 +122,7 @@ export default function FormSalida({ onClose, onSaved }) {
     if (requiereObservacion) {
       if (!form.observaciones || form.observaciones.trim().length < 5) {
         return setError(
-          `Para ${
-            esDano ? "daños" : "pérdidas"
-          } la observación es obligatoria (mínimo 5 caracteres)`,
+          `Para este tipo de salida la observación es obligatoria (mínimo 5 caracteres)`,
         );
       }
     }
@@ -170,6 +167,7 @@ export default function FormSalida({ onClose, onSaved }) {
   let titulo = "Registrar salida";
   if (esPerdida) titulo = "Registrar pérdida";
   else if (esDano) titulo = "Registrar daño";
+  else if (esVencimiento) titulo = "Registrar vencimiento";
 
   return (
     <Modal open={true} onClose={onClose} title={titulo}>
@@ -227,10 +225,12 @@ export default function FormSalida({ onClose, onSaved }) {
             onChange={handleChange}
             placeholder={
               esDano
-                ? "Describe el daño (obligatorio, mín. 5 caracteres)"
+                ? "Describe el daño (obligatorio)"
                 : esPerdida
-                  ? "Describe el motivo de la pérdida (obligatorio, mín. 5 caracteres)"
-                  : "Observaciones (opcional)"
+                  ? "Describe el motivo de la pérdida (obligatorio)"
+                  : esVencimiento
+                    ? "Describe el lote vencido (obligatorio)"
+                    : "Observaciones (opcional)"
             }
             required={requiereObservacion}
           />
@@ -346,7 +346,9 @@ export default function FormSalida({ onClose, onSaved }) {
                 ? "Registrar daño"
                 : esPerdida
                   ? "Registrar pérdida"
-                  : "Registrar salida"}
+                  : esVencimiento
+                    ? "Registrar vencimiento"
+                    : "Registrar salida"}
           </button>
         </div>
       </form>
