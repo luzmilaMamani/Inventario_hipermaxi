@@ -1,5 +1,8 @@
 const express = require("express");
-const { registrarRecepcion } = require("../controllers/entradaInventarioController");
+const {
+  registrarRecepcion,
+  confirmarRecepcion,
+} = require("../controllers/entradaInventarioController");
 const {
   obtenerRecepcion,
   listarDiferencias,
@@ -8,6 +11,7 @@ const {
 
 const router = express.Router();
 
+router.post("/:id/confirmar", confirmarRecepcion);
 router.get("/:id/diferencias", listarDiferencias);
 router.post("/:id/diferencias", registrarDiferencia);
 router.get("/:id", obtenerRecepcion);

@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Select from "../../components/ui/Select";
-import { obtenerRecepcion, registrarDiferencia } from "../../api/entradas.api";
+import {
+  confirmarRecepcion,
+  obtenerRecepcion,
+  registrarDiferencia,
+} from "../../api/entradas.api";
 
 const TIPOS = [
   { value: "FALTANTE", label: "Faltante" },
@@ -53,6 +57,9 @@ export default function DetalleRecepcion() {
   const [recepcion, setRecepcion] = useState(null);
   const [formularios, setFormularios] = useState({});
   const [guardandoId, setGuardandoId] = useState(null);
+  const [confirmando, setConfirmando] = useState(false);
+  const [avisoConfirmacion, setAvisoConfirmacion] = useState("");
+  const [errorConfirmacion, setErrorConfirmacion] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [erroresLinea, setErroresLinea] = useState({});
@@ -93,6 +100,29 @@ export default function DetalleRecepcion() {
         [campo]: valor,
       },
     }));
+  };
+
+  const confirmar = async () => {
+    setConfirmando(true);
+    setErrorConfirmacion("");
+    setAvisoConfirmacion("");
+    try {
+      const respuesta = await confirmarRecepcion(id);
+      setAvisoConfirmacion(respuesta.message);
+      const detalle = await obtenerRecepcion(id);
+      setRecepcion({
+        ...detalle.data,
+        stock_confirmado: Boolean(
+          detalle.data.stock_confirmado || respuesta.data?.stock_confirmado,
+        ),
+      });
+    } catch (err) {
+      setErrorConfirmacion(
+        err.response?.data?.message || "No se pudo confirmar la recepción",
+      );
+    } finally {
+      setConfirmando(false);
+    }
   };
 
   const enviarDiferencia = async (event, linea) => {
@@ -196,6 +226,30 @@ export default function DetalleRecepcion() {
                 <span className="font-medium">Verificación:</span>{" "}
                 {textoVerificacion(recepcion.resultado_verificacion)}
               </p>
+              <p>
+                <span className="font-medium">Stock:</span>{" "}
+                {recepcion.stock_confirmado
+                  ? "Confirmado. Las cantidades recibidas ya se sumaron al almacén."
+                  : "Pendiente de confirmación."}
+              </p>
+              {errorConfirmacion && (
+                <p className="rounded bg-red-50 p-3 text-sm text-red-600">{errorConfirmacion}</p>
+              )}
+              {avisoConfirmacion && (
+                <p className="rounded bg-green-50 p-3 text-sm text-green-700">{avisoConfirmacion}</p>
+              )}
+              {!recepcion.stock_confirmado && (
+                <div className="pt-2">
+                  <button
+                    className="btn-primary"
+                    type="button"
+                    disabled={confirmando}
+                    onClick={confirmar}
+                  >
+                    {confirmando ? "Confirmando recepción..." : "Confirmar recepción"}
+                  </button>
+                </div>
+              )}
               {recepcion.referencia_externa && (
                 <p>
                   <span className="font-medium">Referencia:</span> {recepcion.referencia_externa}

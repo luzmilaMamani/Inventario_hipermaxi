@@ -96,6 +96,7 @@ const resources = {
       'referencia_externa',
       'estado',
       'resultado_verificacion',
+      'stock_confirmado',
       'observaciones'
     ]
   },

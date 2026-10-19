@@ -25,6 +25,7 @@ export const registrarRecepcion = (data) => {
         numero_entrada: "ENT-VISTA-PREVIA",
         proveedor: data.proveedor,
         resultado_verificacion: resultado,
+        stock_confirmado: false,
         detalles,
       },
     });
@@ -55,6 +56,7 @@ export const obtenerRecepcion = (id) => {
         almacen_codigo: "SUC-01",
         fecha_entrada: new Date().toISOString(),
         resultado_verificacion: "CON_DIFERENCIA",
+        stock_confirmado: false,
         detalles: [
           {
             id_detalle_entrada: 1,
@@ -71,6 +73,17 @@ export const obtenerRecepcion = (id) => {
     });
   }
   return api.get(`/entradas-inventario/${id}`).then((r) => r.data);
+};
+
+export const confirmarRecepcion = (idEntrada) => {
+  if (esVistaPrevia) {
+    return Promise.resolve({
+      ok: true,
+      message: "Recepción confirmada en vista previa. El stock fue actualizado.",
+      data: { id_entrada: Number(idEntrada), stock_confirmado: true },
+    });
+  }
+  return api.post(`/entradas-inventario/${idEntrada}/confirmar`).then((r) => r.data);
 };
 
 export const registrarDiferencia = (idEntrada, data) => {

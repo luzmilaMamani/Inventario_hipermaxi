@@ -14,11 +14,16 @@ let columnasVerificacionListas = false;
 async function asegurarColumnasVerificacion() {
   if (columnasVerificacionListas) return;
 
-  const sql = readFileSync(
+  const verificacion = readFileSync(
     path.join(__dirname, "../../sql/rf20_verificacion_recepcion.sql"),
     "utf8",
   );
-  await db.query(sql);
+  const confirmacion = readFileSync(
+    path.join(__dirname, "../../sql/rf22_confirmar_recepcion.sql"),
+    "utf8",
+  );
+  await db.query(verificacion);
+  await db.query(confirmacion);
   columnasVerificacionListas = true;
 }
 
@@ -140,9 +145,9 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
     const entradaResult = await cliente.query(
       `INSERT INTO entradas_inventario
          (numero_entrada, id_almacen, id_usuario, fecha_entrada, origen,
-          referencia_externa, estado, resultado_verificacion, observaciones)
-       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, 'RECIBIDA', $6, $7)
-       RETURNING id_entrada, numero_entrada, fecha_entrada, estado, resultado_verificacion`,
+          referencia_externa, estado, resultado_verificacion, stock_confirmado, observaciones)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4, $5, 'RECIBIDA', $6, FALSE, $7)
+       RETURNING id_entrada, numero_entrada, fecha_entrada, estado, resultado_verificacion, stock_confirmado`,
       [
         numeroEntrada,
         idAlmacen,
@@ -221,43 +226,12 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
         id_lote: lote.id_lote,
         numero_lote: lote.numero_lote,
       });
-
-      const stockResult = await cliente.query(
-        `INSERT INTO stock (id_producto, id_almacen, cantidad, cantidad_reservada)
-         VALUES ($1, $2, $3, 0)
-         ON CONFLICT (id_producto, id_almacen)
-         DO UPDATE SET
-           cantidad = stock.cantidad + EXCLUDED.cantidad,
-           fecha_actualizacion = CURRENT_TIMESTAMP
-         RETURNING cantidad, cantidad - $3::numeric AS stock_anterior`,
-        [linea.id_producto, idAlmacen, linea.cantidad_recibida],
-      );
-      const { cantidad: stockNuevo, stock_anterior: stockAnterior } =
-        stockResult.rows[0];
-
-      await cliente.query(
-        `INSERT INTO movimientos_inventario
-           (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento, cantidad,
-            stock_anterior, stock_nuevo, referencia, observaciones)
-         VALUES ($1, $2, $3, $4, 'ENTRADA', $5, $6, $7, $8, $9)`,
-        [
-          linea.id_producto,
-          idAlmacen,
-          lote.id_lote,
-          req.user.id_usuario,
-          linea.cantidad_recibida,
-          stockAnterior,
-          stockNuevo,
-          entrada.numero_entrada,
-          linea.observaciones || `Recepción del proveedor ${nombreProveedor}`,
-        ],
-      );
     }
 
     await cliente.query("COMMIT");
     res.status(201).json({
       ok: true,
-      message: "Recepción registrada, verificación guardada y stock actualizado",
+      message: "Recepción registrada y verificación guardada. Confirme la recepción para actualizar el stock.",
       data: {
         ...entrada,
         proveedor: nombreProveedor,
@@ -277,4 +251,103 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { registrarRecepcion };
+const confirmarRecepcion = asyncHandler(async (req, res) => {
+  const idEntrada = Number(req.params.id);
+  if (!Number.isSafeInteger(idEntrada) || idEntrada <= 0) {
+    throw new ApiError(400, "La recepción no es válida");
+  }
+
+  await asegurarColumnasVerificacion();
+  const cliente = await db.pool.connect();
+  try {
+    await cliente.query("BEGIN");
+
+    const entradaResult = await cliente.query(
+      `SELECT id_entrada, id_almacen, numero_entrada, stock_confirmado
+       FROM entradas_inventario
+       WHERE id_entrada = $1
+       FOR UPDATE`,
+      [idEntrada],
+    );
+    if (!entradaResult.rowCount) {
+      throw new ApiError(404, "La recepción no existe");
+    }
+
+    const entrada = entradaResult.rows[0];
+    if (entrada.stock_confirmado) {
+      throw new ApiError(409, "Esta recepción ya fue confirmada y no puede volver a sumar stock");
+    }
+
+    const detallesResult = await cliente.query(
+      `SELECT id_producto, id_lote, cantidad_recibida, observaciones
+       FROM detalle_entradas
+       WHERE id_entrada = $1
+       ORDER BY id_detalle_entrada`,
+      [idEntrada],
+    );
+
+    for (const linea of detallesResult.rows) {
+      const cantidadRecibida = Number(linea.cantidad_recibida);
+      if (!Number.isFinite(cantidadRecibida) || cantidadRecibida <= 0) continue;
+
+      const stockResult = await cliente.query(
+        `INSERT INTO stock (id_producto, id_almacen, cantidad, cantidad_reservada)
+         VALUES ($1, $2, $3, 0)
+         ON CONFLICT (id_producto, id_almacen)
+         DO UPDATE SET
+           cantidad = stock.cantidad + EXCLUDED.cantidad,
+           fecha_actualizacion = CURRENT_TIMESTAMP
+         RETURNING cantidad, cantidad - $3::numeric AS stock_anterior`,
+        [linea.id_producto, entrada.id_almacen, cantidadRecibida],
+      );
+      const { cantidad: stockNuevo, stock_anterior: stockAnterior } = stockResult.rows[0];
+
+      await cliente.query(
+        `INSERT INTO movimientos_inventario
+           (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento, cantidad,
+            stock_anterior, stock_nuevo, referencia, observaciones)
+         VALUES ($1, $2, $3, $4, 'ENTRADA', $5, $6, $7, $8, $9)`,
+        [
+          linea.id_producto,
+          entrada.id_almacen,
+          linea.id_lote,
+          req.user.id_usuario,
+          cantidadRecibida,
+          stockAnterior,
+          stockNuevo,
+          entrada.numero_entrada,
+          linea.observaciones || `Confirmación de la recepción ${entrada.numero_entrada}`,
+        ],
+      );
+    }
+
+    await cliente.query(
+      `UPDATE entradas_inventario
+       SET stock_confirmado = TRUE
+       WHERE id_entrada = $1`,
+      [idEntrada],
+    );
+
+    await cliente.query("COMMIT");
+    res.json({
+      ok: true,
+      message: "Recepción confirmada. El stock del almacén fue actualizado con las cantidades recibidas.",
+      data: {
+        id_entrada: entrada.id_entrada,
+        numero_entrada: entrada.numero_entrada,
+        stock_confirmado: true,
+      },
+    });
+  } catch (error) {
+    try {
+      await cliente.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("Error al revertir la confirmación de la recepción:", rollbackError);
+    }
+    throw error;
+  } finally {
+    cliente.release();
+  }
+});
+
+module.exports = { registrarRecepcion, confirmarRecepcion };

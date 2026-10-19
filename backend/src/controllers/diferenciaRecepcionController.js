@@ -18,8 +18,13 @@ async function asegurarTablaDiferencias() {
     path.join(__dirname, "../../sql/rf21_diferencias_recepcion.sql"),
     "utf8",
   );
+  const confirmacion = readFileSync(
+    path.join(__dirname, "../../sql/rf22_confirmar_recepcion.sql"),
+    "utf8",
+  );
   await db.query(verificacion);
   await db.query(diferencias);
+  await db.query(confirmacion);
   tablaLista = true;
 }
 
@@ -69,6 +74,7 @@ const obtenerRecepcion = asyncHandler(async (req, res) => {
        e.referencia_externa,
        e.estado,
        e.resultado_verificacion,
+       e.stock_confirmado,
        e.observaciones,
        a.codigo AS almacen_codigo,
        a.nombre AS almacen

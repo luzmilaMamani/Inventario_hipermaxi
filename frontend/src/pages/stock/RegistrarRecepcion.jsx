@@ -186,7 +186,7 @@ export default function RegistrarRecepcion() {
         numero_entrada: respuesta.data.numero_entrada,
       });
       setConfirmacion(
-        `Recepción ${respuesta.data.numero_entrada} registrada. ${textoVerificacion} El stock fue actualizado.`,
+        `Recepción ${respuesta.data.numero_entrada} registrada. ${textoVerificacion} Confírmala en el detalle para actualizar el stock.`,
       );
       setForm({
         id_almacen: "",
@@ -494,6 +494,7 @@ export default function RegistrarRecepcion() {
                     <th className="py-2 pr-3">Fecha</th>
                     <th className="py-2 pr-3">Proveedor</th>
                     <th className="py-2 pr-3">Verificación</th>
+                    <th className="py-2 pr-3">Stock</th>
                     <th className="py-2">Detalle</th>
                   </tr>
                 </thead>
@@ -513,6 +514,9 @@ export default function RegistrarRecepcion() {
                           : recepcion.resultado_verificacion === "CON_DIFERENCIA"
                             ? "Con diferencia"
                             : "Pendiente"}
+                      </td>
+                      <td className="py-2 pr-3">
+                        {recepcion.stock_confirmado ? "Confirmado" : "Pendiente"}
                       </td>
                       <td className="py-2">
                         <Link
