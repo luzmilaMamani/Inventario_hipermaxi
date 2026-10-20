@@ -111,7 +111,7 @@ export default function RegistrarRecepcion() {
         ? "La verificación quedó conforme."
         : `La verificación quedó con diferencia en ${conDiferencia} línea(s).`;
 
-      setConfirmacion(`Recepción ${respuesta.data.numero_entrada} registrada. ${mensajeVerificacion} El stock fue actualizado.`);
+      setConfirmacion(`Recepción ${respuesta.data.numero_entrada} registrada y confirmada de forma atómica. ${mensajeVerificacion} El stock fue actualizado correctamente.`);
       
       setForm({ id_almacen: "", proveedor: "", referencia_externa: "", observaciones: "" });
       setDetalles([crearDetalleVacio()]);
