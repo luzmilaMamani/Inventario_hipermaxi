@@ -12,7 +12,8 @@ const clasificacionRouter = require("./clasificacion.routes");
 const consultaStockRouter = require("./consultaStock.routes");
 const salidaRouter = require("./salida.routes");
 const ventaRouter = require("./ventas.routes");
-const inventarioRouter = require("./inventarios.routes"); // <-- NUEVO
+const inventarioRouter = require("./inventarios.routes");
+const diferenciasRouter = require("./diferencias.routes"); // <-- NUEVO
 
 const router = express.Router();
 
@@ -26,7 +27,8 @@ router.use("/stock-ubicaciones", authenticate, stockUbicacionRouter);
 router.use("/stock", authenticate, consultaStockRouter);
 router.use("/salidas", authenticate, salidaRouter);
 router.use("/ventas", authenticate, ventaRouter);
-router.use("/inventarios", authenticate, inventarioRouter); // <-- NUEVO
+router.use("/inventarios", authenticate, inventarioRouter);
+router.use("/diferencias", authenticate, diferenciasRouter); // <-- NUEVO
 
 router.use("/entradas-inventario", authenticate, require("./entradasInventario.routes"));
 router.use("/categorias", authenticate, (req, res, next) => {
