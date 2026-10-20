@@ -11,7 +11,8 @@ const stockUbicacionRouter = require("./stockUbicacion.routes");
 const clasificacionRouter = require("./clasificacion.routes");
 const consultaStockRouter = require("./consultaStock.routes");
 const salidaRouter = require("./salida.routes");
-const ventaRouter = require("./ventas.routes"); // <-- NUEVO
+const ventaRouter = require("./ventas.routes");
+const inventarioRouter = require("./inventarios.routes"); // <-- NUEVO
 
 const router = express.Router();
 
@@ -24,7 +25,8 @@ router.use("/ubicaciones", authenticate, ubicacionRouter);
 router.use("/stock-ubicaciones", authenticate, stockUbicacionRouter);
 router.use("/stock", authenticate, consultaStockRouter);
 router.use("/salidas", authenticate, salidaRouter);
-router.use("/ventas", authenticate, ventaRouter); // <-- NUEVO
+router.use("/ventas", authenticate, ventaRouter);
+router.use("/inventarios", authenticate, inventarioRouter); // <-- NUEVO
 
 router.use("/entradas-inventario", authenticate, require("./entradasInventario.routes"));
 router.use("/categorias", authenticate, (req, res, next) => {
@@ -51,7 +53,9 @@ for (const [path, resource] of Object.entries(resources)) {
     path === "subcategorias" ||
     path === "marcas" ||
     path === "salidas_inventario" ||
-    path === "detalle_salidas"
+    path === "detalle_salidas" ||
+    path === "inventarios_fisicos" ||
+    path === "detalle_inventario_fisico"
   ) {
     continue;
   }
