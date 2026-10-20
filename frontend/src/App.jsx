@@ -14,7 +14,8 @@ import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ListaInventarios from "./pages/inventarios/ListaInventarios";
-import ConteoInventario from "./pages/inventarios/ConteoInventario"; // <-- NUEVO
+import ConteoInventario from "./pages/inventarios/ConteoInventario";
+import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario"; // <-- NUEVO
 
 export default function App() {
   return (
@@ -34,7 +35,8 @@ export default function App() {
           <Route path="/reportes/danos" element={<ProtectedRoute><ReporteDanos /></ProtectedRoute>} />
           <Route path="/reportes/vencimientos" element={<ProtectedRoute><ReporteVencimientos /></ProtectedRoute>} />
           <Route path="/inventarios" element={<ProtectedRoute><ListaInventarios /></ProtectedRoute>} />
-          <Route path="/inventarios/:id" element={<ProtectedRoute><ConteoInventario /></ProtectedRoute>} /> {/* <-- NUEVO */}
+          <Route path="/inventarios/:id" element={<ProtectedRoute><ConteoInventario /></ProtectedRoute>} />
+          <Route path="/inventarios/:id/diferencias" element={<ProtectedRoute><DiferenciasInventario /></ProtectedRoute>} /> {/* <-- NUEVO */}
         </Routes>
       </BrowserRouter>
     </AuthProvider>

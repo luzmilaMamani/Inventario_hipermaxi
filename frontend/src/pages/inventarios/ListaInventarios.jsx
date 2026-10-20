@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // <-- NUEVO
+import { useNavigate } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import { listarInventarios, crearInventario } from "../../api/inventarios.api";
 import { listarAlmacenes } from "../../api/almacenes.api";
@@ -7,7 +7,7 @@ import Select from "../../components/ui/Select";
 import Modal from "../../components/ui/Modal";
 
 export default function ListaInventarios() {
-  const navigate = useNavigate(); // <-- NUEVO
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [almacenes, setAlmacenes] = useState([]);
   const [formOpen, setFormOpen] = useState(false);
@@ -62,7 +62,7 @@ export default function ListaInventarios() {
                   <th className="py-2">Almacén</th>
                   <th className="py-2">Fecha Programada</th>
                   <th className="py-2">Estado</th>
-                  <th className="py-2 text-right">Acciones</th> {/* <-- NUEVO */}
+                  <th className="py-2 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,12 +83,18 @@ export default function ListaInventarios() {
                           {i.estado}
                         </span>
                       </td>
-                      <td className="py-2 text-right"> {/* <-- NUEVO */}
+                      <td className="py-2 text-right whitespace-nowrap">
                         <button
-                          className="text-blue-600 hover:underline text-sm font-medium"
+                          className="text-blue-600 hover:underline text-sm font-medium mr-3"
                           onClick={() => navigate(`/inventarios/${i.id_inventario}`)}
                         >
                           Ingresar Conteo
+                        </button>
+                        <button
+                          className="text-amber-600 hover:underline text-sm font-medium"
+                          onClick={() => navigate(`/inventarios/${i.id_inventario}/diferencias`)}
+                        >
+                          Ver Diferencias
                         </button>
                       </td>
                     </tr>
