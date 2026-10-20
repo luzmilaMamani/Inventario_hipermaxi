@@ -184,7 +184,7 @@ const crearSalida = asyncHandler(async (req, res) => {
         `UPDATE lotes_productos
          SET cantidad_actual = $1,
              estado = CASE
-               WHEN $1 = 0 THEN 'AGOTADO'
+               WHEN $1::numeric = 0::numeric THEN 'AGOTADO'
                ELSE estado
              END
          WHERE id_lote = $2`,

@@ -2,6 +2,7 @@ const express = require("express");
 const resources = require("../config/resources");
 const { authenticate } = require("../middleware/auth");
 const createCrudRouter = require("../utils/crudFactory");
+
 const reportsRouter = require("./reports.routes");
 const productoRouter = require("./producto.routes");
 const catalogosRouter = require("./catalogos.routes");
@@ -12,8 +13,9 @@ const clasificacionRouter = require("./clasificacion.routes");
 const consultaStockRouter = require("./consultaStock.routes");
 const salidaRouter = require("./salida.routes");
 const ventaRouter = require("./ventas.routes");
+const transferenciaRouter = require("./transferencia.routes");
 const inventarioRouter = require("./inventarios.routes");
-const diferenciasRouter = require("./diferencias.routes"); // <-- NUEVO
+const diferenciasRouter = require("./diferencias.routes");
 
 const router = express.Router();
 
@@ -27,10 +29,16 @@ router.use("/stock-ubicaciones", authenticate, stockUbicacionRouter);
 router.use("/stock", authenticate, consultaStockRouter);
 router.use("/salidas", authenticate, salidaRouter);
 router.use("/ventas", authenticate, ventaRouter);
+router.use("/transferencias", authenticate, transferenciaRouter); // 👈 REGISTRADO
 router.use("/inventarios", authenticate, inventarioRouter);
-router.use("/diferencias", authenticate, diferenciasRouter); // <-- NUEVO
+router.use("/diferencias", authenticate, diferenciasRouter);
 
-router.use("/entradas-inventario", authenticate, require("./entradasInventario.routes"));
+router.use(
+  "/entradas-inventario",
+  authenticate,
+  require("./entradasInventario.routes"),
+);
+
 router.use("/categorias", authenticate, (req, res, next) => {
   req.url = `/categorias${req.url}`;
   clasificacionRouter(req, res, next);
@@ -56,6 +64,8 @@ for (const [path, resource] of Object.entries(resources)) {
     path === "marcas" ||
     path === "salidas_inventario" ||
     path === "detalle_salidas" ||
+    path === "transferencias" ||
+    path === "detalle_transferencias" ||
     path === "inventarios_fisicos" ||
     path === "detalle_inventario_fisico"
   ) {
