@@ -8,7 +8,8 @@ const links = [
   { to: "/ubicaciones", label: "Ubicaciones", icon: "📍" },
   { to: "/stock", label: "Consulta de stock", icon: "📈" },
   { to: "/salidas", label: "Salidas", icon: "📤" },
-  { to: "/inventarios", label: "Inventarios Físicos", icon: "📋" }, // <-- NUEVO
+  { to: "/transferencias", label: "Transferencias", icon: "🔄" }, // 👈 NUEVO
+  { to: "/inventarios", label: "Inventarios Físicos", icon: "📋" },
   { to: "/reportes/perdidas", label: "Reporte pérdidas", icon: "🚨" },
   { to: "/reportes/danos", label: "Reporte daños", icon: "⚠️" },
   { to: "/reportes/vencimientos", label: "Reporte vencimientos", icon: "⏳" },
