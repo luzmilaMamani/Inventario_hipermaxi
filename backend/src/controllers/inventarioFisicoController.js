@@ -56,10 +56,6 @@ const registrarConteo = asyncHandler(async (req, res) => {
   res.status(201).json({ ok: true, data: result.rows[0] });
 });
 
-/**
- * GET /api/inventarios/:id_inventario/comparativa
- * Devuelve los productos contados con la diferencia calculada.
- */
 const obtenerComparativa = asyncHandler(async (req, res) => {
   const { id_inventario } = req.params;
   const result = await db.query(
@@ -72,9 +68,32 @@ const obtenerComparativa = asyncHandler(async (req, res) => {
   res.json({ ok: true, data: result.rows });
 });
 
+/**
+ * GET /api/inventarios/:id_inventario/diferencias
+ * Devuelve solo los productos con diferencia != 0, clasificados.
+ */
+const obtenerDiferencias = asyncHandler(async (req, res) => {
+  const { id_inventario } = req.params;
+  const result = await db.query(
+    `SELECT d.*, p.nombre AS producto, p.codigo,
+            CASE 
+              WHEN d.diferencia > 0 THEN 'SOBRANTE' 
+              WHEN d.diferencia < 0 THEN 'FALTANTE' 
+              ELSE 'CONFORME' 
+            END AS tipo_diferencia
+     FROM detalle_inventario_fisico d
+     INNER JOIN productos p ON p.id_producto = d.id_producto
+     WHERE d.id_inventario = $1 AND d.diferencia != 0
+     ORDER BY ABS(d.diferencia) DESC`,
+    [id_inventario]
+  );
+  res.json({ ok: true, data: result.rows });
+});
+
 module.exports = {
   crearInventario,
   listarInventarios,
   registrarConteo,
-  obtenerComparativa 
+  obtenerComparativa,
+  obtenerDiferencias // <-- NUEVA
 };
