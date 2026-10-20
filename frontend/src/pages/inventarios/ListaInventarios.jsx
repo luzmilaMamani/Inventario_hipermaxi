@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // <-- NUEVO
 import Layout from "../../components/layout/Layout";
 import { listarInventarios, crearInventario } from "../../api/inventarios.api";
 import { listarAlmacenes } from "../../api/almacenes.api";
@@ -6,6 +7,7 @@ import Select from "../../components/ui/Select";
 import Modal from "../../components/ui/Modal";
 
 export default function ListaInventarios() {
+  const navigate = useNavigate(); // <-- NUEVO
   const [items, setItems] = useState([]);
   const [almacenes, setAlmacenes] = useState([]);
   const [formOpen, setFormOpen] = useState(false);
@@ -60,7 +62,7 @@ export default function ListaInventarios() {
                   <th className="py-2">Almacén</th>
                   <th className="py-2">Fecha Programada</th>
                   <th className="py-2">Estado</th>
-                  <th className="py-2">Observaciones</th>
+                  <th className="py-2 text-right">Acciones</th> {/* <-- NUEVO */}
                 </tr>
               </thead>
               <tbody>
@@ -81,7 +83,14 @@ export default function ListaInventarios() {
                           {i.estado}
                         </span>
                       </td>
-                      <td className="py-2 text-gray-600">{i.observaciones || "-"}</td>
+                      <td className="py-2 text-right"> {/* <-- NUEVO */}
+                        <button
+                          className="text-blue-600 hover:underline text-sm font-medium"
+                          onClick={() => navigate(`/inventarios/${i.id_inventario}`)}
+                        >
+                          Ingresar Conteo
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}

@@ -14,8 +14,6 @@ export default function ConteoInventario() {
   const [error, setError] = useState("");
 
   const cargar = () => {
-    // La comparativa aún no existe en backend (se hace en HIP-46), 
-    // pero intentamos cargarla para que no falle la vista.
     obtenerComparativa(id)
       .then((r) => setComparativa(r.data))
       .catch(() => setComparativa([]));
@@ -46,7 +44,7 @@ export default function ConteoInventario() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">Conteo de Inventario #{id}</h1>
-            <p className="text-sm text-gray-500">Ingresa las cantidades físicas encontradas</p>
+            <p className="text-sm text-gray-500">Ingresa las cantidades y compara con el sistema</p>
           </div>
           <button className="btn-secondary" onClick={() => navigate("/inventarios")}>
             Volver a la lista
@@ -83,27 +81,36 @@ export default function ConteoInventario() {
         </div>
 
         <div className="card">
-          <h2 className="font-semibold mb-3">Productos Contados</h2>
+          <h2 className="font-semibold mb-3">Comparativa de Conteo</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-gray-200 text-gray-500">
                   <th className="py-2">Producto</th>
-                  <th className="py-2 text-right">Cant. Física</th>
+                  <th className="py-2 text-right">Sistema</th>
+                  <th className="py-2 text-right">Físico</th>
+                  <th className="py-2 text-right">Diferencia</th>
                 </tr>
               </thead>
               <tbody>
                 {comparativa.length === 0 ? (
                   <tr>
-                    <td colSpan="2" className="py-6 text-center text-gray-500">
+                    <td colSpan="4" className="py-6 text-center text-gray-500">
                       Aún no se han registrado conteos.
                     </td>
                   </tr>
                 ) : (
                   comparativa.map((c) => (
                     <tr key={c.id_detalle} className="border-b border-gray-100">
-                      <td className="py-2">{c.producto || `Producto #${c.id_producto}`}</td>
+                      <td className="py-2">
+                        <div className="font-medium">{c.producto}</div>
+                        <div className="text-xs text-gray-500 font-mono">{c.codigo}</div>
+                      </td>
+                      <td className="py-2 text-right">{c.cantidad_sistema}</td>
                       <td className="py-2 text-right">{c.cantidad_fisica}</td>
+                      <td className={`py-2 text-right font-semibold ${c.diferencia !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {c.diferencia > 0 ? `+${c.diferencia}` : c.diferencia}
+                      </td>
                     </tr>
                   ))
                 )}
