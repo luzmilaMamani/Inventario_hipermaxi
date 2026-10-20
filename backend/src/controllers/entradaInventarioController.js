@@ -43,6 +43,18 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
     throw new ApiError(400, "La recepción debe incluir entre 1 y 100 productos");
   }
 
+  // ⚠️ NUEVO (HIP-32): Evitar procesar dos veces la misma recepción
+  const refLimpia = String(referencia_externa || "").trim();
+  if (refLimpia) {
+    const refExiste = await db.query(
+      "SELECT id_entrada FROM entradas_inventario WHERE referencia_externa = $1",
+      [refLimpia]
+    );
+    if (refExiste.rowCount > 0) {
+      throw new ApiError(400, "Esta recepción ya fue procesada anteriormente (referencia duplicada)");
+    }
+  }
+
   const lineas = detalles.map((detalle, indice) => {
     if (!detalle || typeof detalle !== "object" || Array.isArray(detalle)) {
       throw new ApiError(400, `El detalle de la línea ${indice + 1} no es válido`);
@@ -129,7 +141,7 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
         idAlmacen,
         req.user.id_usuario,
         nombreProveedor,
-        String(referencia_externa || "").trim() || null,
+        refLimpia || null,
         String(observaciones || "").trim() || null,
       ],
     );
