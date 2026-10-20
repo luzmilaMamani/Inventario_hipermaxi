@@ -13,6 +13,7 @@ import ListaSalidas from "./pages/salidas/ListaSalidas";
 import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
+import ListaInventarios from "./pages/inventarios/ListaInventarios"; // <-- NUEVO
 
 export default function App() {
   return (
@@ -20,94 +21,18 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/productos"
-            element={
-              <ProtectedRoute>
-                <ListaProductos />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/almacenes"
-            element={
-              <ProtectedRoute>
-                <ListaAlmacenes />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/ubicaciones"
-            element={
-              <ProtectedRoute>
-                <ListaUbicaciones />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/stock"
-            element={
-              <ProtectedRoute>
-                <ConsultaStock />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clasificacion"
-            element={
-              <ProtectedRoute>
-                <Clasificacion />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/barcode"
-            element={
-              <ProtectedRoute>
-                <BuscarCodigoBarras />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/salidas"
-            element={
-              <ProtectedRoute>
-                <ListaSalidas />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reportes/perdidas"
-            element={
-              <ProtectedRoute>
-                <ReportePerdidas />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reportes/danos"
-            element={
-              <ProtectedRoute>
-                <ReporteDanos />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reportes/vencimientos"
-            element={
-              <ProtectedRoute>
-                <ReporteVencimientos />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/productos" element={<ProtectedRoute><ListaProductos /></ProtectedRoute>} />
+          <Route path="/almacenes" element={<ProtectedRoute><ListaAlmacenes /></ProtectedRoute>} />
+          <Route path="/ubicaciones" element={<ProtectedRoute><ListaUbicaciones /></ProtectedRoute>} />
+          <Route path="/stock" element={<ProtectedRoute><ConsultaStock /></ProtectedRoute>} />
+          <Route path="/clasificacion" element={<ProtectedRoute><Clasificacion /></ProtectedRoute>} />
+          <Route path="/barcode" element={<ProtectedRoute><BuscarCodigoBarras /></ProtectedRoute>} />
+          <Route path="/salidas" element={<ProtectedRoute><ListaSalidas /></ProtectedRoute>} />
+          <Route path="/reportes/perdidas" element={<ProtectedRoute><ReportePerdidas /></ProtectedRoute>} />
+          <Route path="/reportes/danos" element={<ProtectedRoute><ReporteDanos /></ProtectedRoute>} />
+          <Route path="/reportes/vencimientos" element={<ProtectedRoute><ReporteVencimientos /></ProtectedRoute>} />
+          <Route path="/inventarios" element={<ProtectedRoute><ListaInventarios /></ProtectedRoute>} /> {/* <-- NUEVO */}
         </Routes>
       </BrowserRouter>
     </AuthProvider>
