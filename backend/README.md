@@ -108,10 +108,13 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 - `POST /api/entradas-inventario` (recepción de proveedor; registra entrada, detalle, stock y movimientos en una transacción)
 - `GET /api/salidas` y `GET /api/salidas/:id` (consulta de salidas)
 - `POST /api/salidas` (registra la salida, descuenta existencias y crea un movimiento trazable por producto; selecciona el lote disponible con vencimiento más próximo)
-- `PUT /api/transferencias/:id/estado` (aprobar o rechazar solicitudes solo para `ENCARGADO_ALMACEN` y `ADMINISTRADOR`)
+- `PUT /api/transferencias/:id/estado` (aprobar o rechazar solicitudes solo para `ENCARGADO_ALMACEN` y `ADMINISTRADOR`; marcar como enviada requiere `fecha_llegada_estimada` en formato `YYYY-MM-DD`)
+- `GET /api/transferencias` y `GET /api/transferencias/:id` incluyen fechas y datos del recorrido
 - `GET /api/reportes/perdidas` (reporte de pérdidas con filtros por fecha, almacén y subtipo)
 
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
+
+Para instalaciones existentes, ejecutar `migrations/20261021_add_transferencia_tracking_fields.sql` para agregar la fecha estimada de llegada y las fechas de rechazo/cancelación.
 
 ## Filtros y paginacion
 

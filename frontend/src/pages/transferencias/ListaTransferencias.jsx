@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/layout/Layout";
+import Modal from "../../components/ui/Modal";
 import Select from "../../components/ui/Select";
 import { useAuth } from "../../context/AuthContext";
+import DetalleTransferencia from "./DetalleTransferencia";
 import FormTransferencia from "./FormTransferencia";
 import {
   listarTransferencias,
@@ -15,6 +17,9 @@ export default function ListaTransferencias() {
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState("");
+  const [transferenciaDetalleId, setTransferenciaDetalleId] = useState(null);
+  const [envioPendiente, setEnvioPendiente] = useState(null);
+  const [guardandoEnvio, setGuardandoEnvio] = useState(false);
   const puedeDecidirTransferencias = [
     "ENCARGADO_ALMACEN",
     "ADMINISTRADOR",
@@ -39,14 +44,38 @@ export default function ListaTransferencias() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroEstado]);
 
-  const handleCambiarEstado = async (id, nuevoEstado) => {
+  const handleCambiarEstado = async (
+    id,
+    nuevoEstado,
+    fechaLlegadaEstimada,
+  ) => {
     if (!window.confirm(`¿Cambiar estado a ${nuevoEstado}?`)) return;
     try {
-      await cambiarEstadoTransferencia(id, nuevoEstado);
-      cargar();
+      await cambiarEstadoTransferencia(id, nuevoEstado, fechaLlegadaEstimada);
+      await cargar();
+      return true;
     } catch (err) {
       alert(err.response?.data?.message || "Error al cambiar estado");
+      return false;
     }
+  };
+
+  const fechaHoy = (() => {
+    const hoy = new Date();
+    return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+  })();
+
+  const confirmarEnvio = async (e) => {
+    e.preventDefault();
+    if (!envioPendiente?.fecha) return;
+    setGuardandoEnvio(true);
+    const actualizado = await handleCambiarEstado(
+      envioPendiente.id,
+      "ENVIADA",
+      envioPendiente.fecha,
+    );
+    if (actualizado) setEnvioPendiente(null);
+    setGuardandoEnvio(false);
   };
 
   const getBadgeColor = (estado) => {
@@ -73,7 +102,7 @@ export default function ListaTransferencias() {
           <div>
             <h1 className="text-2xl font-bold">Transferencias</h1>
             <p className="text-sm text-gray-500">
-              Solicitudes de reposición entre almacenes (RF29)
+              Estado y recorrido de solicitudes entre almacenes (RF33)
             </p>
           </div>
           <button className="btn-primary" onClick={() => setFormOpen(true)}>
@@ -93,6 +122,7 @@ export default function ListaTransferencias() {
                 { value: "ENVIADA", label: "Enviada" },
                 { value: "RECIBIDA", label: "Recibida" },
                 { value: "RECHAZADA", label: "Rechazada" },
+                { value: "CANCELADA", label: "Cancelada" },
               ]}
               placeholder="Todos los estados"
               className="w-64"
@@ -111,19 +141,20 @@ export default function ListaTransferencias() {
                   <th className="py-2">Destino</th>
                   <th className="py-2">Solicitante</th>
                   <th className="py-2">Estado</th>
+                  <th className="py-2">Llegada estimada</th>
                   <th className="py-2 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-4">
+                    <td colSpan="8" className="text-center py-4">
                       Cargando...
                     </td>
                   </tr>
                 ) : transferencias.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-4">
+                    <td colSpan="8" className="text-center py-4">
                       No hay transferencias registradas
                     </td>
                   </tr>
@@ -151,7 +182,22 @@ export default function ListaTransferencias() {
                           {t.estado}
                         </span>
                       </td>
+                      <td className="py-2">
+                        {t.fecha_llegada_estimada
+                          ? new Date(
+                              `${t.fecha_llegada_estimada}T00:00:00`,
+                            ).toLocaleDateString("es-BO")
+                          : "-"}
+                      </td>
                       <td className="py-2 text-right space-x-2 whitespace-nowrap">
+                        <button
+                          onClick={() =>
+                            setTransferenciaDetalleId(t.id_transferencia)
+                          }
+                          className="text-blue-600 hover:underline font-medium"
+                        >
+                          Ver recorrido
+                        </button>
                         {t.estado === "SOLICITADA" &&
                           puedeDecidirTransferencias && (
                           <>
@@ -182,7 +228,10 @@ export default function ListaTransferencias() {
                         {t.estado === "APROBADA" && (
                           <button
                             onClick={() =>
-                              handleCambiarEstado(t.id_transferencia, "ENVIADA")
+                              setEnvioPendiente({
+                                id: t.id_transferencia,
+                                fecha: fechaHoy,
+                              })
                             }
                             className="text-amber-600 hover:underline font-medium"
                           >
@@ -220,6 +269,60 @@ export default function ListaTransferencias() {
             cargar();
           }}
         />
+      )}
+      {transferenciaDetalleId && (
+        <DetalleTransferencia
+          transferenciaId={transferenciaDetalleId}
+          onClose={() => setTransferenciaDetalleId(null)}
+        />
+      )}
+      {envioPendiente && (
+        <Modal
+          open={true}
+          onClose={() => setEnvioPendiente(null)}
+          title="Registrar envío"
+        >
+          <form onSubmit={confirmarEnvio} className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Indica la fecha estimada de llegada al almacén de destino.
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Fecha estimada de llegada *
+              </label>
+              <input
+                type="date"
+                min={fechaHoy}
+                required
+                className="input-field"
+                value={envioPendiente.fecha}
+                onChange={(e) =>
+                  setEnvioPendiente({
+                    ...envioPendiente,
+                    fecha: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setEnvioPendiente(null)}
+                disabled={guardandoEnvio}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={guardandoEnvio}
+              >
+                {guardandoEnvio ? "Guardando..." : "Confirmar envío"}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
     </Layout>
   );

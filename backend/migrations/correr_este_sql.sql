@@ -20,6 +20,11 @@ ALTER TABLE productos
 ALTER TABLE salidas_inventario
   ADD COLUMN IF NOT EXISTS subtipo_perdida VARCHAR(50);
 
+ALTER TABLE transferencias
+  ADD COLUMN IF NOT EXISTS fecha_llegada_estimada DATE,
+  ADD COLUMN IF NOT EXISTS fecha_rechazo TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS fecha_cancelacion TIMESTAMP;
+
 -- Limpiar subtipos viejos que ya no se usan (ej. si tenías VENCIMIENTO como subtipo)
 UPDATE salidas_inventario
 SET subtipo_perdida = 'OTRO'

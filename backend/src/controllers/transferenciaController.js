@@ -211,8 +211,17 @@ const listarTransferencias = asyncHandler(async (req, res) => {
     ? `WHERE ${condiciones.join(" AND ")}`
     : "";
   const result = await db.query(
-    `SELECT vt.*
+    `SELECT
+       vt.*,
+       tr.fecha_aprobacion AS fecha_aprobacion_trazabilidad,
+       tr.fecha_rechazo AS fecha_rechazo_trazabilidad,
+       tr.fecha_cancelacion AS fecha_cancelacion_trazabilidad,
+       tr.fecha_envio AS fecha_envio_trazabilidad,
+       tr.fecha_recepcion AS fecha_recepcion_trazabilidad,
+       tr.fecha_llegada_estimada
      FROM vw_transferencias vt
+     INNER JOIN transferencias tr
+       ON tr.id_transferencia = vt.id_transferencia
      ${whereSql}
      ORDER BY vt.fecha_solicitud DESC`,
     valores,
@@ -223,7 +232,21 @@ const listarTransferencias = asyncHandler(async (req, res) => {
 const obtenerTransferencia = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const cabecera = await db.query(
-    `SELECT * FROM vw_transferencias WHERE id_transferencia = $1`,
+    `SELECT
+       vt.*,
+       tr.observaciones,
+       tr.fecha_aprobacion AS fecha_aprobacion_trazabilidad,
+       tr.fecha_rechazo AS fecha_rechazo_trazabilidad,
+       tr.fecha_cancelacion AS fecha_cancelacion_trazabilidad,
+       tr.fecha_envio AS fecha_envio_trazabilidad,
+       tr.fecha_recepcion AS fecha_recepcion_trazabilidad,
+       tr.fecha_llegada_estimada,
+       ua.nombre_completo AS aprobador
+     FROM vw_transferencias vt
+     INNER JOIN transferencias tr
+       ON tr.id_transferencia = vt.id_transferencia
+     LEFT JOIN usuarios ua ON ua.id_usuario = tr.id_usuario_aprueba
+     WHERE vt.id_transferencia = $1`,
     [id],
   );
   if (!cabecera.rowCount)
@@ -246,7 +269,7 @@ const obtenerTransferencia = asyncHandler(async (req, res) => {
 
 const cambiarEstado = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
-  const { estado } = req.body;
+  const { estado, fecha_llegada_estimada } = req.body;
   const id_usuario = req.user.id_usuario;
   const transiciones = {
     SOLICITADA: ["APROBADA", "RECHAZADA", "CANCELADA"],
@@ -269,6 +292,21 @@ const cambiarEstado = asyncHandler(async (req, res) => {
       "Solo un encargado de almacén o administrador puede aprobar o rechazar transferencias",
     );
   }
+  if (estado === "ENVIADA") {
+    if (
+      typeof fecha_llegada_estimada !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(fecha_llegada_estimada)
+    ) {
+      throw new ApiError(400, "Debe indicar una fecha estimada de llegada válida");
+    }
+    const fechaEstimada = new Date(`${fecha_llegada_estimada}T00:00:00.000Z`);
+    if (
+      Number.isNaN(fechaEstimada.getTime()) ||
+      fechaEstimada.toISOString().slice(0, 10) !== fecha_llegada_estimada
+    ) {
+      throw new ApiError(400, "La fecha estimada de llegada no es válida");
+    }
+  }
 
   const client = await db.pool.connect();
   try {
@@ -288,6 +326,16 @@ const cambiarEstado = asyncHandler(async (req, res) => {
       );
     }
 
+    if (estado === "ENVIADA") {
+      const fechaLlegadaResult = await client.query(
+        "SELECT $1::date >= CURRENT_DATE AS es_futura",
+        [fecha_llegada_estimada],
+      );
+      if (!fechaLlegadaResult.rows[0].es_futura) {
+        throw new ApiError(400, "La fecha estimada no puede ser anterior a hoy");
+      }
+    }
+
     const updateFields = ["estado = $1"];
     const valores = [estado];
 
@@ -299,6 +347,12 @@ const cambiarEstado = asyncHandler(async (req, res) => {
       valores.push(id_usuario);
     } else if (estado === "ENVIADA") {
       updateFields.push(`fecha_envio = CURRENT_TIMESTAMP`);
+      updateFields.push(`fecha_llegada_estimada = $2`);
+      valores.push(fecha_llegada_estimada);
+    } else if (estado === "RECHAZADA") {
+      updateFields.push(`fecha_rechazo = CURRENT_TIMESTAMP`);
+    } else if (estado === "CANCELADA") {
+      updateFields.push(`fecha_cancelacion = CURRENT_TIMESTAMP`);
     } else if (estado === "RECIBIDA") {
       updateFields.push(`fecha_recepcion = CURRENT_TIMESTAMP`);
     }

@@ -12,6 +12,10 @@ BEGIN;
 
 -- Agregar columnas faltantes en salidas
 ALTER TABLE salidas_inventario ADD COLUMN IF NOT EXISTS subtipo_perdida VARCHAR(50);
+ALTER TABLE transferencias
+    ADD COLUMN IF NOT EXISTS fecha_llegada_estimada DATE,
+    ADD COLUMN IF NOT EXISTS fecha_rechazo TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS fecha_cancelacion TIMESTAMP;
 ALTER TABLE detalle_salidas ADD COLUMN IF NOT EXISTS precio_unitario NUMERIC(12,2) DEFAULT 0;
 ALTER TABLE detalle_salidas ADD COLUMN IF NOT EXISTS valor_total NUMERIC(14,2) DEFAULT 0;
 
