@@ -2,7 +2,7 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 
-async function generarNumeroSalida(motivo) {
+async function generarNumeroSalida(client, motivo) {
   let prefijo = "SAL";
   if (motivo === "PERDIDA") prefijo = "PER";
   else if (motivo === "DANO") prefijo = "DAN";
@@ -10,7 +10,12 @@ async function generarNumeroSalida(motivo) {
 
   const year = new Date().getFullYear();
 
-  const result = await db.query(
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtext($1), $2)",
+    [motivo, year],
+  );
+
+  const result = await client.query(
     `SELECT COUNT(*)::int AS total
      FROM salidas_inventario
      WHERE motivo = $1
@@ -47,7 +52,16 @@ const crearSalida = asyncHandler(async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    const numero_salida = await generarNumeroSalida(motivo);
+    const idsProductos = [...new Set(detalles.map((d) => Number(d.id_producto)))];
+    const productosResult = await client.query(
+      "SELECT id_producto FROM productos WHERE id_producto = ANY($1::int[]) AND estado = 'ACTIVO'",
+      [idsProductos],
+    );
+    if (productosResult.rowCount !== idsProductos.length) {
+      throw new ApiError(400, "Uno o más productos no existen o están inactivos");
+    }
+
+    const numero_salida = await generarNumeroSalida(client, motivo);
 
     const salidaResult = await client.query(
       `INSERT INTO salidas_inventario
@@ -231,7 +245,11 @@ const crearSalida = asyncHandler(async (req, res) => {
       data: { ...salida, detalles: detallesInsertados },
     });
   } catch (error) {
-    await client.query("ROLLBACK");
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("Error al revertir la salida de mercadería:", rollbackError);
+    }
     throw error;
   } finally {
     client.release();

@@ -17,11 +17,20 @@ const SUBTIPOS_PERDIDA = ["ROBO", "EXTRAVIO", "OTRO"];
 const SUBTIPOS_DANO = ["ROTO", "DETERIORO", "INUTILIZABLE", "OTRO"];
 
 function validarCrearSalida(req, _res, next) {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    return next(new ApiError(400, "El cuerpo de la solicitud no es válido"));
+  }
+
   const { id_almacen, motivo, observaciones, subtipo_perdida, detalles } =
     req.body;
 
-  if (!id_almacen) {
-    return next(new ApiError(400, "El almacén es obligatorio"));
+  const idAlmacen = Number(id_almacen);
+  if (
+    typeof id_almacen === "boolean" ||
+    !Number.isSafeInteger(idAlmacen) ||
+    idAlmacen <= 0
+  ) {
+    return next(new ApiError(400, "Debe seleccionar un almacén válido"));
   }
   if (!motivo || !MOTIVOS_VALIDOS.includes(motivo)) {
     return next(
@@ -31,9 +40,9 @@ function validarCrearSalida(req, _res, next) {
       ),
     );
   }
-  if (!Array.isArray(detalles) || detalles.length === 0) {
+  if (!Array.isArray(detalles) || detalles.length === 0 || detalles.length > 100) {
     return next(
-      new ApiError(400, "Debe incluir al menos un producto en el detalle"),
+      new ApiError(400, "Debe incluir entre 1 y 100 productos en el detalle"),
     );
   }
 
@@ -73,13 +82,45 @@ function validarCrearSalida(req, _res, next) {
     );
   }
 
+  if (
+    subtipo_perdida &&
+    motivo !== "PERDIDA" &&
+    motivo !== "DANO"
+  ) {
+    return next(
+      new ApiError(400, "El subtipo solo aplica para salidas por pérdida o daño"),
+    );
+  }
+
+  const productosIncluidos = new Set();
   for (const [i, d] of detalles.entries()) {
-    if (!d.id_producto) {
+    if (!d || typeof d !== "object" || Array.isArray(d)) {
+      return next(new ApiError(400, `Detalle ${i + 1}: formato inválido`));
+    }
+
+    const idProducto = Number(d.id_producto);
+    if (
+      typeof d.id_producto === "boolean" ||
+      !Number.isSafeInteger(idProducto) ||
+      idProducto <= 0
+    ) {
       return next(
         new ApiError(400, `Detalle ${i + 1}: el producto es obligatorio`),
       );
     }
-    if (d.cantidad === undefined || Number(d.cantidad) <= 0) {
+    if (productosIncluidos.has(idProducto)) {
+      return next(
+        new ApiError(400, `Detalle ${i + 1}: el producto está repetido`),
+      );
+    }
+    productosIncluidos.add(idProducto);
+
+    const cantidad = Number(d.cantidad);
+    if (
+      typeof d.cantidad === "boolean" ||
+      !Number.isFinite(cantidad) ||
+      cantidad <= 0
+    ) {
       return next(
         new ApiError(400, `Detalle ${i + 1}: la cantidad debe ser mayor a 0`),
       );
