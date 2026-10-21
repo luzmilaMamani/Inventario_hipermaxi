@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/layout/Layout";
 import Modal from "../../components/ui/Modal";
+import RoleGate from "../../components/ui/RoleGate";
 import Select from "../../components/ui/Select";
 import { useAuth } from "../../context/AuthContext";
+import {
+  ROLES_GESTION,
+  ROLES_OPERACION,
+  tieneRol,
+} from "../../utils/permissions";
 import DetalleTransferencia from "./DetalleTransferencia";
 import FormTransferencia from "./FormTransferencia";
 import {
@@ -105,9 +111,11 @@ export default function ListaTransferencias() {
               Estado y recorrido de solicitudes entre almacenes (RF33)
             </p>
           </div>
-          <button className="btn-primary" onClick={() => setFormOpen(true)}>
-            + Nueva transferencia
-          </button>
+          <RoleGate roles={ROLES_OPERACION}>
+            <button className="btn-primary" onClick={() => setFormOpen(true)}>
+              + Nueva transferencia
+            </button>
+          </RoleGate>
         </div>
 
         <div className="card">
@@ -225,7 +233,8 @@ export default function ListaTransferencias() {
                             </button>
                           </>
                         )}
-                        {t.estado === "APROBADA" && (
+                        {t.estado === "APROBADA" &&
+                          tieneRol(user?.rol, ROLES_GESTION) && (
                           <button
                             onClick={() =>
                               setEnvioPendiente({
@@ -238,7 +247,8 @@ export default function ListaTransferencias() {
                             Marcar Enviada
                           </button>
                         )}
-                        {t.estado === "ENVIADA" && (
+                        {t.estado === "ENVIADA" &&
+                          tieneRol(user?.rol, ROLES_OPERACION) && (
                           <button
                             onClick={() =>
                               handleCambiarEstado(

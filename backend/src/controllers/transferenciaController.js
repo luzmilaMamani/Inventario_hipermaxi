@@ -292,6 +292,21 @@ const cambiarEstado = asyncHandler(async (req, res) => {
       "Solo un encargado de almacén o administrador puede aprobar o rechazar transferencias",
     );
   }
+  if (
+    ["ENVIADA", "CANCELADA"].includes(estado) &&
+    !["ENCARGADO_ALMACEN", "ADMINISTRADOR"].includes(req.user.rol)
+  ) {
+    throw new ApiError(
+      403,
+      "Solo un encargado de almacén o administrador puede enviar o cancelar transferencias",
+    );
+  }
+  if (estado === "RECIBIDA" && !["ENCARGADO_ALMACEN", "EMPLEADO", "ADMINISTRADOR"].includes(req.user.rol)) {
+    throw new ApiError(
+      403,
+      "Tu rol no puede confirmar la recepción de transferencias",
+    );
+  }
   if (estado === "ENVIADA") {
     if (
       typeof fecha_llegada_estimada !== "string" ||

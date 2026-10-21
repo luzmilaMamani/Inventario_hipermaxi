@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/layout/Layout";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_ADMINISTRACION } from "../../utils/permissions";
 import Badge from "../../components/ui/Badge";
 import Modal from "../../components/ui/Modal";
 import Pagination from "../../components/ui/Pagination";
@@ -193,9 +195,11 @@ export default function ListaProductos() {
               Consulta y gestión de productos (RF01, RF02, RF03, RF06)
             </p>
           </div>
-          <button className="btn-primary" onClick={abrirCrear}>
-            + Nuevo producto
-          </button>
+          <RoleGate roles={ROLES_ADMINISTRACION}>
+            <button className="btn-primary" onClick={abrirCrear}>
+              + Nuevo producto
+            </button>
+          </RoleGate>
         </div>
 
         <div className="card">
@@ -388,24 +392,26 @@ export default function ListaProductos() {
                         >
                           Ver
                         </button>
-                        <button
-                          onClick={() => abrirEditar(p)}
-                          className="text-green-600 hover:underline text-sm font-medium mr-3"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => abrirDuplicar(p)}
-                          className="text-purple-600 hover:underline text-sm font-medium mr-3"
-                        >
-                          Duplicar
-                        </button>
-                        <button
-                          onClick={() => abrirModalEstado(p)}
-                          className="text-brand-red hover:underline text-sm font-medium"
-                        >
-                          Estado
-                        </button>
+                        <RoleGate roles={ROLES_ADMINISTRACION}>
+                          <button
+                            onClick={() => abrirEditar(p)}
+                            className="text-green-600 hover:underline text-sm font-medium mr-3"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => abrirDuplicar(p)}
+                            className="text-purple-600 hover:underline text-sm font-medium mr-3"
+                          >
+                            Duplicar
+                          </button>
+                          <button
+                            onClick={() => abrirModalEstado(p)}
+                            className="text-brand-red hover:underline text-sm font-medium"
+                          >
+                            Estado
+                          </button>
+                        </RoleGate>
                       </td>
                     </tr>
                   ))

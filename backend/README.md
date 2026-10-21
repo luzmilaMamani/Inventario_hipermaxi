@@ -36,16 +36,37 @@ http://localhost:3000
 
 ## Login
 
-El script SQL crea este usuario inicial:
+El script SQL crea este usuario inicial para pruebas:
 
 ```json
 {
   "nombre_usuario": "admin",
-  "password": "Admin123*"
+  "password": "<configurar según el seed local>"
 }
 ```
 
-Peticion:
+Las cuentas de prueba adicionales creadas en la base local son:
+
+| Rol | Usuario |
+|---|---|
+| ENCARGADO_ALMACEN | `encargado_almacen` |IjxQfHtAmHECciqkvRtaRDdq
+| SUPERVISOR | `supervisor` |R2d1eJPJ_eG-ySolkLPdKfoZ
+| EMPLEADO | `empleado` |LJjw4JUcYNLUcXFHQ8YD9dMt
+| GERENTE | `gerente` |lBxTEgD-uUnnKHQE3Wc45bBD
+| AUDITOR | `auditor` |r7xv8HXOPv-dfbNYuoo4E8L5
+
+Las contraseñas temporales se entregaron durante la sesión de desarrollo y no se guardan en este README para evitar incluir credenciales en el repositorio. Cámbialas antes de usar estas cuentas fuera de pruebas locales.
+
+## Permisos por rol
+
+- `ADMINISTRADOR`: acceso completo.
+- `ENCARGADO_ALMACEN`: operaciones de inventario, transferencias y ajustes; consulta de los catálogos, sin modificarlos.
+- `EMPLEADO`: captura de recepciones, salidas, solicitudes de transferencia, conteos y recepción de transferencias; solo lectura en el resto.
+- `SUPERVISOR`, `GERENTE` y `AUDITOR`: solo consultas.
+
+Los permisos se verifican en la API; ocultar acciones en la interfaz no reemplaza la autorización del servidor.
+
+Petición:
 
 ```http
 POST /api/auth/login
@@ -115,6 +136,8 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 
 Para instalaciones existentes, ejecutar `migrations/20261021_add_transferencia_tracking_fields.sql` para agregar la fecha estimada de llegada y las fechas de rechazo/cancelación.
+
+Ejecutar `migrations/20261021_create_required_views.sql` para instalar las vistas de reportes de pérdidas, daños y vencimientos, además de la vista de consulta de transferencias.
 
 ## Filtros y paginacion
 

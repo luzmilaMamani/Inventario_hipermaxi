@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Modal from "../../components/ui/Modal";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_GESTION } from "../../utils/permissions";
 import Select from "../../components/ui/Select";
 import { obtenerStockUbicacion } from "../../api/ubicaciones.api";
 import {
@@ -124,9 +126,11 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
                   .join(" / ")}
               </p>
             </div>
-            <button className="btn-primary text-sm" onClick={abrirForm}>
-              + Asignar producto
-            </button>
+            <RoleGate roles={ROLES_GESTION}>
+              <button className="btn-primary text-sm" onClick={abrirForm}>
+                + Asignar producto
+              </button>
+            </RoleGate>
           </div>
 
           <hr />
@@ -170,26 +174,30 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
                         </div>
                       </td>
                       <td className="py-2 text-right">
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          className="input-field text-right w-24 inline-block"
-                          defaultValue={s.cantidad}
-                          onBlur={(e) => {
-                            if (Number(e.target.value) !== Number(s.cantidad)) {
-                              cambiarCantidad(s, e.target.value);
-                            }
-                          }}
-                        />
+                        <RoleGate roles={ROLES_GESTION}>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            className="input-field text-right w-24 inline-block"
+                            defaultValue={s.cantidad}
+                            onBlur={(e) => {
+                              if (Number(e.target.value) !== Number(s.cantidad)) {
+                                cambiarCantidad(s, e.target.value);
+                              }
+                            }}
+                          />
+                        </RoleGate>
                       </td>
                       <td className="py-2 text-right">
-                        <button
-                          className="text-red-600 hover:underline text-sm font-medium"
-                          onClick={() => quitar(s)}
-                        >
-                          Quitar
-                        </button>
+                        <RoleGate roles={ROLES_GESTION}>
+                          <button
+                            className="text-red-600 hover:underline text-sm font-medium"
+                            onClick={() => quitar(s)}
+                          >
+                            Quitar
+                          </button>
+                        </RoleGate>
                       </td>
                     </tr>
                   ))}
@@ -199,6 +207,7 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
           )}
 
           {mostrarForm && (
+            <RoleGate roles={ROLES_GESTION}>
             <form onSubmit={asignar} className="border-t pt-4 space-y-3">
               <Select
                 label="Producto"
@@ -242,6 +251,7 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
                 </button>
               </div>
             </form>
+            </RoleGate>
           )}
 
           <div className="flex justify-end pt-2">

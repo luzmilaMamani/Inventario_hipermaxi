@@ -4,6 +4,8 @@ import Layout from "../../components/layout/Layout";
 import { obtenerComparativa, registrarConteo } from "../../api/inventarios.api";
 import { listarProductos } from "../../api/productos.api";
 import Select from "../../components/ui/Select";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_OPERACION } from "../../utils/permissions";
 
 export default function ConteoInventario() {
   const { id } = useParams();
@@ -52,31 +54,33 @@ export default function ConteoInventario() {
         </div>
 
         <div className="card">
-          <h2 className="font-semibold mb-3">Registrar Conteo</h2>
-          <form onSubmit={guardarConteo} className="flex flex-col md:flex-row gap-3 items-end">
-            <Select
-              label="Producto *"
-              value={form.id_producto}
-              onChange={(e) => setForm({ ...form, id_producto: e.target.value })}
-              options={productos.map((p) => ({ value: p.id_producto, label: `${p.codigo} - ${p.nombre}` }))}
-              className="flex-1 w-full"
-              placeholder="Selecciona un producto"
-            />
-            <div className="w-full md:w-48">
-              <label className="block text-sm font-medium mb-1">Cantidad Física *</label>
-              <input
-                type="number"
-                min="0"
-                className="input-field"
-                value={form.cantidad_fisica}
-                onChange={(e) => setForm({ ...form, cantidad_fisica: e.target.value })}
-                required
+          <RoleGate roles={ROLES_OPERACION}>
+            <h2 className="font-semibold mb-3">Registrar Conteo</h2>
+            <form onSubmit={guardarConteo} className="flex flex-col md:flex-row gap-3 items-end">
+              <Select
+                label="Producto *"
+                value={form.id_producto}
+                onChange={(e) => setForm({ ...form, id_producto: e.target.value })}
+                options={productos.map((p) => ({ value: p.id_producto, label: `${p.codigo} - ${p.nombre}` }))}
+                className="flex-1 w-full"
+                placeholder="Selecciona un producto"
               />
-            </div>
-            <button type="submit" className="btn-primary whitespace-nowrap w-full md:w-auto">
-              + Agregar
-            </button>
-          </form>
+              <div className="w-full md:w-48">
+                <label className="block text-sm font-medium mb-1">Cantidad Física *</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="input-field"
+                  value={form.cantidad_fisica}
+                  onChange={(e) => setForm({ ...form, cantidad_fisica: e.target.value })}
+                  required
+                />
+              </div>
+              <button type="submit" className="btn-primary whitespace-nowrap w-full md:w-auto">
+                + Agregar
+              </button>
+            </form>
+          </RoleGate>
           {error && <p className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>}
         </div>
 

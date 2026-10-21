@@ -5,6 +5,8 @@ import { listarInventarios, crearInventario } from "../../api/inventarios.api";
 import { listarAlmacenes } from "../../api/almacenes.api";
 import Select from "../../components/ui/Select";
 import Modal from "../../components/ui/Modal";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_GESTION, ROLES_OPERACION } from "../../utils/permissions";
 
 export default function ListaInventarios() {
   const navigate = useNavigate();
@@ -47,9 +49,11 @@ export default function ListaInventarios() {
             <h1 className="text-2xl font-bold">Inventarios Físicos</h1>
             <p className="text-sm text-gray-500">Planificación y control de conteos</p>
           </div>
-          <button className="btn-primary" onClick={() => setFormOpen(true)}>
-            + Planificar Inventario
-          </button>
+          <RoleGate roles={ROLES_GESTION}>
+            <button className="btn-primary" onClick={() => setFormOpen(true)}>
+              + Planificar Inventario
+            </button>
+          </RoleGate>
         </div>
 
         <div className="card">
@@ -84,12 +88,14 @@ export default function ListaInventarios() {
                         </span>
                       </td>
                       <td className="py-2 text-right whitespace-nowrap">
-                        <button
-                          className="text-blue-600 hover:underline text-sm font-medium mr-3"
-                          onClick={() => navigate(`/inventarios/${i.id_inventario}`)}
-                        >
-                          Ingresar Conteo
-                        </button>
+                        <RoleGate roles={ROLES_OPERACION}>
+                          <button
+                            className="text-blue-600 hover:underline text-sm font-medium mr-3"
+                            onClick={() => navigate(`/inventarios/${i.id_inventario}`)}
+                          >
+                            Ingresar Conteo
+                          </button>
+                        </RoleGate>
                         <button
                           className="text-amber-600 hover:underline text-sm font-medium"
                           onClick={() => navigate(`/inventarios/${i.id_inventario}/diferencias`)}

@@ -1,15 +1,21 @@
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import {
+  ROLES_LECTURA_Y_OPERACION,
+  ROLES_SIN_EMPLEADO,
+  tieneRol,
+} from "../../utils/permissions";
 
 const links = [
   { to: "/", label: "Dashboard", icon: "📊" },
-  { to: "/productos", label: "Productos", icon: "📦" },
-  { to: "/clasificacion", label: "Clasificación", icon: "🏷️" },
-  { to: "/almacenes", label: "Almacenes", icon: "🏬" },
-  { to: "/ubicaciones", label: "Ubicaciones", icon: "📍" },
-  { to: "/stock", label: "Consulta de stock", icon: "📈" },
-  { to: "/salidas", label: "Salidas", icon: "📤" },
-  { to: "/transferencias", label: "Transferencias", icon: "🔄" }, // 👈 NUEVO
-  { to: "/inventarios", label: "Inventarios Físicos", icon: "📋" },
+  { to: "/productos", label: "Productos", icon: "📦", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/clasificacion", label: "Clasificación", icon: "🏷️", roles: ROLES_SIN_EMPLEADO },
+  { to: "/almacenes", label: "Almacenes", icon: "🏬", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/ubicaciones", label: "Ubicaciones", icon: "📍", roles: ROLES_SIN_EMPLEADO },
+  { to: "/stock", label: "Consulta de stock", icon: "📈", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/salidas", label: "Salidas", icon: "📤", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/transferencias", label: "Transferencias", icon: "🔄", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/inventarios", label: "Inventarios Físicos", icon: "📋", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/reportes/perdidas", label: "Reporte pérdidas", icon: "🚨" },
   { to: "/reportes/danos", label: "Reporte daños", icon: "⚠️" },
   { to: "/reportes/vencimientos", label: "Reporte vencimientos", icon: "⏳" },
@@ -17,6 +23,12 @@ const links = [
 ];
 
 export default function Sidebar() {
+  const { user } = useAuth();
+  const enlaces = links.filter(
+    (link) =>
+      !link.roles || tieneRol(user?.rol, link.roles),
+  );
+
   return (
     <aside className="w-64 bg-brand-nav border-r border-slate-700 min-h-screen p-4">
       <div className="mb-8">
@@ -24,7 +36,7 @@ export default function Sidebar() {
         <p className="text-xs text-brand-navMuted">Sistema de Inventarios</p>
       </div>
       <nav className="space-y-1">
-        {links.map((link) => (
+        {enlaces.map((link) => (
           <NavLink
             key={link.to}
             to={link.to}

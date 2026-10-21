@@ -135,6 +135,9 @@ const resources = {
       'fecha_aprobacion',
       'fecha_envio',
       'fecha_recepcion',
+      'fecha_llegada_estimada',
+      'fecha_rechazo',
+      'fecha_cancelacion',
       'estado',
       'observaciones'
     ]

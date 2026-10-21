@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/layout/Layout";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_ADMINISTRACION } from "../../utils/permissions";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
 import FormAlmacen from "./FormAlmacen";
@@ -112,9 +114,11 @@ export default function ListaAlmacenes() {
               Registro y gestión de almacenes y sucursales (RF07)
             </p>
           </div>
-          <button className="btn-primary" onClick={abrirCrear}>
-            + Nuevo almacén
-          </button>
+          <RoleGate roles={ROLES_ADMINISTRACION}>
+            <button className="btn-primary" onClick={abrirCrear}>
+              + Nuevo almacén
+            </button>
+          </RoleGate>
         </div>
 
         <div className="card">
@@ -275,27 +279,29 @@ export default function ListaAlmacenes() {
                         >
                           Ver stock
                         </button>
-                        <button
-                          className="text-brand-red hover:underline text-sm font-medium mr-3"
-                          onClick={() => abrirEditar(a)}
-                        >
-                          Editar
-                        </button>
-                        {a.activo ? (
+                        <RoleGate roles={ROLES_ADMINISTRACION}>
                           <button
-                            className="text-gray-500 hover:underline text-sm font-medium"
-                            onClick={() => desactivar(a)}
+                            className="text-brand-red hover:underline text-sm font-medium mr-3"
+                            onClick={() => abrirEditar(a)}
                           >
-                            Desactivar
+                            Editar
                           </button>
-                        ) : (
-                          <button
-                            className="text-green-600 hover:underline text-sm font-medium"
-                            onClick={() => activar(a)}
-                          >
-                            Activar
-                          </button>
-                        )}
+                          {a.activo ? (
+                            <button
+                              className="text-gray-500 hover:underline text-sm font-medium"
+                              onClick={() => desactivar(a)}
+                            >
+                              Desactivar
+                            </button>
+                          ) : (
+                            <button
+                              className="text-green-600 hover:underline text-sm font-medium"
+                              onClick={() => activar(a)}
+                            >
+                              Activar
+                            </button>
+                          )}
+                        </RoleGate>
                       </td>
                           </>
                         );

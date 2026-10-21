@@ -1,6 +1,7 @@
 const express = require("express");
 const resources = require("../config/resources");
 const { authenticate } = require("../middleware/auth");
+const autorizarPorRol = require("../middleware/authorizeByRole");
 const createCrudRouter = require("../utils/crudFactory");
 
 const reportsRouter = require("./reports.routes");
@@ -20,34 +21,35 @@ const diferenciasRouter = require("./diferencias.routes");
 const router = express.Router();
 
 router.use("/auth", require("./auth.routes"));
-router.use("/reportes", authenticate, reportsRouter);
-router.use("/productos", authenticate, productoRouter);
-router.use("/catalogos", authenticate, catalogosRouter);
-router.use("/almacenes", authenticate, almacenRouter);
-router.use("/ubicaciones", authenticate, ubicacionRouter);
-router.use("/stock-ubicaciones", authenticate, stockUbicacionRouter);
-router.use("/stock", authenticate, consultaStockRouter);
-router.use("/salidas", authenticate, salidaRouter);
-router.use("/ventas", authenticate, ventaRouter);
-router.use("/transferencias", authenticate, transferenciaRouter); // 👈 REGISTRADO
-router.use("/inventarios", authenticate, inventarioRouter);
-router.use("/diferencias", authenticate, diferenciasRouter);
+router.use(authenticate, autorizarPorRol);
+
+router.use("/reportes", reportsRouter);
+router.use("/productos", productoRouter);
+router.use("/catalogos", catalogosRouter);
+router.use("/almacenes", almacenRouter);
+router.use("/ubicaciones", ubicacionRouter);
+router.use("/stock-ubicaciones", stockUbicacionRouter);
+router.use("/stock", consultaStockRouter);
+router.use("/salidas", salidaRouter);
+router.use("/ventas", ventaRouter);
+router.use("/transferencias", transferenciaRouter);
+router.use("/inventarios", inventarioRouter);
+router.use("/diferencias", diferenciasRouter);
 
 router.use(
   "/entradas-inventario",
-  authenticate,
   require("./entradasInventario.routes"),
 );
 
-router.use("/categorias", authenticate, (req, res, next) => {
+router.use("/categorias", (req, res, next) => {
   req.url = `/categorias${req.url}`;
   clasificacionRouter(req, res, next);
 });
-router.use("/subcategorias", authenticate, (req, res, next) => {
+router.use("/subcategorias", (req, res, next) => {
   req.url = `/subcategorias${req.url}`;
   clasificacionRouter(req, res, next);
 });
-router.use("/marcas", authenticate, (req, res, next) => {
+router.use("/marcas", (req, res, next) => {
   req.url = `/marcas${req.url}`;
   clasificacionRouter(req, res, next);
 });
@@ -73,7 +75,6 @@ for (const [path, resource] of Object.entries(resources)) {
   }
   router.use(
     `/${path.replaceAll("_", "-")}`,
-    authenticate,
     createCrudRouter(resource),
   );
 }

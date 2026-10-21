@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Pagination from "../../components/ui/Pagination";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_ADMINISTRACION } from "../../utils/permissions";
 import FormCategoria from "./FormCategoria";
 import {
   listarCategoriasAdmin,
@@ -62,12 +64,14 @@ export default function TabCategorias() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button
-          className="btn-primary"
-          onClick={() => { setEditar(null); setFormOpen(true); }}
-        >
-          + Nueva categoría
-        </button>
+        <RoleGate roles={ROLES_ADMINISTRACION}>
+          <button
+            className="btn-primary"
+            onClick={() => { setEditar(null); setFormOpen(true); }}
+          >
+            + Nueva categoría
+          </button>
+        </RoleGate>
       </div>
 
       {error && <p className="text-sm text-red-600 bg-red-50 p-2 rounded mb-3">{error}</p>}
@@ -98,21 +102,23 @@ export default function TabCategorias() {
                     }`}>{c.activo ? "ACTIVA" : "INACTIVA"}</span>
                   </td>
                   <td className="py-2 text-right whitespace-nowrap">
-                    <button
-                      className="text-green-600 hover:underline text-sm font-medium mr-3"
-                      onClick={() => { setEditar(c); setFormOpen(true); }}
-                    >Editar</button>
-                    {c.activo ? (
+                    <RoleGate roles={ROLES_ADMINISTRACION}>
                       <button
-                        className="text-gray-500 hover:underline text-sm font-medium"
-                        onClick={() => desactivar(c)}
-                      >Desactivar</button>
-                    ) : (
-                      <button
-                        className="text-brand-red hover:underline text-sm font-medium"
-                        onClick={() => activar(c)}
-                      >Activar</button>
-                    )}
+                        className="text-green-600 hover:underline text-sm font-medium mr-3"
+                        onClick={() => { setEditar(c); setFormOpen(true); }}
+                      >Editar</button>
+                      {c.activo ? (
+                        <button
+                          className="text-gray-500 hover:underline text-sm font-medium"
+                          onClick={() => desactivar(c)}
+                        >Desactivar</button>
+                      ) : (
+                        <button
+                          className="text-brand-red hover:underline text-sm font-medium"
+                          onClick={() => activar(c)}
+                        >Activar</button>
+                      )}
+                    </RoleGate>
                   </td>
                 </tr>
               ))
