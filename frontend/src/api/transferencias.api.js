@@ -9,5 +9,5 @@ export const obtenerTransferencia = (id) =>
 export const crearTransferencia = (data) =>
   api.post("/transferencias", data).then((r) => r.data);
 
-export const cambiarEstadoTransferencia = (id, estado, fecha_llegada_estimada = null) =>
-  api.put(`/transferencias/${id}/estado`, { estado, fecha_llegada_estimada }).then((r) => r.data);
+export const cambiarEstadoTransferencia = (id, estado, payloadExtra = {}) =>
+  api.put(`/transferencias/${id}/estado`, { estado, ...payloadExtra }).then((r) => r.data);
