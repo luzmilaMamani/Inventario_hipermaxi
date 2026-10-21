@@ -260,6 +260,15 @@ const cambiarEstado = asyncHandler(async (req, res) => {
   if (!["APROBADA", "RECHAZADA", "ENVIADA", "RECIBIDA", "CANCELADA"].includes(estado)) {
     throw new ApiError(400, "El estado de transferencia no es válido");
   }
+  if (
+    ["APROBADA", "RECHAZADA"].includes(estado) &&
+    !["ENCARGADO_ALMACEN", "ADMINISTRADOR"].includes(req.user.rol)
+  ) {
+    throw new ApiError(
+      403,
+      "Solo un encargado de almacén o administrador puede aprobar o rechazar transferencias",
+    );
+  }
 
   const client = await db.pool.connect();
   try {

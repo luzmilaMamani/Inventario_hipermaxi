@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/layout/Layout";
 import Select from "../../components/ui/Select";
+import { useAuth } from "../../context/AuthContext";
 import FormTransferencia from "./FormTransferencia";
 import {
   listarTransferencias,
@@ -8,11 +9,16 @@ import {
 } from "../../api/transferencias.api";
 
 export default function ListaTransferencias() {
+  const { user } = useAuth();
   const [transferencias, setTransferencias] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState("");
+  const puedeDecidirTransferencias = [
+    "ENCARGADO_ALMACEN",
+    "ADMINISTRADOR",
+  ].includes(user?.rol);
 
   const cargar = async () => {
     setLoading(true);
@@ -146,7 +152,8 @@ export default function ListaTransferencias() {
                         </span>
                       </td>
                       <td className="py-2 text-right space-x-2 whitespace-nowrap">
-                        {t.estado === "SOLICITADA" && (
+                        {t.estado === "SOLICITADA" &&
+                          puedeDecidirTransferencias && (
                           <>
                             <button
                               onClick={() =>
