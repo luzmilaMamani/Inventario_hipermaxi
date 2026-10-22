@@ -34,6 +34,21 @@ La API queda disponible en:
 http://localhost:3000
 ```
 
+## Actualizar la base de datos
+
+Para aplicar a una base existente los cambios de esquema incluidos en el
+repositorio, configura la conexión PostgreSQL en `backend/.env` y, desde la
+carpeta `backend`, ejecuta:
+
+```bash
+npm install
+npm run migrate
+```
+
+El migrador aplica en orden los archivos `migrations/YYYYMMDD_*.sql`. La base
+debe existir y tener previamente el esquema inicial del sistema. Este comando
+no crea una base nueva ni carga datos de prueba.
+
 ## Login
 
 El script SQL crea este usuario inicial:
