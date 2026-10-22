@@ -146,12 +146,53 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 - `PUT /api/transferencias/:id/estado` (aprobar o rechazar solicitudes solo para `ENCARGADO_ALMACEN` y `ADMINISTRADOR`; marcar como enviada requiere `fecha_llegada_estimada` en formato `YYYY-MM-DD`)
 - `GET /api/transferencias` y `GET /api/transferencias/:id` incluyen fechas y datos del recorrido
 - `GET /api/reportes/perdidas` (reporte de pérdidas con filtros por fecha, almacén y subtipo)
+- `POST /api/reportes/stock-bajo/publicar` (publica en Google Pub/Sub todos los productos que cumplen la alerta de stock bajo)
+
+### Publicar inventario con stock bajo en Google Pub/Sub
+
+Configura `PUBSUB_TOPIC` en `backend/.env` con el nombre completo del topic.
+Para autenticar localmente, configura Application Default Credentials de Google
+Cloud o define `GOOGLE_APPLICATION_CREDENTIALS` con la ruta local al JSON de
+una cuenta de servicio autorizada para publicar en ese topic. No subas el JSON
+de credenciales al repositorio.
+
+Con el backend iniciado, llama a `POST /api/reportes/stock-bajo/publicar` con
+el token de un usuario autorizado. El backend vuelve a consultar el inventario
+en ese momento, crea un único mensaje JSON con todos los productos bajo el
+mínimo o punto de reposición, e incluye sus lotes disponibles. La respuesta
+incluye el ID que devuelve Pub/Sub. No se publica un mensaje vacío si no hay
+productos con stock bajo.
+
+```http
+POST /api/reportes/stock-bajo/publicar
+Authorization: Bearer <token>
+```
+
+#### Alertas automáticas (integración asíncrona)
+
+Además del envío manual, cada vez que un movimiento (venta, salida,
+transferencia, ajuste, etc.) deja el stock de un producto en un almacén igual o
+por debajo del stock mínimo o del punto de reposición, el trigger `trg_stock_bajo`
+registra un evento en la tabla `eventos_stock_bajo` y avisa por `NOTIFY stock_bajo`.
+Al iniciar, el backend escucha ese canal y publica un mensaje por evento en el
+topic (`tipo_evento: "STOCK_BAJO"`, con el producto, el almacén, la cantidad
+anterior/resultante y los lotes disponibles). Los atributos del mensaje incluyen
+`id_evento`, `id_producto` e `id_almacen`.
+
+Como los eventos quedan guardados en la base, si Pub/Sub o el backend no
+están disponibles se publican después: los pendientes y fallidos se reintentan
+cada minuto (hasta 10 intentos). Revisa el estado con:
+
+```sql
+SELECT id_evento, estado, intentos, message_id, ultimo_error
+FROM eventos_stock_bajo ORDER BY id_evento DESC;
+```
 
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 
-Para instalaciones existentes, ejecutar `migrations/20261021_add_transferencia_tracking_fields.sql` para agregar la fecha estimada de llegada y las fechas de rechazo/cancelación.
-
-Ejecutar `migrations/20261021_create_required_views.sql` para instalar las vistas de reportes de pérdidas, daños y vencimientos, además de la vista de consulta de transferencias.
+Las migraciones para instalaciones existentes agregan la fecha estimada de
+llegada y las fechas de rechazo/cancelación, además de las vistas de reportes.
+Ejecuta `npm run migrate` para aplicarlas.
 
 ## Filtros y paginacion
 
