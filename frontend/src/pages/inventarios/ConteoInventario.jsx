@@ -70,6 +70,7 @@ export default function ConteoInventario() {
                 <input
                   type="number"
                   min="0"
+                  step="1"
                   className="input-field"
                   value={form.cantidad_fisica}
                   onChange={(e) => setForm({ ...form, cantidad_fisica: e.target.value })}

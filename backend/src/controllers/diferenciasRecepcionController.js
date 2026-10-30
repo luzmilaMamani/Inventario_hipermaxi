@@ -13,8 +13,8 @@ const registrarDiferencia = asyncHandler(async (req, res) => {
   if (!TIPOS_VALIDOS.includes(tipo)) {
     throw new ApiError(400, `Tipo inválido. Permitidos: ${TIPOS_VALIDOS.join(", ")}`);
   }
-  if (Number(cantidad) <= 0) {
-    throw new ApiError(400, "La cantidad debe ser mayor a 0");
+  if (!Number.isSafeInteger(Number(cantidad)) || Number(cantidad) <= 0) {
+    throw new ApiError(400, "La cantidad debe ser un número entero mayor a 0");
   }
 
   const result = await db.query(

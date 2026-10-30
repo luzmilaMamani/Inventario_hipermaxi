@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Select from "../../components/ui/Select";
 import { listarAlmacenes } from "../../api/almacenes.api";
 import { registrarRecepcion } from "../../api/entradas.api";
 import { listarProductos } from "../../api/productos.api";
-import { registrarDiferencia } from "../../api/diferencias.api";
+
+const fechaLocalHoy = () => {
+  const fecha = new Date();
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+};
 
 const crearDetalleVacio = () => ({
   id_producto: "",
@@ -34,9 +42,10 @@ function EtiquetaVerificacion({ detalle }) {
 }
 
 export default function RegistrarRecepcion() {
+  const navigate = useNavigate();
   const [almacenes, setAlmacenes] = useState([]);
   const [productos, setProductos] = useState([]);
-  const [form, setForm] = useState({ id_almacen: "", proveedor: "", referencia_externa: "", observaciones: "" });
+  const [form, setForm] = useState({ id_almacen: "", proveedor: "", fecha_entrada: fechaLocalHoy(), referencia_externa: "", observaciones: "" });
   const [detalles, setDetalles] = useState([crearDetalleVacio()]);
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -75,7 +84,6 @@ export default function RegistrarRecepcion() {
 
     setGuardando(true);
     try {
-      // 1. Guardar la recepción (incluye la verificación del HIP-29 en el backend de RV)
       const respuesta = await registrarRecepcion({
         ...form,
         proveedor: form.proveedor.trim(),
@@ -87,33 +95,17 @@ export default function RegistrarRecepcion() {
         })),
       });
 
-      // 2. Guardar automáticamente las diferencias en la BD (HIP-30)
-      for (const detalle of detalles) {
-        const esp = Number(detalle.cantidad_solicitada);
-        const rec = Number(detalle.cantidad_recibida);
-        
-        if (esp !== rec) {
-          await registrarDiferencia({
-            id_entrada: respuesta.data.id_entrada,
-            id_producto: detalle.id_producto,
-            tipo: rec < esp ? "FALTANTE" : "SOBRANTE",
-            cantidad: Math.abs(esp - rec),
-            observaciones: `Esperado: ${esp}, Recibido: ${rec}. ${detalle.observaciones || ""}`.trim(),
-          });
-        }
-      }
-
       const conDiferencia = (respuesta.data.detalles || []).filter(
         (d) => d.estado_verificacion === "CON_DIFERENCIA"
       ).length;
 
-      const mensajeVerificacion = respuesta.data.resultado_verificacion === "CONFORME"
+      const mensajeVerificacion = respuesta.resultado_verificacion === "CONFORME"
         ? "La verificación quedó conforme."
         : `La verificación quedó con diferencia en ${conDiferencia} línea(s).`;
 
-      setConfirmacion(`Recepción ${respuesta.data.numero_entrada} registrada y confirmada de forma atómica. ${mensajeVerificacion} El stock fue actualizado correctamente.`);
+      setConfirmacion(`Recepción ${respuesta.data.numero_entrada} registrada. ${mensajeVerificacion} Las diferencias y el stock se guardaron en la misma transacción.`);
       
-      setForm({ id_almacen: "", proveedor: "", referencia_externa: "", observaciones: "" });
+      setForm({ id_almacen: "", proveedor: "", fecha_entrada: fechaLocalHoy(), referencia_externa: "", observaciones: "" });
       setDetalles([crearDetalleVacio()]);
     } catch (err) {
       setError(err.response?.data?.message || "No se pudo registrar la recepción");
@@ -129,8 +121,19 @@ export default function RegistrarRecepcion() {
     <Layout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Recepción de mercadería</h1>
-          <p className="text-sm text-gray-500">Compara la cantidad recibida con la esperada (RF20) y registra diferencias (RF21)</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold">Recepción de mercadería</h1>
+              <p className="text-sm text-gray-500">Compara lo recibido con lo esperado y registra diferencias</p>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => navigate("/recepciones")}
+            >
+              Ver recepciones
+            </button>
+          </div>
         </div>
 
         <form className="space-y-6" onSubmit={enviarRecepcion}>
@@ -141,6 +144,10 @@ export default function RegistrarRecepcion() {
               <div>
                 <label className="mb-1 block text-sm font-medium">Proveedor *</label>
                 <input className="input-field" maxLength="150" required value={form.proveedor} onChange={(e) => setForm({ ...form, proveedor: e.target.value })} disabled={guardando} placeholder="Nombre del proveedor" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Fecha de recepción *</label>
+                <input className="input-field" type="date" required value={form.fecha_entrada} onChange={(e) => setForm({ ...form, fecha_entrada: e.target.value })} disabled={guardando} />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium">Referencia de factura o remisión</label>
@@ -174,11 +181,11 @@ export default function RegistrarRecepcion() {
                     </div>
                     <div className="md:col-span-2">
                       <label className="mb-1 block text-sm font-medium">Cant. Esperada *</label>
-                      <input className="input-field" type="number" min="0.001" step="any" required value={detalle.cantidad_solicitada} onChange={(e) => actualizarDetalle(indice, "cantidad_solicitada", e.target.value)} disabled={guardando} />
+                      <input className="input-field" type="number" min="1" step="1" required value={detalle.cantidad_solicitada} onChange={(e) => actualizarDetalle(indice, "cantidad_solicitada", e.target.value)} disabled={guardando} />
                     </div>
                     <div className="md:col-span-2">
                       <label className="mb-1 block text-sm font-medium">Cant. Recibida *</label>
-                      <input className="input-field" type="number" min="0.001" step="any" required value={detalle.cantidad_recibida} onChange={(e) => actualizarDetalle(indice, "cantidad_recibida", e.target.value)} disabled={guardando} />
+                      <input className="input-field" type="number" min="1" step="1" required value={detalle.cantidad_recibida} onChange={(e) => actualizarDetalle(indice, "cantidad_recibida", e.target.value)} disabled={guardando} />
                     </div>
                     <div className="md:col-span-3">
                       <p className="mb-1 block text-sm font-medium">Verificación</p>

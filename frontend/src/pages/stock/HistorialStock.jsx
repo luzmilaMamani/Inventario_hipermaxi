@@ -3,12 +3,20 @@ import { useNavigate, useParams } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Pagination from "../../components/ui/Pagination";
 import { consultarHistorialStock } from "../../api/stock.api";
+import { listarAlmacenes } from "../../api/almacenes.api";
+import Select from "../../components/ui/Select";
 
 export default function HistorialStock() {
   const { productoId } = useParams();
   const navigate = useNavigate();
   const [producto, setProducto] = useState(null);
   const [movimientos, setMovimientos] = useState([]);
+  const [almacenes, setAlmacenes] = useState([]);
+  const [filtros, setFiltros] = useState({
+    id_almacen: "",
+    fecha_desde: "",
+    fecha_hasta: "",
+  });
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -24,6 +32,9 @@ export default function HistorialStock() {
       const respuesta = await consultarHistorialStock(productoId, {
         page,
         limit: pagination.limit,
+        ...Object.fromEntries(
+          Object.entries(filtros).filter(([, valor]) => valor !== ""),
+        ),
       });
       setProducto(respuesta.producto);
       setMovimientos(respuesta.data);
@@ -40,10 +51,18 @@ export default function HistorialStock() {
   useEffect(() => {
     cargar(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productoId]);
+  }, [productoId, filtros]);
+
+  useEffect(() => {
+    listarAlmacenes({ limit: 200, orderBy: "nombre", order: "ASC" })
+      .then((respuesta) => setAlmacenes(respuesta.data || []))
+      .catch((err) => {
+        setError(err.response?.data?.message || "Error al cargar almacenes");
+      });
+  }, []);
 
   const formatoCantidad = (cantidad) =>
-    `${Number(cantidad ?? 0).toLocaleString("es-BO")} ${producto?.unidad || ""}`;
+    `${Number(cantidad ?? 0).toLocaleString("es-BO")} unid.`;
 
   return (
     <Layout>
@@ -72,6 +91,57 @@ export default function HistorialStock() {
         </div>
 
         <section className="card">
+          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <Select
+              label="Almacén"
+              value={filtros.id_almacen}
+              onChange={(e) =>
+                setFiltros({ ...filtros, id_almacen: e.target.value })
+              }
+              options={almacenes.map((almacen) => ({
+                value: almacen.id_almacen,
+                label: `${almacen.codigo} - ${almacen.nombre}`,
+              }))}
+              placeholder="Todos los almacenes"
+            />
+            <div>
+              <label className="mb-1 block text-sm font-medium">Desde</label>
+              <input
+                type="date"
+                className="input-field"
+                value={filtros.fecha_desde}
+                onChange={(e) =>
+                  setFiltros({ ...filtros, fecha_desde: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Hasta</label>
+              <input
+                type="date"
+                className="input-field"
+                value={filtros.fecha_hasta}
+                onChange={(e) =>
+                  setFiltros({ ...filtros, fecha_hasta: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="button"
+                className="btn-secondary w-full"
+                onClick={() =>
+                  setFiltros({
+                    id_almacen: "",
+                    fecha_desde: "",
+                    fecha_hasta: "",
+                  })
+                }
+              >
+                Limpiar filtros
+              </button>
+            </div>
+          </div>
           <div className="mb-3 text-sm text-gray-600">
             {pagination.total} movimiento
             {pagination.total !== 1 && "s"}

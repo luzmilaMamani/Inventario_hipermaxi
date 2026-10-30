@@ -14,3 +14,9 @@ export const registrarRecepcion = (data) => {
   }
   return api.post("/entradas-inventario", data).then((r) => r.data);
 };
+
+export const listarRecepciones = (params) =>
+  api.get("/entradas-inventario", { params }).then((r) => r.data);
+
+export const obtenerRecepcion = (id) =>
+  api.get(`/entradas-inventario/${id}`).then((r) => r.data);

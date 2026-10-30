@@ -326,6 +326,7 @@ export default function ListaProductos() {
                   <th className="py-2">Subcategoría</th>
                   <th className="py-2">Marca</th>
                   <th className="py-2 text-right">Precio</th>
+                  <th className="py-2 text-right">Unidades / palé</th>
                   <th className="py-2 text-right">Stock mínimo</th>
                   <th className="py-2 text-right">Stock máximo</th>
                   <th className="py-2 text-right">Punto de reposición</th>
@@ -337,13 +338,13 @@ export default function ListaProductos() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="12" className="py-6 text-center text-gray-500">
+                    <td colSpan="13" className="py-6 text-center text-gray-500">
                       Cargando...
                     </td>
                   </tr>
                 ) : productos.length === 0 ? (
                   <tr>
-                    <td colSpan="12" className="py-6 text-center text-gray-500">
+                    <td colSpan="13" className="py-6 text-center text-gray-500">
                       No se encontraron productos con esos filtros
                     </td>
                   </tr>
@@ -364,7 +365,12 @@ export default function ListaProductos() {
                       <td className="py-2">{p.subcategoria || "-"}</td>
                       <td className="py-2">{p.marca || "-"}</td>
                       <td className="py-2 text-right">
-                        Bs {Number(p.precio || 0).toFixed(2)}
+                        Bs {Number(p.precio || 0).toFixed(2)} / unidad
+                      </td>
+                      <td className="py-2 text-right">
+                        {p.unidades_por_pale
+                          ? Number(p.unidades_por_pale).toLocaleString("es-BO")
+                          : "Pendiente"}
                       </td>
                       <td className="py-2 text-right">
                         {Number(p.stock_minimo ?? 0).toLocaleString("es-BO")}

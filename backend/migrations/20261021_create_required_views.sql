@@ -1,5 +1,3 @@
-BEGIN;
-
 ALTER TABLE productos
   ADD COLUMN IF NOT EXISTS precio NUMERIC(12,2) NOT NULL DEFAULT 0;
 
@@ -105,6 +103,8 @@ INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
 INNER JOIN lotes_productos lp ON lp.id_lote = ds.id_lote
 WHERE s.motivo = 'VENCIMIENTO';
 
+DROP VIEW IF EXISTS vw_transferencias;
+
 CREATE OR REPLACE VIEW vw_transferencias AS
 SELECT
   t.id_transferencia,
@@ -131,5 +131,3 @@ INNER JOIN almacenes ao ON ao.id_almacen = t.almacen_origen
 INNER JOIN almacenes ad ON ad.id_almacen = t.almacen_destino
 INNER JOIN usuarios us ON us.id_usuario = t.id_usuario_solicita
 LEFT JOIN usuarios ua ON ua.id_usuario = t.id_usuario_aprueba;
-
-COMMIT;

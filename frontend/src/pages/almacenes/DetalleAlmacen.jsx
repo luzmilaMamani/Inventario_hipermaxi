@@ -59,6 +59,10 @@ export default function DetalleAlmacen({ almacen, onClose }) {
             <p>
               <strong>Tipo:</strong> {almacen.tipo}
             </p>
+            <p>
+              <strong>Superficie:</strong>{" "}
+              {Number(almacen.superficie_m2).toLocaleString("es-BO")} m²
+            </p>
             {almacen.ciudad && (
               <p>
                 <strong>Ciudad:</strong> {almacen.ciudad}
@@ -135,16 +139,16 @@ export default function DetalleAlmacen({ almacen, onClose }) {
                         </div>
                       </td>
                       <td className="py-2 text-right">
-                        {Number(s.cantidad).toFixed(2)} {s.unidad}
+                        {Number(s.cantidad).toLocaleString("es-BO")} unid.
                       </td>
                       <td className="py-2 text-right text-gray-500">
-                        {Number(s.cantidad_reservada).toFixed(2)}
+                        {Number(s.cantidad_reservada).toLocaleString("es-BO")}
                       </td>
                       <td className="py-2 text-right font-semibold">
-                        {Number(s.cantidad_disponible).toFixed(2)}
+                        {Number(s.cantidad_disponible).toLocaleString("es-BO")}
                       </td>
                       <td className="py-2 text-right">
-                        <div>{Number(s.stock_minimo ?? 0).toFixed(2)}</div>
+                        <div>{Number(s.stock_minimo ?? 0).toLocaleString("es-BO")}</div>
                         {Number(s.stock_minimo) > 0 &&
                           Number(s.cantidad_disponible) <= Number(s.stock_minimo) && (
                           <span className="text-xs font-medium text-amber-700">
@@ -153,7 +157,7 @@ export default function DetalleAlmacen({ almacen, onClose }) {
                         )}
                       </td>
                       <td className="py-2 text-right">
-                        <div>{Number(s.stock_maximo ?? 0).toFixed(2)}</div>
+                        <div>{Number(s.stock_maximo ?? 0).toLocaleString("es-BO")}</div>
                         {Number(s.stock_maximo) > 0 &&
                           Number(s.cantidad_disponible) >= Number(s.stock_maximo) && (
                           <span className="text-xs font-medium text-amber-700">
@@ -162,7 +166,7 @@ export default function DetalleAlmacen({ almacen, onClose }) {
                         )}
                       </td>
                       <td className="py-2 text-right">
-                        <div>{Number(s.punto_reposicion ?? 0).toFixed(2)}</div>
+                        <div>{Number(s.punto_reposicion ?? 0).toLocaleString("es-BO")}</div>
                         {Number(s.punto_reposicion) > 0 &&
                           Number(s.cantidad_disponible) <= Number(s.punto_reposicion) && (
                           <span className="text-xs font-medium text-amber-700">

@@ -48,8 +48,8 @@ const actualizarCantidad = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { cantidad } = req.body;
 
-  if (cantidad === undefined || Number(cantidad) < 0) {
-    throw new ApiError(400, "La cantidad debe ser mayor o igual a 0");
+  if (cantidad === undefined || !Number.isSafeInteger(Number(cantidad)) || Number(cantidad) < 0) {
+    throw new ApiError(400, "La cantidad debe ser un número entero igual o mayor a 0");
   }
 
   const result = await db.query(

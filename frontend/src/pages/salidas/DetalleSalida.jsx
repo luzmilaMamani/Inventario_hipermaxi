@@ -123,7 +123,7 @@ export default function DetalleSalida({ salidaId, onClose }) {
                         </td>
                         <td className="py-2 px-3 text-right">
                           {Number(d.cantidad).toLocaleString("es-BO")}{" "}
-                          {d.unidad}
+                          unid.
                         </td>
                         <td className="py-2 px-3 text-right">
                           Bs {Number(d.precio_unitario || 0).toFixed(2)}
