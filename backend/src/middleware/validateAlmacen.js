@@ -2,18 +2,18 @@ const ApiError = require("../utils/apiError");
 
 const TIPOS_VALIDOS = ["CENTRAL", "SUCURSAL", "DEPOSITO"];
 
-function capacidadInvalida(capacidad) {
+function superficieInvalida(superficie) {
   return (
-    capacidad !== undefined &&
-    capacidad !== null &&
-    (String(capacidad).trim() === "" ||
-      !Number.isFinite(Number(capacidad)) ||
-      Number(capacidad) < 0)
+    superficie !== undefined &&
+    superficie !== null &&
+    (String(superficie).trim() === "" ||
+      !Number.isFinite(Number(superficie)) ||
+      Number(superficie) <= 0)
   );
 }
 
 function validarCrearAlmacen(req, _res, next) {
-  const { codigo, nombre, tipo, capacidad } = req.body;
+  const { codigo, nombre, tipo, superficie_m2 } = req.body;
 
   if (!codigo || !String(codigo).trim()) {
     return next(new ApiError(400, "El código del almacén es obligatorio"));
@@ -29,14 +29,14 @@ function validarCrearAlmacen(req, _res, next) {
       ),
     );
   }
-  if (capacidadInvalida(capacidad)) {
-    return next(new ApiError(400, "La capacidad debe ser un número igual o mayor a 0"));
+  if (superficieInvalida(superficie_m2)) {
+    return next(new ApiError(400, "La superficie debe ser un número mayor a 0 m²"));
   }
   return next();
 }
 
 function validarActualizarAlmacen(req, _res, next) {
-  const { tipo, capacidad } = req.body;
+  const { tipo, superficie_m2 } = req.body;
 
   if (tipo && !TIPOS_VALIDOS.includes(tipo)) {
     return next(
@@ -46,8 +46,8 @@ function validarActualizarAlmacen(req, _res, next) {
       ),
     );
   }
-  if (capacidadInvalida(capacidad)) {
-    return next(new ApiError(400, "La capacidad debe ser un número igual o mayor a 0"));
+  if (superficieInvalida(superficie_m2)) {
+    return next(new ApiError(400, "La superficie debe ser un número mayor a 0 m²"));
   }
   return next();
 }

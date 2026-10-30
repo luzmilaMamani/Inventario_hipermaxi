@@ -119,10 +119,11 @@ function validarCrearSalida(req, _res, next) {
     if (
       typeof d.cantidad === "boolean" ||
       !Number.isFinite(cantidad) ||
+      !Number.isSafeInteger(cantidad) ||
       cantidad <= 0
     ) {
       return next(
-        new ApiError(400, `Detalle ${i + 1}: la cantidad debe ser mayor a 0`),
+        new ApiError(400, `Detalle ${i + 1}: la cantidad debe ser un número entero mayor a 0`),
       );
     }
   }

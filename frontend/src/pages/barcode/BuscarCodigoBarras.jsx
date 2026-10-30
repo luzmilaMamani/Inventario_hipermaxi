@@ -114,8 +114,8 @@ export default function BuscarCodigoBarras() {
                   <p className="font-medium">{producto.marca || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Unidad</p>
-                  <p className="font-medium">{producto.unidad}</p>
+                  <p className="text-gray-500">Conteo</p>
+                  <p className="font-medium">Unidad / pieza</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Controla vencimiento</p>

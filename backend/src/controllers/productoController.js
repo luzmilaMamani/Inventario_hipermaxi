@@ -35,6 +35,16 @@ async function validarCodigoBarrasUnico(codigo_barras, idExcluir = null) {
   }
 }
 
+async function validarUnidadPieza(id_unidad) {
+  const result = await db.query(
+    "SELECT id_unidad FROM unidades_medida WHERE id_unidad = $1 AND UPPER(abreviatura) = 'UND'",
+    [id_unidad],
+  );
+  if (!result.rowCount) {
+    throw new ApiError(400, "Todos los productos deben registrarse por unidad/pieza");
+  }
+}
+
 const crearProducto = asyncHandler(async (req, res) => {
   const {
     codigo,
@@ -49,9 +59,11 @@ const crearProducto = asyncHandler(async (req, res) => {
     stock_minimo = 0,
     stock_maximo = 0,
     punto_reposicion = 0,
+    unidades_por_pale = null,
     precio = 0,
   } = req.body;
 
+  await validarUnidadPieza(id_unidad);
   await validarSubcategoria(id_categoria, id_subcategoria);
   await validarCodigoBarrasUnico(codigo_barras);
 
@@ -59,8 +71,8 @@ const crearProducto = asyncHandler(async (req, res) => {
     `INSERT INTO productos
       (codigo, codigo_barras, nombre, descripcion, id_categoria, id_subcategoria,
        id_marca, id_unidad, controla_vencimiento, stock_minimo, stock_maximo,
-       punto_reposicion, precio, estado)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'ACTIVO')
+       punto_reposicion, unidades_por_pale, precio, estado)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'ACTIVO')
      RETURNING *`,
     [
       codigo,
@@ -75,6 +87,7 @@ const crearProducto = asyncHandler(async (req, res) => {
       stock_minimo,
       stock_maximo,
       punto_reposicion,
+      unidades_por_pale,
       precio ?? 0,
     ],
   );
@@ -109,12 +122,14 @@ const actualizarProducto = asyncHandler(async (req, res) => {
     stock_minimo,
     stock_maximo,
     punto_reposicion,
+    unidades_por_pale,
     precio,
     estado,
   } = req.body;
 
   const catFinal = id_categoria ?? actual.id_categoria;
   const subFinal = id_subcategoria ?? actual.id_subcategoria;
+  if (id_unidad !== undefined) await validarUnidadPieza(id_unidad);
   if (id_categoria !== undefined || id_subcategoria !== undefined) {
     await validarSubcategoria(catFinal, subFinal);
   }
@@ -143,9 +158,10 @@ const actualizarProducto = asyncHandler(async (req, res) => {
       stock_minimo = COALESCE($10, stock_minimo),
       stock_maximo = COALESCE($11, stock_maximo),
       punto_reposicion = COALESCE($12, punto_reposicion),
-      precio = COALESCE($13, precio),
-      estado = COALESCE($14, estado)
-     WHERE id_producto = $15
+      unidades_por_pale = $13,
+      precio = COALESCE($14, precio),
+      estado = COALESCE($15, estado)
+     WHERE id_producto = $16
      RETURNING *`,
     [
       codigo ?? null,
@@ -160,6 +176,9 @@ const actualizarProducto = asyncHandler(async (req, res) => {
       stock_minimo ?? null,
       stock_maximo ?? null,
       punto_reposicion ?? null,
+      unidades_por_pale === undefined
+        ? actual.unidades_por_pale
+        : unidades_por_pale,
       precio ?? null,
       estado ?? null,
       id,
@@ -248,7 +267,7 @@ const listarProductos = asyncHandler(async (req, res) => {
       `SELECT
          p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.descripcion,
          p.precio, p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
-         p.punto_reposicion, p.fecha_creacion,
+         p.punto_reposicion, p.unidades_por_pale, p.fecha_creacion,
          COALESCE((
            SELECT SUM(st.cantidad_reservada)
            FROM stock st

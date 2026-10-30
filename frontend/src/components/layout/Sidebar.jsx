@@ -13,6 +13,7 @@ const links = [
   { to: "/almacenes", label: "Almacenes", icon: "🏬", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/ubicaciones", label: "Ubicaciones", icon: "📍", roles: ROLES_SIN_EMPLEADO },
   { to: "/stock", label: "Consulta de stock", icon: "📈", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/recepciones", label: "Recepciones", icon: "📥", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/salidas", label: "Salidas", icon: "📤", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/transferencias", label: "Transferencias", icon: "🔄", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/inventarios", label: "Inventarios Físicos", icon: "📋", roles: ROLES_LECTURA_Y_OPERACION },

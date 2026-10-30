@@ -179,6 +179,7 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
                             type="number"
                             min="0"
                             step="1"
+                            step="1"
                             className="input-field text-right w-24 inline-block"
                             defaultValue={s.cantidad}
                             onBlur={(e) => {
@@ -225,6 +226,7 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
                 <input
                   type="number"
                   min="1"
+                  step="1"
                   className="input-field"
                   value={form.cantidad}
                   onChange={(e) =>

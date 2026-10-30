@@ -15,7 +15,7 @@ const FORM_INICIAL = {
   tipo: "SUCURSAL",
   direccion: "",
   ciudad: "",
-  capacidad: "",
+  superficie_m2: 7280,
   activo: true,
 };
 
@@ -34,7 +34,7 @@ export default function FormAlmacen({ almacen, onClose, onSaved }) {
         tipo: almacen.tipo || "SUCURSAL",
         direccion: almacen.direccion || "",
         ciudad: almacen.ciudad || "",
-        capacidad: almacen.capacidad ?? "",
+        superficie_m2: almacen.superficie_m2 ?? 7280,
         activo: almacen.activo ?? true,
       });
     } else {
@@ -68,7 +68,7 @@ export default function FormAlmacen({ almacen, onClose, onSaved }) {
     try {
       const payload = {
         ...form,
-        capacidad: form.capacidad === "" ? null : Number(form.capacidad),
+        superficie_m2: Number(form.superficie_m2),
       };
 
       if (esEdicion) {
@@ -151,19 +151,21 @@ export default function FormAlmacen({ almacen, onClose, onSaved }) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">
-              Capacidad máxima
+              Superficie del almacén (m²) *
             </label>
             <input
               className="input-field"
               type="number"
-              name="capacidad"
-              value={form.capacidad}
+              name="superficie_m2"
+              value={form.superficie_m2}
               onChange={handleChange}
-              placeholder="10000"
-              min="0"
+              placeholder="7280"
+              min="1"
+              step="0.01"
+              required
             />
             <p className="mt-1 text-xs text-gray-500">
-              Se compara con la suma de cantidades registradas en el stock del almacén.
+              Superficie física del almacén; se muestra en m² y no se compara con el conteo de productos.
             </p>
           </div>
         </div>

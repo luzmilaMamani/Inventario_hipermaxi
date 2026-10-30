@@ -139,12 +139,14 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 - `GET /api/reportes/productos-proximo-vencimiento`
 - `GET /api/reportes/lotes-proximos-vencer`
 - `GET /api/reportes/stock-bajo`
-- `GET /api/stock/historial/:id_producto` (historial paginado de movimientos)
-- `POST /api/entradas-inventario` (recepción de proveedor; registra entrada, detalle, stock y movimientos en una transacción)
+- `GET /api/stock/historial/:id_producto` (historial paginado de movimientos; admite `id_almacen`, `fecha_desde` y `fecha_hasta`)
+- `GET /api/entradas-inventario` y `GET /api/entradas-inventario/:id` (consulta paginada y detalle de recepciones)
+- `POST /api/entradas-inventario` (registra cantidades esperadas y recibidas, diferencias, stock y movimientos en una transacción)
 - `GET /api/salidas` y `GET /api/salidas/:id` (consulta de salidas)
 - `POST /api/salidas` (registra la salida, descuenta existencias y crea un movimiento trazable por producto; selecciona el lote disponible con vencimiento más próximo)
 - `PUT /api/transferencias/:id/estado` (aprobar o rechazar solicitudes solo para `ENCARGADO_ALMACEN` y `ADMINISTRADOR`; marcar como enviada requiere `fecha_llegada_estimada` en formato `YYYY-MM-DD`)
 - `GET /api/transferencias` y `GET /api/transferencias/:id` incluyen fechas y datos del recorrido
+- `/api/ajustes-inventario` y `/api/movimientos-inventario` son de solo lectura. Sus escrituras directas quedan bloqueadas para evitar ajustes de stock o movimientos de historial sin actualizar existencias en una transacción.
 - `GET /api/reportes/perdidas` (reporte de pérdidas con filtros por fecha, almacén y subtipo)
 - `POST /api/reportes/stock-bajo/publicar` (publica en Google Pub/Sub todos los productos que cumplen la alerta de stock bajo)
 
@@ -162,6 +164,27 @@ en ese momento, crea un único mensaje JSON con todos los productos bajo el
 mínimo o punto de reposición, e incluye sus lotes disponibles. La respuesta
 incluye el ID que devuelve Pub/Sub. No se publica un mensaje vacío si no hay
 productos con stock bajo.
+
+La migración `20261022_use_piece_counts_and_warehouse_area.sql` configura los
+productos para conteo por pieza y conserva las cantidades/precios existentes,
+establece una superficie de 7.280 m² por almacén y valida que los movimientos
+usen cantidades enteras. El precio del producto se interpreta como precio por
+pieza; cada salida registra el precio unitario y el total de la línea.
+
+La migración `20261022_add_units_per_pallet.sql` agrega la conversión de
+unidades por palé. Configura ese dato desde el formulario de cada producto para
+que la API calcule palés ocupados y área de almacenamiento estimada. La
+estimación supone 12 m de altura, 6 niveles y 60% del área útil para almacenar;
+a 7.280 m² muestra una capacidad de referencia de 10.500 a 11.500 palés.
+Mientras falte la conversión de algún producto con existencias, no se calcula
+un porcentaje incompleto.
+
+La migración `20261022_set_warehouse_unit_capacities.sql` configura el límite
+operativo en unidades para el indicador de ocupación de la lista de almacenes:
+8.000 para Almacén Central, 800 para Sucursal Norte, 50 para Sucursal Sur y
+8.000 para Depósito 1. El porcentaje compara ese límite con la suma de piezas
+en stock; no modifica las existencias ni representa una medición de superficie
+ocupada.
 
 ```http
 POST /api/reportes/stock-bajo/publicar
@@ -189,6 +212,16 @@ FROM eventos_stock_bajo ORDER BY id_evento DESC;
 ```
 
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
+En cada línea de recepción, `cantidad_solicitada` es la cantidad esperada y
+`cantidad_recibida` la cantidad física recibida. El backend calcula la
+diferencia, registra faltantes/sobrantes y actualiza el stock por lo realmente
+recibido dentro de la misma transacción.
+
+Al recibir una transferencia, `PUT /api/transferencias/:id/estado` requiere
+`estado: "RECIBIDA"` y `detalles_recibidos`, con una línea por detalle que
+incluya `id_detalle_transferencia` y `cantidad_recibida`. Solo esas cantidades
+se incorporan al almacén destino; el detalle conserva lo solicitado, enviado
+y recibido.
 
 Las migraciones para instalaciones existentes agregan la fecha estimada de
 llegada y las fechas de rechazo/cancelación, además de las vistas de reportes.

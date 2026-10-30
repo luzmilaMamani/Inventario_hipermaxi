@@ -77,10 +77,8 @@ export default function DetalleProducto({ productoId, onClose }) {
               <p>{producto.marca || "-"}</p>
             </div>
             <div>
-              <p className="text-gray-500">Unidad</p>
-              <p>
-                {producto.unidad} ({producto.abreviatura})
-              </p>
+              <p className="text-gray-500">Conteo</p>
+              <p>Unidad / pieza</p>
             </div>
           </div>
 
@@ -93,7 +91,7 @@ export default function DetalleProducto({ productoId, onClose }) {
 
           <div className="grid grid-cols-2 gap-3 border-t pt-3">
             <div>
-              <p className="text-gray-500">Precio unitario</p>
+              <p className="text-gray-500">Precio por unidad</p>
               <p className="font-semibold">
                 Bs {Number(producto.precio || 0).toFixed(2)}
               </p>
@@ -105,6 +103,12 @@ export default function DetalleProducto({ productoId, onClose }) {
             <div>
               <p className="text-gray-500">Stock máximo</p>
               <p className="font-semibold">{producto.stock_maximo}</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Unidades por palé</p>
+              <p className="font-semibold">
+                {producto.unidades_por_pale || "Pendiente de configurar"}
+              </p>
             </div>
             <div>
               <p className="text-gray-500">Punto de reposición</p>

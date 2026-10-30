@@ -22,6 +22,7 @@ const FORM_INICIAL = {
   stock_minimo: 0,
   stock_maximo: 0,
   punto_reposicion: 0,
+  unidades_por_pale: "",
   precio: 0,
 };
 
@@ -74,6 +75,7 @@ export default function FormProducto({ producto, onClose, onSaved }) {
         stock_minimo: producto.stock_minimo ?? 0,
         stock_maximo: producto.stock_maximo ?? 0,
         punto_reposicion: producto.punto_reposicion ?? 0,
+        unidades_por_pale: producto.unidades_por_pale ?? "",
         precio: producto.precio ?? 0,
       });
     } else {
@@ -101,6 +103,14 @@ export default function FormProducto({ producto, onClose, onSaved }) {
 
     if (Number(form.precio) < 0) {
       return setError("El precio no puede ser negativo");
+    }
+
+    if (
+      form.unidades_por_pale !== "" &&
+      (!Number.isSafeInteger(Number(form.unidades_por_pale)) ||
+        Number(form.unidades_por_pale) <= 0)
+    ) {
+      return setError("Las unidades por palé deben ser un número entero mayor a 0");
     }
 
     if (Number(form.stock_maximo) < Number(form.stock_minimo)) {
@@ -133,6 +143,10 @@ export default function FormProducto({ producto, onClose, onSaved }) {
         stock_minimo: Number(form.stock_minimo) || 0,
         stock_maximo: Number(form.stock_maximo) || 0,
         punto_reposicion: Number(form.punto_reposicion) || 0,
+        unidades_por_pale:
+          form.unidades_por_pale === ""
+            ? null
+            : Number(form.unidades_por_pale),
         precio: Number(form.precio) || 0,
       };
 
@@ -164,9 +178,11 @@ export default function FormProducto({ producto, onClose, onSaved }) {
     value: m.id_marca,
     label: m.nombre,
   }));
-  const opcionesUnidades = unidades.map((u) => ({
+  const opcionesUnidades = unidades
+    .filter((u) => u.abreviatura?.toUpperCase() === "UND")
+    .map((u) => ({
     value: u.id_unidad,
-    label: `${u.nombre} (${u.abreviatura})`,
+    label: "Unidad / pieza",
   }));
 
   return (
@@ -257,17 +273,17 @@ export default function FormProducto({ producto, onClose, onSaved }) {
             placeholder="Selecciona marca"
           />
           <Select
-            label="Unidad de medida *"
+            label="Conteo *"
             value={form.id_unidad}
             onChange={(e) => setForm({ ...form, id_unidad: e.target.value })}
             options={opcionesUnidades}
-            placeholder="Selecciona unidad"
+            placeholder="Unidad / pieza"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium mb-1">
-            Precio unitario (Bs)
+            Precio por unidad (Bs)
           </label>
           <input
             className="input-field"
@@ -280,7 +296,26 @@ export default function FormProducto({ producto, onClose, onSaved }) {
             placeholder="0.00"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Se usa para valorizar pérdidas y daños en los reportes.
+            Este importe se multiplica por cada unidad registrada.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Unidades por palé
+          </label>
+          <input
+            className="input-field"
+            type="number"
+            name="unidades_por_pale"
+            min="1"
+            step="1"
+            value={form.unidades_por_pale}
+            onChange={handleChange}
+            placeholder="Ej.: 60"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Dato requerido para estimar los palés y la ocupación del almacén.
           </p>
         </div>
 
@@ -293,6 +328,7 @@ export default function FormProducto({ producto, onClose, onSaved }) {
               className="input-field"
               type="number"
               name="stock_minimo"
+              step="1"
               value={form.stock_minimo}
               onChange={handleChange}
               min="0"
@@ -306,6 +342,7 @@ export default function FormProducto({ producto, onClose, onSaved }) {
               className="input-field"
               type="number"
               name="stock_maximo"
+              step="1"
               value={form.stock_maximo}
               onChange={handleChange}
               min="0"
@@ -319,6 +356,7 @@ export default function FormProducto({ producto, onClose, onSaved }) {
               className="input-field"
               type="number"
               name="punto_reposicion"
+              step="1"
               value={form.punto_reposicion}
               onChange={handleChange}
               min="0"

@@ -28,8 +28,8 @@ function validarAsignarProducto(req, _res, next) {
   if (!id_ubicacion) {
     return next(new ApiError(400, "La ubicación es obligatoria"));
   }
-  if (cantidad === undefined || Number(cantidad) <= 0) {
-    return next(new ApiError(400, "La cantidad debe ser mayor a 0"));
+  if (cantidad === undefined || !Number.isSafeInteger(Number(cantidad)) || Number(cantidad) <= 0) {
+    return next(new ApiError(400, "La cantidad debe ser un número entero mayor a 0"));
   }
 
   return next();
