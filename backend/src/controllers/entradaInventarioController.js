@@ -15,6 +15,25 @@ function esFechaValida(fecha) {
   );
 }
 
+function fechaLocalHoy() {
+  const hoy = new Date();
+  const anio = hoy.getFullYear();
+  const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoy.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+}
+
+function formatoFechaLote(fecha) {
+  if (!fecha) return null;
+  if (fecha instanceof Date) {
+    const anio = fecha.getFullYear();
+    const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+    const dia = String(fecha.getDate()).padStart(2, "0");
+    return `${anio}-${mes}-${dia}`;
+  }
+  return String(fecha).slice(0, 10);
+}
+
 const registrarRecepcion = asyncHandler(async (req, res) => {
   if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
     throw new ApiError(400, "El cuerpo de la solicitud no es válido");
@@ -64,6 +83,7 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
     }
   }
 
+  const hoy = fechaLocalHoy();
   const productosIncluidos = new Set();
   const lineas = detalles.map((detalle, indice) => {
     if (!detalle || typeof detalle !== "object" || Array.isArray(detalle)) {
@@ -119,6 +139,20 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
         `La fecha de vencimiento de la línea ${indice + 1} no es válida`,
       );
     }
+    // RF40: no se aceptan productos que ya llegan vencidos
+    if (fechaVencimiento && fechaVencimiento < hoy) {
+      throw new ApiError(
+        400,
+        `La fecha de vencimiento de la línea ${indice + 1} ya pasó; no se puede recibir un producto vencido`,
+      );
+    }
+    const numeroLote = String(detalle.numero_lote || "").trim() || null;
+    if (numeroLote && numeroLote.length > 100) {
+      throw new ApiError(
+        400,
+        `El número de lote de la línea ${indice + 1} no puede superar 100 caracteres`,
+      );
+    }
 
     return {
       id_producto: idProducto,
@@ -126,7 +160,7 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
       cantidad_recibida: cantidadRecibida,
       diferencia: cantidadRecibida - cantidadSolicitada,
       id_lote: idLote,
-      numero_lote: String(detalle.numero_lote || "").trim() || null,
+      numero_lote: numeroLote,
       fecha_vencimiento: fechaVencimiento,
       observaciones: String(detalle.observaciones || "").trim() || null,
     };
@@ -146,11 +180,29 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
 
     const idsProductos = [...new Set(lineas.map((linea) => linea.id_producto))];
     const productosResult = await cliente.query(
-      "SELECT id_producto FROM productos WHERE id_producto = ANY($1::int[]) AND estado = 'ACTIVO'",
+      `SELECT id_producto, controla_vencimiento
+       FROM productos
+       WHERE id_producto = ANY($1::int[]) AND estado = 'ACTIVO'`,
       [idsProductos],
     );
     if (productosResult.rowCount !== idsProductos.length) {
       throw new ApiError(400, "Uno o más productos no existen o están inactivos");
+    }
+
+    // RF40: la fecha de vencimiento solo aplica (y es obligatoria) para
+    // productos con controla_vencimiento; en los demás se ignora.
+    const controlaVencimiento = new Map(
+      productosResult.rows.map((p) => [Number(p.id_producto), p.controla_vencimiento === true]),
+    );
+    for (const [indice, linea] of lineas.entries()) {
+      if (!controlaVencimiento.get(linea.id_producto)) {
+        linea.fecha_vencimiento = null;
+      } else if (!linea.id_lote && !linea.fecha_vencimiento) {
+        throw new ApiError(
+          400,
+          `El producto de la línea ${indice + 1} controla vencimiento: la fecha de vencimiento es obligatoria`,
+        );
+      }
     }
 
     const numeroEntrada = `ENT-${Date.now()}-${randomBytes(3).toString("hex")}`;
@@ -174,10 +226,11 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
 
     const detallesRegistrados = [];
     for (const [indice, linea] of lineas.entries()) {
-      let lote;
+      const controla = controlaVencimiento.get(linea.id_producto);
+      let lote = null;
       if (linea.id_lote) {
         const loteResult = await cliente.query(
-          `SELECT id_lote, numero_lote
+          `SELECT id_lote, numero_lote, fecha_vencimiento
            FROM lotes_productos
            WHERE id_lote = $1 AND id_producto = $2 AND id_almacen = $3
            FOR UPDATE`,
@@ -190,6 +243,46 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
           );
         }
         lote = loteResult.rows[0];
+      } else if (linea.numero_lote) {
+        // Mismo número de lote ya registrado en el almacén: se suma a ese lote
+        // solo si la fecha de vencimiento coincide.
+        const loteResult = await cliente.query(
+          `SELECT id_lote, numero_lote, fecha_vencimiento
+           FROM lotes_productos
+           WHERE id_producto = $1 AND id_almacen = $2 AND numero_lote = $3
+           FOR UPDATE`,
+          [linea.id_producto, idAlmacen, linea.numero_lote],
+        );
+        if (loteResult.rowCount) {
+          lote = loteResult.rows[0];
+          const vencimientoExistente = formatoFechaLote(lote.fecha_vencimiento);
+          if (controla && vencimientoExistente !== linea.fecha_vencimiento) {
+            throw new ApiError(
+              400,
+              `El lote ${linea.numero_lote} de la línea ${indice + 1} ya existe con vencimiento ${vencimientoExistente || "sin fecha"}`,
+            );
+          }
+        }
+      }
+
+      if (lote) {
+        const vencimientoLote = formatoFechaLote(lote.fecha_vencimiento);
+        if (controla) {
+          if (!vencimientoLote) {
+            throw new ApiError(
+              400,
+              `El lote de la línea ${indice + 1} no tiene fecha de vencimiento registrada`,
+            );
+          }
+          if (vencimientoLote < hoy) {
+            throw new ApiError(
+              400,
+              `El lote de la línea ${indice + 1} ya está vencido; no se puede recibir más cantidad en él`,
+            );
+          }
+        }
+        linea.id_lote = lote.id_lote;
+        linea.fecha_vencimiento = vencimientoLote;
         await cliente.query(
           `UPDATE lotes_productos
            SET cantidad_inicial = cantidad_inicial + $1,
@@ -206,7 +299,7 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
              (id_producto, id_almacen, numero_lote, fecha_ingreso,
               fecha_vencimiento, cantidad_inicial, cantidad_actual)
            VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $5)
-           RETURNING id_lote, numero_lote`,
+           RETURNING id_lote, numero_lote, fecha_vencimiento`,
           [
             linea.id_producto,
             idAlmacen,
@@ -236,6 +329,7 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
         ...linea,
         id_lote: lote.id_lote,
         numero_lote: lote.numero_lote,
+        fecha_vencimiento: formatoFechaLote(lote.fecha_vencimiento),
       });
 
       const stockResult = await cliente.query(
@@ -406,7 +500,7 @@ const obtenerRecepcion = asyncHandler(async (req, res) => {
 
   const detallesResult = await db.query(
     `SELECT de.*, p.codigo AS producto_codigo, p.nombre AS producto,
-            lp.numero_lote
+            p.controla_vencimiento, lp.numero_lote, lp.fecha_vencimiento
      FROM detalle_entradas de
      INNER JOIN productos p ON p.id_producto = de.id_producto
      LEFT JOIN lotes_productos lp ON lp.id_lote = de.id_lote
