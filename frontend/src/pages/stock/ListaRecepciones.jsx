@@ -254,6 +254,8 @@ export default function ListaRecepciones() {
                   <thead className="bg-gray-50 text-left text-gray-600">
                     <tr>
                       <th className="p-2">Producto</th>
+                      <th className="p-2">Lote</th>
+                      <th className="p-2">Vencimiento</th>
                       <th className="p-2 text-right">Esperado</th>
                       <th className="p-2 text-right">Recibido</th>
                       <th className="p-2 text-right">Diferencia</th>
@@ -267,6 +269,14 @@ export default function ListaRecepciones() {
                           <div className="font-mono text-xs text-gray-500">
                             {linea.producto_codigo}
                           </div>
+                        </td>
+                        <td className="p-2 font-mono text-xs">
+                          {linea.numero_lote || "-"}
+                        </td>
+                        <td className="p-2">
+                          {linea.fecha_vencimiento
+                            ? formatoFecha(linea.fecha_vencimiento)
+                            : "-"}
                         </td>
                         <td className="p-2 text-right">
                           {Number(linea.cantidad_solicitada).toLocaleString(
