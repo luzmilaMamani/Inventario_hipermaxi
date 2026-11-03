@@ -18,6 +18,8 @@ const crearDetalleVacio = () => ({
   id_producto: "",
   cantidad_solicitada: "",
   cantidad_recibida: "",
+  numero_lote: "",
+  fecha_vencimiento: "",
   observaciones: "",
 });
 
@@ -71,6 +73,24 @@ export default function RegistrarRecepcion() {
     );
   };
 
+  const controlaVencimiento = (idProducto) =>
+    productos.find((p) => String(p.id_producto) === String(idProducto))?.controla_vencimiento === true;
+
+  const cambiarProducto = (indice, idProducto) => {
+    // RF40: los productos sin control de vencimiento no llevan fecha ni lote
+    setDetalles((actuales) =>
+      actuales.map((detalle, pos) =>
+        pos === indice
+          ? {
+              ...detalle,
+              id_producto: idProducto,
+              ...(controlaVencimiento(idProducto) ? {} : { numero_lote: "", fecha_vencimiento: "" }),
+            }
+          : detalle
+      )
+    );
+  };
+
   const enviarRecepcion = async (event) => {
     event.preventDefault();
     setError("");
@@ -81,18 +101,32 @@ export default function RegistrarRecepcion() {
     if (detalles.some((d) => !d.id_producto || !d.cantidad_solicitada || !d.cantidad_recibida)) {
       return setError("Complete los productos e indique la cantidad esperada y la recibida.");
     }
+    const hoy = fechaLocalHoy();
+    const sinFecha = detalles.findIndex((d) => controlaVencimiento(d.id_producto) && !d.fecha_vencimiento);
+    if (sinFecha !== -1) {
+      return setError(`El producto de la línea ${sinFecha + 1} controla vencimiento: indique la fecha de vencimiento.`);
+    }
+    const vencido = detalles.findIndex((d) => controlaVencimiento(d.id_producto) && d.fecha_vencimiento < hoy);
+    if (vencido !== -1) {
+      return setError(`La fecha de vencimiento de la línea ${vencido + 1} ya pasó; no se puede recibir un producto vencido.`);
+    }
 
     setGuardando(true);
     try {
       const respuesta = await registrarRecepcion({
         ...form,
         proveedor: form.proveedor.trim(),
-        detalles: detalles.map((d) => ({
-          ...d,
-          cantidad_solicitada: Number(d.cantidad_solicitada),
-          cantidad_recibida: Number(d.cantidad_recibida),
-          observaciones: d.observaciones.trim() || null,
-        })),
+        detalles: detalles.map((d) => {
+          const conVencimiento = controlaVencimiento(d.id_producto);
+          return {
+            ...d,
+            cantidad_solicitada: Number(d.cantidad_solicitada),
+            cantidad_recibida: Number(d.cantidad_recibida),
+            numero_lote: conVencimiento ? d.numero_lote.trim() || null : null,
+            fecha_vencimiento: conVencimiento ? d.fecha_vencimiento : null,
+            observaciones: d.observaciones.trim() || null,
+          };
+        }),
       });
 
       const conDiferencia = (respuesta.data.detalles || []).filter(
@@ -177,7 +211,7 @@ export default function RegistrarRecepcion() {
                 {detalles.map((detalle, indice) => (
                   <div key={indice} className="grid grid-cols-1 items-end gap-3 rounded-lg border border-gray-200 p-3 md:grid-cols-12">
                     <div className="md:col-span-4">
-                      <Select label="Producto *" value={detalle.id_producto} onChange={(e) => actualizarDetalle(indice, "id_producto", e.target.value)} options={opcionesProductos} placeholder="Selecciona un producto" disabled={guardando} />
+                      <Select label="Producto *" value={detalle.id_producto} onChange={(e) => cambiarProducto(indice, e.target.value)} options={opcionesProductos} placeholder="Selecciona un producto" disabled={guardando} />
                     </div>
                     <div className="md:col-span-2">
                       <label className="mb-1 block text-sm font-medium">Cant. Esperada *</label>
@@ -194,6 +228,21 @@ export default function RegistrarRecepcion() {
                     <div className="md:col-span-1">
                       <button type="button" className="btn-secondary w-full" disabled={guardando || detalles.length === 1} onClick={() => setDetalles((act) => act.filter((_, pos) => pos !== indice))}>×</button>
                     </div>
+                    {controlaVencimiento(detalle.id_producto) && (
+                      <>
+                        <div className="md:col-span-4">
+                          <label className="mb-1 block text-sm font-medium">Fecha de vencimiento *</label>
+                          <input className="input-field" type="date" required min={fechaLocalHoy()} value={detalle.fecha_vencimiento} onChange={(e) => actualizarDetalle(indice, "fecha_vencimiento", e.target.value)} disabled={guardando} />
+                        </div>
+                        <div className="md:col-span-4">
+                          <label className="mb-1 block text-sm font-medium">N° de lote</label>
+                          <input className="input-field" maxLength="100" value={detalle.numero_lote} onChange={(e) => actualizarDetalle(indice, "numero_lote", e.target.value)} disabled={guardando} placeholder="Opcional (se genera automáticamente)" />
+                        </div>
+                        <div className="md:col-span-4">
+                          <p className="text-xs text-amber-700">Este producto controla vencimiento: la fecha queda asociada al lote y a la cantidad recibida.</p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
