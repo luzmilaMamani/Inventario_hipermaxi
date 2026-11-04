@@ -190,6 +190,9 @@ const resources = {
       'cantidad_anterior',
       'cantidad_nueva',
       'motivo',
+      'comentario',
+      'id_usuario_aprueba',
+      'fecha_ajuste',
       'estado'
     ]
   },

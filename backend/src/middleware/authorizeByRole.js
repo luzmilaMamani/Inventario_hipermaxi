@@ -20,6 +20,7 @@ const OPERACIONES_ENCARGADO = [
   { method: "POST", path: "/salidas" },
   { method: "POST", path: "/transferencias" },
   { method: "POST", path: "/inventarios" },
+  { method: "POST", path: "/ajustes-inventario" },
   { method: "POST", path: "/diferencias" },
   { method: "POST", path: "/stock-ubicaciones" },
   { method: "POST", path: "/reportes/stock-bajo/publicar" },

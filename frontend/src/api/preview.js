@@ -122,6 +122,31 @@ export const productosPreview = {
   pagination: { page: 1, limit: 10, total: 3 },
 };
 
+export const ajustesPreview = {
+  ok: true,
+  data: [
+    {
+      id_ajuste: 1,
+      numero_ajuste: "AJU-1001",
+      fecha_ajuste: "2026-11-01T15:30:00.000Z",
+      id_almacen: 1,
+      id_producto: 1,
+      cantidad_anterior: 10,
+      cantidad_nueva: 12,
+      motivo: "CONTEO_FISICO",
+      comentario: "Se contó una caja adicional en el pasillo 1 durante la supervisión.",
+      estado: "APLICADO",
+      almacen_codigo: "SUC-01",
+      almacen: "Sucursal Centro",
+      producto_codigo: "ARZ-001",
+      producto: "Arroz extra",
+      usuario: "Ana Quispe",
+      usuario_aprueba: "Ana Quispe",
+    },
+  ],
+  pagination: { page: 1, limit: 20, total: 1 },
+};
+
 export const almacenesPreview = {
   ok: true,
   data: [

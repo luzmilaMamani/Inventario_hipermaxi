@@ -17,6 +17,7 @@ const links = [
   { to: "/salidas", label: "Salidas", icon: "📤", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/transferencias", label: "Transferencias", icon: "🔄", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/inventarios", label: "Inventarios Físicos", icon: "📋", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/ajustes", label: "Ajustes", icon: "📝", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/reportes/perdidas", label: "Reporte pérdidas", icon: "🚨" },
   { to: "/reportes/danos", label: "Reporte daños", icon: "⚠️" },
   { to: "/reportes/vencimientos", label: "Reporte vencimientos", icon: "⏳" },

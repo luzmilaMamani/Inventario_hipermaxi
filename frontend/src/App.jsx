@@ -33,6 +33,7 @@ import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
 
 // Transferencias (RF29)
 import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
+import ListaAjustes from "./pages/ajustes/ListaAjustes";
 
 export default function App() {
   return (
@@ -185,6 +186,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DiferenciasInventario />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/ajustes"
+            element={
+              <ProtectedRoute>
+                <ListaAjustes />
               </ProtectedRoute>
             }
           />
