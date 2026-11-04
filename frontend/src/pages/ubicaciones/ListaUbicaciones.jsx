@@ -201,6 +201,7 @@ export default function ListaUbicaciones() {
                 <tr className="text-left border-b border-gray-200 text-gray-500">
                   <th className="py-2">Almacén</th>
                   <th className="py-2">Dirección</th>
+                  <th className="py-2">Tipo</th>
                   <th className="py-2 text-right">Unidades</th>
                   <th className="py-2">Estado</th>
                   <th className="py-2 text-right">Acciones</th>
@@ -209,13 +210,13 @@ export default function ListaUbicaciones() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="5" className="py-6 text-center text-gray-500">
+                    <td colSpan="6" className="py-6 text-center text-gray-500">
                       Cargando...
                     </td>
                   </tr>
                 ) : ubicaciones.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="py-6 text-center text-gray-500">
+                    <td colSpan="6" className="py-6 text-center text-gray-500">
                       No hay ubicaciones registradas
                     </td>
                   </tr>
@@ -230,6 +231,9 @@ export default function ListaUbicaciones() {
                         {[u.zona, u.pasillo, u.estante, u.nivel]
                           .filter(Boolean)
                           .join(" / ") || "-"}
+                      </td>
+                      <td className="py-2">
+                        {u.tipo_ubicacion === "FRIO" ? "Frío" : "Normal"}
                       </td>
                       <td className="py-2 text-right">
                         {Number(u.total_productos).toFixed(0)}

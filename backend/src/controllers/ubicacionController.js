@@ -3,6 +3,40 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 
 const CAMPOS_DIRECCION = ["zona", "pasillo", "estante", "nivel"];
+const TIPOS_UBICACION = ["NORMAL", "FRIO"];
+
+function leerTipoUbicacion(valor, obligatorio = false) {
+  if (valor === undefined || valor === null || valor === "") {
+    if (obligatorio) {
+      throw new ApiError(400, "El tipo de ubicación es obligatorio");
+    }
+    return undefined;
+  }
+  const tipo = String(valor).trim().toUpperCase();
+  if (!TIPOS_UBICACION.includes(tipo)) {
+    throw new ApiError(400, "El tipo de ubicación debe ser normal o frío");
+  }
+  return tipo;
+}
+
+async function asegurarSinRefrigeradosEnNormal(idUbicacion) {
+  const result = await db.query(
+    `SELECT 1
+     FROM stock_ubicaciones su
+     INNER JOIN productos p ON p.id_producto = su.id_producto
+     WHERE su.id_ubicacion = $1
+       AND su.cantidad > 0
+       AND p.requiere_refrigeracion = TRUE
+     LIMIT 1`,
+    [idUbicacion],
+  );
+  if (result.rowCount) {
+    throw new ApiError(
+      400,
+      "No se puede dejar esta ubicación como normal: tiene productos que requieren refrigeración",
+    );
+  }
+}
 
 function normalizarDireccion(datos) {
   return Object.fromEntries(
@@ -99,7 +133,7 @@ const listarUbicaciones = asyncHandler(async (req, res) => {
     db.query(
       `SELECT
          u.id_ubicacion, u.id_almacen, u.zona, u.pasillo, u.estante,
-         u.nivel, u.descripcion, u.activo,
+         u.nivel, u.descripcion, u.tipo_ubicacion, u.activo,
          a.codigo AS almacen_codigo, a.nombre AS almacen,
          (SELECT COALESCE(SUM(cantidad), 0) FROM stock_ubicaciones su WHERE su.id_ubicacion = u.id_ubicacion) AS total_productos
        FROM ubicaciones u
@@ -128,7 +162,7 @@ const obtenerUbicacion = asyncHandler(async (req, res) => {
   const result = await db.query(
     `SELECT
        u.id_ubicacion, u.id_almacen, u.zona, u.pasillo, u.estante,
-       u.nivel, u.descripcion, u.activo,
+       u.nivel, u.descripcion, u.tipo_ubicacion, u.activo,
        a.codigo AS almacen_codigo, a.nombre AS almacen
      FROM ubicaciones u
      INNER JOIN almacenes a ON a.id_almacen = u.id_almacen
@@ -172,8 +206,9 @@ const obtenerStockUbicacion = asyncHandler(async (req, res) => {
 });
 
 const crearUbicacion = asyncHandler(async (req, res) => {
-  const { id_almacen, zona, pasillo, estante, nivel, descripcion, activo = true } =
+  const { id_almacen, zona, pasillo, estante, nivel, descripcion, tipo_ubicacion, activo = true } =
     req.body;
+  const tipo = leerTipoUbicacion(tipo_ubicacion) ?? "NORMAL";
   const direccion = normalizarDireccion({ zona, pasillo, estante, nivel });
 
   await validarAlmacen(id_almacen);
@@ -181,8 +216,8 @@ const crearUbicacion = asyncHandler(async (req, res) => {
 
   const result = await db.query(
     `INSERT INTO ubicaciones
-      (id_almacen, zona, pasillo, estante, nivel, descripcion, activo)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (id_almacen, zona, pasillo, estante, nivel, descripcion, tipo_ubicacion, activo)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
     [
       id_almacen,
@@ -191,6 +226,7 @@ const crearUbicacion = asyncHandler(async (req, res) => {
       direccion.estante,
       direccion.nivel,
       descripcion || null,
+      tipo,
       activo,
     ],
   );
@@ -211,8 +247,12 @@ const actualizarUbicacion = asyncHandler(async (req, res) => {
   );
   if (!existe.rowCount) throw new ApiError(404, "Ubicación no encontrada");
 
-  const { id_almacen, zona, pasillo, estante, nivel, descripcion, activo } =
+  const { id_almacen, zona, pasillo, estante, nivel, descripcion, tipo_ubicacion, activo } =
     req.body;
+  const tipo = leerTipoUbicacion(tipo_ubicacion) ?? existe.rows[0].tipo_ubicacion ?? "NORMAL";
+  if (tipo === "NORMAL") {
+    await asegurarSinRefrigeradosEnNormal(id);
+  }
   const direccionRecibida = normalizarDireccion({ zona, pasillo, estante, nivel });
 
   if (id_almacen !== undefined) {
@@ -244,8 +284,9 @@ const actualizarUbicacion = asyncHandler(async (req, res) => {
       estante = $4,
       nivel = $5,
       descripcion = COALESCE($6, descripcion),
-      activo = COALESCE($7, activo)
-     WHERE id_ubicacion = $8
+      tipo_ubicacion = $7,
+      activo = COALESCE($8, activo)
+     WHERE id_ubicacion = $9
      RETURNING *`,
     [
       direccionActualizada.id_almacen,
@@ -254,6 +295,7 @@ const actualizarUbicacion = asyncHandler(async (req, res) => {
       direccionActualizada.estante,
       direccionActualizada.nivel,
       descripcion ?? null,
+      tipo,
       activo ?? null,
       id,
     ],

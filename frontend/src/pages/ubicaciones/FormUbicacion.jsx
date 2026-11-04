@@ -11,6 +11,7 @@ const FORM_INICIAL = {
   estante: "",
   nivel: "",
   descripcion: "",
+  tipo_ubicacion: "NORMAL",
   activo: true,
 };
 
@@ -37,6 +38,7 @@ export default function FormUbicacion({ ubicacion, onClose, onSaved }) {
         estante: ubicacion.estante || "",
         nivel: ubicacion.nivel || "",
         descripcion: ubicacion.descripcion || "",
+        tipo_ubicacion: ubicacion.tipo_ubicacion || "NORMAL",
         activo: ubicacion.activo ?? true,
       });
     } else {
@@ -150,6 +152,17 @@ export default function FormUbicacion({ ubicacion, onClose, onSaved }) {
             />
           </div>
         </div>
+
+        <Select
+          label="Tipo de ubicación *"
+          value={form.tipo_ubicacion}
+          onChange={(e) => setForm({ ...form, tipo_ubicacion: e.target.value })}
+          options={[
+            { value: "NORMAL", label: "Normal" },
+            { value: "FRIO", label: "Frío" },
+          ]}
+          placeholder="Selecciona el tipo"
+        />
 
         <div>
           <label className="block text-sm font-medium mb-1">Descripción</label>

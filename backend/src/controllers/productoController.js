@@ -35,6 +35,32 @@ async function validarCodigoBarrasUnico(codigo_barras, idExcluir = null) {
   }
 }
 
+function leerBooleano(valor, etiqueta) {
+  if (valor === undefined || valor === null || valor === "") return undefined;
+  if (typeof valor === "boolean") return valor;
+  if (valor === "true" || valor === "false") return valor === "true";
+  throw new ApiError(400, `${etiqueta} debe ser verdadero o falso`);
+}
+
+async function asegurarUbicacionesFrias(idProducto) {
+  const result = await db.query(
+    `SELECT 1
+     FROM stock_ubicaciones su
+     INNER JOIN ubicaciones u ON u.id_ubicacion = su.id_ubicacion
+     WHERE su.id_producto = $1
+       AND su.cantidad > 0
+       AND u.tipo_ubicacion <> 'FRIO'
+     LIMIT 1`,
+    [idProducto],
+  );
+  if (result.rowCount) {
+    throw new ApiError(
+      400,
+      "Un producto refrigerado no puede quedar en una ubicación normal. Muévelo a una ubicación de frío antes de guardar.",
+    );
+  }
+}
+
 async function validarUnidadPieza(id_unidad) {
   const result = await db.query(
     "SELECT id_unidad FROM unidades_medida WHERE id_unidad = $1 AND UPPER(abreviatura) = 'UND'",
@@ -56,12 +82,17 @@ const crearProducto = asyncHandler(async (req, res) => {
     id_marca,
     id_unidad,
     controla_vencimiento = false,
+    perecible = false,
+    requiere_refrigeracion = false,
     stock_minimo = 0,
     stock_maximo = 0,
     punto_reposicion = 0,
     unidades_por_pale = null,
     precio = 0,
   } = req.body;
+
+  const esPerecible = leerBooleano(perecible, "Perecible") ?? false;
+  const requiereFrio = leerBooleano(requiere_refrigeracion, "Requiere refrigeración") ?? false;
 
   await validarUnidadPieza(id_unidad);
   await validarSubcategoria(id_categoria, id_subcategoria);
@@ -70,9 +101,9 @@ const crearProducto = asyncHandler(async (req, res) => {
   const result = await db.query(
     `INSERT INTO productos
       (codigo, codigo_barras, nombre, descripcion, id_categoria, id_subcategoria,
-       id_marca, id_unidad, controla_vencimiento, stock_minimo, stock_maximo,
-       punto_reposicion, unidades_por_pale, precio, estado)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'ACTIVO')
+       id_marca, id_unidad, controla_vencimiento, perecible, requiere_refrigeracion,
+       stock_minimo, stock_maximo, punto_reposicion, unidades_por_pale, precio, estado)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'ACTIVO')
      RETURNING *`,
     [
       codigo,
@@ -84,6 +115,8 @@ const crearProducto = asyncHandler(async (req, res) => {
       id_marca || null,
       id_unidad,
       controla_vencimiento,
+      esPerecible,
+      requiereFrio,
       stock_minimo,
       stock_maximo,
       punto_reposicion,
@@ -119,6 +152,8 @@ const actualizarProducto = asyncHandler(async (req, res) => {
     id_marca,
     id_unidad,
     controla_vencimiento,
+    perecible,
+    requiere_refrigeracion,
     stock_minimo,
     stock_maximo,
     punto_reposicion,
@@ -138,6 +173,12 @@ const actualizarProducto = asyncHandler(async (req, res) => {
     await validarCodigoBarrasUnico(codigo_barras, id);
   }
 
+  const esPerecible = leerBooleano(perecible, "Perecible");
+  const requiereFrio = leerBooleano(requiere_refrigeracion, "Requiere refrigeración");
+  if (requiereFrio === true || (requiereFrio === undefined && actual.requiere_refrigeracion === true)) {
+    await asegurarUbicacionesFrias(id);
+  }
+
   const smMin = stock_minimo ?? actual.stock_minimo;
   const smMax = stock_maximo ?? actual.stock_maximo;
   if (Number(smMax) < Number(smMin)) {
@@ -155,13 +196,15 @@ const actualizarProducto = asyncHandler(async (req, res) => {
       id_marca = COALESCE($7, id_marca),
       id_unidad = COALESCE($8, id_unidad),
       controla_vencimiento = COALESCE($9, controla_vencimiento),
-      stock_minimo = COALESCE($10, stock_minimo),
-      stock_maximo = COALESCE($11, stock_maximo),
-      punto_reposicion = COALESCE($12, punto_reposicion),
-      unidades_por_pale = $13,
-      precio = COALESCE($14, precio),
-      estado = COALESCE($15, estado)
-     WHERE id_producto = $16
+      perecible = COALESCE($10, perecible),
+      requiere_refrigeracion = COALESCE($11, requiere_refrigeracion),
+      stock_minimo = COALESCE($12, stock_minimo),
+      stock_maximo = COALESCE($13, stock_maximo),
+      punto_reposicion = COALESCE($14, punto_reposicion),
+      unidades_por_pale = $15,
+      precio = COALESCE($16, precio),
+      estado = COALESCE($17, estado)
+     WHERE id_producto = $18
      RETURNING *`,
     [
       codigo ?? null,
@@ -173,6 +216,8 @@ const actualizarProducto = asyncHandler(async (req, res) => {
       id_marca ?? null,
       id_unidad ?? null,
       controla_vencimiento ?? null,
+      esPerecible ?? null,
+      requiereFrio ?? null,
       stock_minimo ?? null,
       stock_maximo ?? null,
       punto_reposicion ?? null,
@@ -201,6 +246,7 @@ const listarProductos = asyncHandler(async (req, res) => {
     id_unidad,
     estado,
     controla_vencimiento,
+    condicion,
   } = req.query;
 
   const limit = Math.min(Math.max(Number(req.query.limit || 50), 1), 200);
@@ -257,6 +303,13 @@ const listarProductos = asyncHandler(async (req, res) => {
     condiciones.push(`p.controla_vencimiento = $${i++}`);
     valores.push(controla_vencimiento === "true");
   }
+  if (condicion === "perecible") {
+    condiciones.push("p.perecible = TRUE");
+  } else if (condicion === "refrigerado") {
+    condiciones.push("p.requiere_refrigeracion = TRUE");
+  } else if (condicion) {
+    throw new ApiError(400, "La condición especial no es válida");
+  }
 
   const whereSql = condiciones.length
     ? `WHERE ${condiciones.join(" AND ")}`
@@ -266,7 +319,8 @@ const listarProductos = asyncHandler(async (req, res) => {
     db.query(
       `SELECT
          p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.descripcion,
-         p.precio, p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
+         p.precio, p.estado, p.controla_vencimiento, p.perecible, p.requiere_refrigeracion,
+         p.stock_minimo, p.stock_maximo,
          p.punto_reposicion, p.unidades_por_pale, p.fecha_creacion,
          COALESCE((
            SELECT SUM(st.cantidad_reservada)
@@ -376,7 +430,8 @@ const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
   const result = await db.query(
     `SELECT
        p.id_producto, p.codigo, p.codigo_barras, p.nombre,
-       p.precio, p.estado, p.controla_vencimiento, p.stock_minimo, p.stock_maximo,
+       p.precio, p.estado, p.controla_vencimiento, p.perecible, p.requiere_refrigeracion,
+       p.stock_minimo, p.stock_maximo,
        p.punto_reposicion,
        COALESCE((
          SELECT SUM(st.cantidad_reservada)

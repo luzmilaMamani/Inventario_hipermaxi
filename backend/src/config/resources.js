@@ -44,6 +44,8 @@ const resources = {
       'id_marca',
       'id_unidad',
       'controla_vencimiento',
+      'perecible',
+      'requiere_refrigeracion',
       'stock_minimo',
       'stock_maximo',
       'punto_reposicion',
@@ -58,7 +60,7 @@ const resources = {
   ubicaciones: {
     table: 'ubicaciones',
     primaryKey: 'id_ubicacion',
-    columns: ['id_almacen', 'zona', 'pasillo', 'estante', 'nivel', 'descripcion', 'activo']
+    columns: ['id_almacen', 'zona', 'pasillo', 'estante', 'nivel', 'descripcion', 'tipo_ubicacion', 'activo']
   },
   lotes_productos: {
     table: 'lotes_productos',

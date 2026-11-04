@@ -19,6 +19,8 @@ const FORM_INICIAL = {
   id_marca: "",
   id_unidad: "",
   controla_vencimiento: false,
+  perecible: false,
+  requiere_refrigeracion: false,
   stock_minimo: 0,
   stock_maximo: 0,
   punto_reposicion: 0,
@@ -72,6 +74,8 @@ export default function FormProducto({ producto, onClose, onSaved }) {
         id_marca: producto.id_marca || "",
         id_unidad: producto.id_unidad || "",
         controla_vencimiento: producto.controla_vencimiento ?? false,
+        perecible: producto.perecible ?? false,
+        requiere_refrigeracion: producto.requiere_refrigeracion ?? false,
         stock_minimo: producto.stock_minimo ?? 0,
         stock_maximo: producto.stock_maximo ?? 0,
         punto_reposicion: producto.punto_reposicion ?? 0,
@@ -140,6 +144,8 @@ export default function FormProducto({ producto, onClose, onSaved }) {
         id_marca: form.id_marca ? Number(form.id_marca) : null,
         id_unidad: Number(form.id_unidad),
         controla_vencimiento: form.controla_vencimiento,
+        perecible: form.perecible,
+        requiere_refrigeracion: form.requiere_refrigeracion,
         stock_minimo: Number(form.stock_minimo) || 0,
         stock_maximo: Number(form.stock_maximo) || 0,
         punto_reposicion: Number(form.punto_reposicion) || 0,
@@ -375,6 +381,34 @@ export default function FormProducto({ producto, onClose, onSaved }) {
           />
           <label htmlFor="controla_vencimiento" className="text-sm">
             Este producto controla fecha de vencimiento
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="perecible"
+            name="perecible"
+            checked={form.perecible}
+            onChange={handleChange}
+            className="rounded"
+          />
+          <label htmlFor="perecible" className="text-sm">
+            Perecible
+          </label>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="requiere_refrigeracion"
+            name="requiere_refrigeracion"
+            checked={form.requiere_refrigeracion}
+            onChange={handleChange}
+            className="rounded"
+          />
+          <label htmlFor="requiere_refrigeracion" className="text-sm">
+            Requiere refrigeración
           </label>
         </div>
 

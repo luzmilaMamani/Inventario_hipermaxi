@@ -34,6 +34,7 @@ const FILTROS_INICIALES = {
   id_marca: "",
   estado: "",
   controla_vencimiento: "",
+  condicion: "",
   orderBy: "fecha_creacion",
   order: "DESC",
 };
@@ -262,6 +263,19 @@ export default function ListaProductos() {
             />
 
             <Select
+              label="Condición especial"
+              value={filtros.condicion}
+              onChange={(e) =>
+                setFiltros({ ...filtros, condicion: e.target.value })
+              }
+              options={[
+                { value: "perecible", label: "Perecible" },
+                { value: "refrigerado", label: "Requiere refrigeración" },
+              ]}
+              placeholder="Todas"
+            />
+
+            <Select
               label="Controla vencimiento"
               value={filtros.controla_vencimiento}
               onChange={(e) =>
@@ -360,6 +374,18 @@ export default function ListaProductos() {
                         onClick={() => setDetalleId(p.id_producto)}
                       >
                         {p.nombre}
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {p.perecible && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                              Perecible
+                            </span>
+                          )}
+                          {p.requiere_refrigeracion && (
+                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-800">
+                              Refrigeración
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2">{p.categoria}</td>
                       <td className="py-2">{p.subcategoria || "-"}</td>

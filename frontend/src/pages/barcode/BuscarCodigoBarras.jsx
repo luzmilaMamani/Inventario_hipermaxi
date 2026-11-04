@@ -124,6 +124,16 @@ export default function BuscarCodigoBarras() {
                   </p>
                 </div>
                 <div>
+                  <p className="text-gray-500">Perecible</p>
+                  <p className="font-medium">{producto.perecible ? "Sí" : "No"}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Requiere refrigeración</p>
+                  <p className="font-medium">
+                    {producto.requiere_refrigeracion ? "Sí" : "No"}
+                  </p>
+                </div>
+                <div>
                   <p className="text-gray-500">Stock mínimo</p>
                   <p className="font-medium">
                     {Number(producto.stock_minimo ?? 0).toLocaleString("es-BO")}
