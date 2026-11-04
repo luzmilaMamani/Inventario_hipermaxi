@@ -28,6 +28,25 @@ export const productosPreview = {
       stock_maximo: 80,
       punto_reposicion: 25,
       cantidad_reservada: 2,
+      cantidad_disponible: 40,
+      almacenes: [
+        {
+          id_almacen: 1,
+          almacen_codigo: "SUC-01",
+          almacen: "Sucursal Centro",
+          cantidad: 42,
+          cantidad_reservada: 2,
+          cantidad_disponible: 40,
+          ubicaciones: [
+            {
+              id_ubicacion: 1,
+              direccion: "A / P1 / E2 / N1",
+              tipo_ubicacion: "NORMAL",
+              cantidad: 42,
+            },
+          ],
+        },
+      ],
     },
     {
       id_producto: 2,
@@ -48,6 +67,34 @@ export const productosPreview = {
       stock_maximo: 30,
       punto_reposicion: 20,
       cantidad_reservada: 0,
+      cantidad_disponible: 18,
+      almacenes: [
+        {
+          id_almacen: 1,
+          almacen_codigo: "SUC-01",
+          almacen: "Sucursal Centro",
+          cantidad: 12,
+          cantidad_reservada: 0,
+          cantidad_disponible: 12,
+          ubicaciones: [
+            {
+              id_ubicacion: 2,
+              direccion: "Fríos / P2 / E1",
+              tipo_ubicacion: "FRIO",
+              cantidad: 12,
+            },
+          ],
+        },
+        {
+          id_almacen: 2,
+          almacen_codigo: "SUC-02",
+          almacen: "Sucursal Norte",
+          cantidad: 6,
+          cantidad_reservada: 0,
+          cantidad_disponible: 6,
+          ubicaciones: [],
+        },
+      ],
     },
     {
       id_producto: 3,
@@ -68,6 +115,8 @@ export const productosPreview = {
       stock_maximo: 40,
       punto_reposicion: 12,
       cantidad_reservada: 0,
+      cantidad_disponible: 0,
+      almacenes: [],
     },
   ],
   pagination: { page: 1, limit: 10, total: 3 },

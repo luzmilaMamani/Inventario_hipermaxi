@@ -40,12 +40,12 @@ export const buscarPorCodigoBarras = (codigo) => {
     );
     if (!producto) {
       return Promise.reject({
-        response: { data: { message: "No se encontró producto con ese código de barras" } },
+        response: { data: { message: `No existe un producto con el código de barras ${codigo}` } },
       });
     }
     return Promise.resolve({ ok: true, data: producto });
   }
-  return api.get(`/productos/barcode/${codigo}`).then((r) => r.data);
+  return api.get(`/productos/barcode/${encodeURIComponent(codigo)}`).then((r) => r.data);
 };
 
 export const cambiarEstadoProducto = (id, estado, motivo) =>

@@ -424,8 +424,18 @@ const obtenerProducto = asyncHandler(async (req, res) => {
   res.json({ ok: true, data: result.rows[0] });
 });
 
+function direccionUbicacion(fila) {
+  return [fila.zona, fila.pasillo, fila.estante, fila.nivel]
+    .map((parte) => String(parte || "").trim())
+    .filter(Boolean)
+    .join(" / ");
+}
+
 const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
-  const { codigo } = req.params;
+  const codigo = String(req.params.codigo || "").trim();
+  if (!codigo) {
+    throw new ApiError(400, "Ingresa un código de barras");
+  }
 
   const result = await db.query(
     `SELECT
@@ -454,10 +464,88 @@ const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
   );
 
   if (!result.rowCount) {
-    throw new ApiError(404, "No se encontró producto con ese código de barras");
+    throw new ApiError(404, `No existe un producto con el código de barras ${codigo}`);
   }
 
-  res.json({ ok: true, data: result.rows[0] });
+  const producto = result.rows[0];
+  const [stockResult, ubicacionesResult] = await Promise.all([
+    db.query(
+      `SELECT
+         a.id_almacen,
+         a.codigo AS almacen_codigo,
+         a.nombre AS almacen,
+         COALESCE(s.cantidad, 0) AS cantidad,
+         COALESCE(s.cantidad_reservada, 0) AS cantidad_reservada,
+         COALESCE(s.cantidad, 0) - COALESCE(s.cantidad_reservada, 0) AS cantidad_disponible
+       FROM stock s
+       INNER JOIN almacenes a ON a.id_almacen = s.id_almacen
+       WHERE s.id_producto = $1
+       ORDER BY a.nombre`,
+      [producto.id_producto],
+    ),
+    db.query(
+      `SELECT
+         a.id_almacen,
+         a.codigo AS almacen_codigo,
+         a.nombre AS almacen,
+         u.id_ubicacion,
+         u.zona,
+         u.pasillo,
+         u.estante,
+         u.nivel,
+         u.tipo_ubicacion,
+         su.cantidad
+       FROM stock_ubicaciones su
+       INNER JOIN ubicaciones u ON u.id_ubicacion = su.id_ubicacion
+       INNER JOIN almacenes a ON a.id_almacen = u.id_almacen
+       WHERE su.id_producto = $1
+         AND su.cantidad > 0
+       ORDER BY a.nombre, u.zona NULLS LAST, u.pasillo NULLS LAST,
+                u.estante NULLS LAST, u.nivel NULLS LAST`,
+      [producto.id_producto],
+    ),
+  ]);
+
+  const almacenes = new Map();
+  for (const fila of stockResult.rows) {
+    almacenes.set(fila.id_almacen, {
+      id_almacen: fila.id_almacen,
+      almacen_codigo: fila.almacen_codigo,
+      almacen: fila.almacen,
+      cantidad: fila.cantidad,
+      cantidad_reservada: fila.cantidad_reservada,
+      cantidad_disponible: fila.cantidad_disponible,
+      ubicaciones: [],
+    });
+  }
+
+  for (const fila of ubicacionesResult.rows) {
+    if (!almacenes.has(fila.id_almacen)) {
+      almacenes.set(fila.id_almacen, {
+        id_almacen: fila.id_almacen,
+        almacen_codigo: fila.almacen_codigo,
+        almacen: fila.almacen,
+        cantidad: 0,
+        cantidad_reservada: 0,
+        cantidad_disponible: 0,
+        ubicaciones: [],
+      });
+    }
+    almacenes.get(fila.id_almacen).ubicaciones.push({
+      id_ubicacion: fila.id_ubicacion,
+      direccion: direccionUbicacion(fila) || "Sin dirección",
+      tipo_ubicacion: fila.tipo_ubicacion || "NORMAL",
+      cantidad: fila.cantidad,
+    });
+  }
+
+  res.json({
+    ok: true,
+    data: {
+      ...producto,
+      almacenes: [...almacenes.values()],
+    },
+  });
 });
 
 const eliminarProducto = asyncHandler(async (req, res) => {
