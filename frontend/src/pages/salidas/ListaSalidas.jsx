@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import Layout from "../../components/layout/Layout";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_OPERACION } from "../../utils/permissions";
 import FormSalida from "./FormSalida";
 import DetalleSalida from "./DetalleSalida";
 import { listarSalidas } from "../../api/salidas.api";
@@ -99,9 +101,11 @@ export default function ListaSalidas() {
               Registro de salidas incluyendo pérdidas (RF25)
             </p>
           </div>
-          <button className="btn-primary" onClick={() => setFormOpen(true)}>
-            + Registrar salida
-          </button>
+          <RoleGate roles={ROLES_OPERACION}>
+            <button className="btn-primary" onClick={() => setFormOpen(true)}>
+              + Registrar salida
+            </button>
+          </RoleGate>
         </div>
 
         <div className="card">

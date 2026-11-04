@@ -1,5 +1,6 @@
 const express = require("express");
 const {
+  listarRecepciones,
   registrarRecepcion,
   confirmarRecepcion,
 } = require("../controllers/entradaInventarioController");
@@ -11,10 +12,11 @@ const {
 
 const router = express.Router();
 
-router.post("/:id/confirmar", confirmarRecepcion);
+router.get("/", listarRecepciones);
+router.post("/", registrarRecepcion);
 router.get("/:id/diferencias", listarDiferencias);
 router.post("/:id/diferencias", registrarDiferencia);
+router.post("/:id/confirmar", confirmarRecepcion);
 router.get("/:id", obtenerRecepcion);
-router.post("/", registrarRecepcion);
 
 module.exports = router;

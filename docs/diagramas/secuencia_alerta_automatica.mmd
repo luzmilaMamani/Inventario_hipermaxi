@@ -1,0 +1,41 @@
+sequenceDiagram
+  autonumber
+  actor U as Usuario (Cajero / Encargado)
+  participant F as Frontend React
+  participant C as VentaController / SalidaController
+  participant DB as PostgreSQL (stock)
+  participant T as trg_stock_bajo
+  participant E as eventos_stock_bajo
+  participant S as StockBajoPubSubService
+  participant G as Google Pub/Sub (topic)
+
+  Note over S,DB: Al iniciar el backend: LISTEN stock_bajo
+  U->>F: Registra venta / salida
+  F->>C: POST /api/ventas
+  C->>DB: BEGIN
+  C->>DB: UPDATE stock SET cantidad = nuevoStock
+  DB->>T: AFTER UPDATE OF cantidad
+  alt cantidad bajó y cantidad <= punto_reposicion o <= stock_minimo
+    T->>E: INSERT evento (estado PENDIENTE)
+    T->>DB: pg_notify('stock_bajo', id_evento)
+  else stock suficiente
+    T-->>DB: no registra nada
+  end
+  C->>DB: COMMIT
+  C-->>F: 201 Venta registrada
+  F-->>U: Confirmación
+
+  DB-)S: NOTIFY stock_bajo (asíncrono, después del COMMIT)
+  S->>E: SELECT ... FOR UPDATE SKIP LOCKED
+  E-->>S: evento pendiente
+  S->>DB: consultarStockBajo(producto, almacén) + lotes
+  DB-->>S: reporte del producto
+  S->>G: publishMessage(JSON STOCK_BAJO, atributos)
+  alt publicado
+    G-->>S: messageId
+    S->>E: UPDATE estado = PUBLICADO, message_id
+  else error (sin red / sin permisos)
+    G-->>S: error
+    S->>E: UPDATE estado = ERROR, intentos + 1
+    Note over S,E: Se reintenta cada 60 s (máx. 10 intentos)
+  end

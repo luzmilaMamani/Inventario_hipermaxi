@@ -1,0 +1,29 @@
+sequenceDiagram
+  autonumber
+  actor U as Encargado / Administrador
+  participant API as Express (auth + authorizeByRole)
+  participant C as StockBajoPubSubController
+  participant S as StockBajoPubSubService
+  participant DB as PostgreSQL
+  participant G as Google Pub/Sub (topic)
+
+  U->>API: POST /api/reportes/stock-bajo/publicar (Bearer token)
+  API->>API: Valida token y rol
+  API->>C: publicarStockBajo()
+  alt PUBSUB_TOPIC no configurado
+    C-->>U: 503 Configura PUBSUB_TOPIC
+  else configurado
+    C->>S: consultarStockBajo()
+    S->>DB: SELECT stock bajo + lotes
+    DB-->>S: productos con stock bajo
+    S-->>C: lista de productos
+    alt no hay productos
+      C-->>U: 200 published = false
+    else hay productos
+      C->>S: publicarMensaje(payload)
+      S->>G: publishMessage(JSON)
+      G-->>S: messageId
+      S-->>C: messageId
+      C-->>U: 200 published = true, message_id, product_count
+    end
+  end

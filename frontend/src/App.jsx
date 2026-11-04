@@ -1,21 +1,38 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+// Auth & Dashboard
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+
+// Módulos Base
 import ListaProductos from "./pages/productos/ListaProductos";
 import ListaAlmacenes from "./pages/almacenes/ListaAlmacenes";
 import ListaUbicaciones from "./pages/ubicaciones/ListaUbicaciones";
 import Clasificacion from "./pages/clasificacion/Clasificacion";
 import BuscarCodigoBarras from "./pages/barcode/BuscarCodigoBarras";
+
+// Stock y Salidas
 import ConsultaStock from "./pages/stock/ConsultaStock";
 import HistorialStock from "./pages/stock/HistorialStock";
+import ListaRecepciones from "./pages/stock/ListaRecepciones";
 import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
 import DetalleRecepcion from "./pages/stock/DetalleRecepcion";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
+
+// Reportes
 import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
+
+// Inventarios Físicos
+import ListaInventarios from "./pages/inventarios/ListaInventarios";
+import ConteoInventario from "./pages/inventarios/ConteoInventario";
+import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
+
+// Transferencias (RF29)
+import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
 
 export default function App() {
   return (
@@ -31,6 +48,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/productos"
             element={
@@ -75,6 +93,14 @@ export default function App() {
             path="/recepciones"
             element={
               <ProtectedRoute>
+                <ListaRecepciones />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recepciones/nueva"
+            element={
+              <ProtectedRoute>
                 <RegistrarRecepcion />
               </ProtectedRoute>
             }
@@ -103,6 +129,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/salidas"
             element={
@@ -111,6 +138,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/reportes/perdidas"
             element={
@@ -132,6 +160,41 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteVencimientos />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/inventarios"
+            element={
+              <ProtectedRoute>
+                <ListaInventarios />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/inventarios/:id"
+            element={
+              <ProtectedRoute>
+                <ConteoInventario />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/inventarios/:id/diferencias"
+            element={
+              <ProtectedRoute>
+                <DiferenciasInventario />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* RF29: Transferencias */}
+          <Route
+            path="/transferencias"
+            element={
+              <ProtectedRoute>
+                <ListaTransferencias />
               </ProtectedRoute>
             }
           />

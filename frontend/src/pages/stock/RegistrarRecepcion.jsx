@@ -1,15 +1,25 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Select from "../../components/ui/Select";
 import { listarAlmacenes } from "../../api/almacenes.api";
 import { listarRecepciones, registrarRecepcion } from "../../api/entradas.api";
 import { listarProductos } from "../../api/productos.api";
 
+const fechaLocalHoy = () => {
+  const fecha = new Date();
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+};
+
 const crearDetalleVacio = () => ({
   id_producto: "",
   cantidad_solicitada: "",
   cantidad_recibida: "",
+  numero_lote: "",
+  fecha_vencimiento: "",
   observaciones: "",
 });
 
@@ -24,14 +34,13 @@ function evaluarDetalle(detalle) {
     return { estado: "INVALIDA" };
   }
   if (esperada < 0 || recibida < 0) return { estado: "NEGATIVA" };
+  if (!Number.isInteger(esperada) || !Number.isInteger(recibida)) {
+    return { estado: "NO_ENTERA" };
+  }
   if (esperada <= 0 || recibida <= 0) return { estado: "CERO" };
   if (esperada === recibida) return { estado: "CONFORME" };
 
   return { estado: "CON_DIFERENCIA", diferencia: recibida - esperada };
-}
-
-function formatearCantidad(valor) {
-  return Number(Number(valor).toFixed(3)).toString();
 }
 
 function EtiquetaVerificacion({ detalle }) {
@@ -39,6 +48,9 @@ function EtiquetaVerificacion({ detalle }) {
 
   if (evaluacion.estado === "NEGATIVA") {
     return <p className="text-sm font-medium text-red-600">Cantidad negativa</p>;
+  }
+  if (evaluacion.estado === "NO_ENTERA") {
+    return <p className="text-sm font-medium text-red-600">Debe ser un número entero</p>;
   }
   if (evaluacion.estado === "CERO") {
     return <p className="text-sm font-medium text-red-600">Debe ser mayor a cero</p>;
@@ -58,7 +70,7 @@ function EtiquetaVerificacion({ detalle }) {
     return (
       <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
         Con diferencia ({signo}
-        {formatearCantidad(evaluacion.diferencia)})
+        {evaluacion.diferencia})
       </span>
     );
   }
@@ -67,11 +79,13 @@ function EtiquetaVerificacion({ detalle }) {
 }
 
 export default function RegistrarRecepcion() {
+  const navigate = useNavigate();
   const [almacenes, setAlmacenes] = useState([]);
   const [productos, setProductos] = useState([]);
   const [form, setForm] = useState({
     id_almacen: "",
     proveedor: "",
+    fecha_entrada: fechaLocalHoy(),
     referencia_externa: "",
     observaciones: "",
   });
@@ -86,29 +100,14 @@ export default function RegistrarRecepcion() {
 
   useEffect(() => {
     Promise.all([
-      listarAlmacenes({
-        limit: 200,
-        activo: true,
-        orderBy: "nombre",
-        order: "ASC",
-      }),
-      listarProductos({
-        limit: 200,
-        estado: "ACTIVO",
-        orderBy: "nombre",
-        order: "ASC",
-      }),
+      listarAlmacenes({ limit: 200, activo: true, orderBy: "nombre", order: "ASC" }),
+      listarProductos({ limit: 200, estado: "ACTIVO", orderBy: "nombre", order: "ASC" }),
     ])
-      .then(([respuestaAlmacenes, respuestaProductos]) => {
-        setAlmacenes(respuestaAlmacenes.data);
-        setProductos(respuestaProductos.data);
+      .then(([respAlmacenes, respProductos]) => {
+        setAlmacenes(respAlmacenes.data);
+        setProductos(respProductos.data);
       })
-      .catch((err) => {
-        setError(
-          err.response?.data?.message ||
-            "No se pudieron cargar los almacenes y productos",
-        );
-      })
+      .catch((err) => setError(err.response?.data?.message || "Error al cargar catálogos"))
       .finally(() => setLoadingCatalogos(false));
   }, []);
 
@@ -127,8 +126,26 @@ export default function RegistrarRecepcion() {
 
   const actualizarDetalle = (indice, campo, valor) => {
     setDetalles((actuales) =>
-      actuales.map((detalle, posicion) =>
-        posicion === indice ? { ...detalle, [campo]: valor } : detalle,
+      actuales.map((detalle, pos) => (pos === indice ? { ...detalle, [campo]: valor } : detalle)),
+    );
+  };
+
+  const controlaVencimiento = (idProducto) =>
+    productos.find((p) => String(p.id_producto) === String(idProducto))?.controla_vencimiento ===
+    true;
+
+  const cambiarProducto = (indice, idProducto) => {
+    setDetalles((actuales) =>
+      actuales.map((detalle, pos) =>
+        pos === indice
+          ? {
+              ...detalle,
+              id_producto: idProducto,
+              ...(controlaVencimiento(idProducto)
+                ? {}
+                : { numero_lote: "", fecha_vencimiento: "" }),
+            }
+          : detalle,
       ),
     );
   };
@@ -146,6 +163,9 @@ export default function RegistrarRecepcion() {
     if (detalles.some((detalle) => evaluarDetalle(detalle).estado === "NEGATIVA")) {
       return setError("No se permiten cantidades negativas");
     }
+    if (detalles.some((detalle) => evaluarDetalle(detalle).estado === "NO_ENTERA")) {
+      return setError("Las cantidades deben ser números enteros");
+    }
     if (detalles.some((detalle) => evaluarDetalle(detalle).estado === "CERO")) {
       return setError("La cantidad esperada y la recibida deben ser mayores a cero");
     }
@@ -155,8 +175,25 @@ export default function RegistrarRecepcion() {
         return !estado || estado === "INVALIDA";
       })
     ) {
+      return setError("Indique la cantidad esperada y la cantidad recibida de cada producto");
+    }
+
+    const hoy = fechaLocalHoy();
+    const sinFecha = detalles.findIndex(
+      (detalle) => controlaVencimiento(detalle.id_producto) && !detalle.fecha_vencimiento,
+    );
+    if (sinFecha !== -1) {
       return setError(
-        "Indique la cantidad esperada y la cantidad recibida de cada producto",
+        `El producto de la línea ${sinFecha + 1} controla vencimiento: indique la fecha de vencimiento.`,
+      );
+    }
+    const vencido = detalles.findIndex(
+      (detalle) =>
+        controlaVencimiento(detalle.id_producto) && detalle.fecha_vencimiento < hoy,
+    );
+    if (vencido !== -1) {
+      return setError(
+        `La fecha de vencimiento de la línea ${vencido + 1} ya pasó; no se puede recibir un producto vencido.`,
       );
     }
 
@@ -165,12 +202,17 @@ export default function RegistrarRecepcion() {
       const respuesta = await registrarRecepcion({
         ...form,
         proveedor: form.proveedor.trim(),
-        detalles: detalles.map((detalle) => ({
-          id_producto: detalle.id_producto,
-          cantidad_solicitada: Number(detalle.cantidad_solicitada),
-          cantidad_recibida: Number(detalle.cantidad_recibida),
-          observaciones: detalle.observaciones.trim() || null,
-        })),
+        detalles: detalles.map((detalle) => {
+          const conVencimiento = controlaVencimiento(detalle.id_producto);
+          return {
+            id_producto: detalle.id_producto,
+            cantidad_solicitada: Number(detalle.cantidad_solicitada),
+            cantidad_recibida: Number(detalle.cantidad_recibida),
+            numero_lote: conVencimiento ? detalle.numero_lote.trim() || null : null,
+            fecha_vencimiento: conVencimiento ? detalle.fecha_vencimiento : null,
+            observaciones: detalle.observaciones.trim() || null,
+          };
+        }),
       });
       const conDiferencia = (respuesta.data.detalles || []).filter(
         (detalle) => detalle.estado_verificacion === "CON_DIFERENCIA",
@@ -191,14 +233,13 @@ export default function RegistrarRecepcion() {
       setForm({
         id_almacen: "",
         proveedor: "",
+        fecha_entrada: fechaLocalHoy(),
         referencia_externa: "",
         observaciones: "",
       });
       setDetalles([crearDetalleVacio()]);
     } catch (err) {
-      setError(
-        err.response?.data?.message || "No se pudo registrar la recepción",
-      );
+      setError(err.response?.data?.message || "No se pudo registrar la recepción");
     } finally {
       setGuardando(false);
     }
@@ -216,12 +257,17 @@ export default function RegistrarRecepcion() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold">Recepción de mercadería</h1>
-          <p className="text-sm text-gray-500">
-            Compara la cantidad recibida con la esperada y guarda el resultado
-            de la verificación
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Recepción de mercadería</h1>
+            <p className="text-sm text-gray-500">
+              Compara la cantidad recibida con la esperada y guarda el resultado de la
+              verificación
+            </p>
+          </div>
+          <button type="button" className="btn-secondary" onClick={() => navigate("/recepciones")}>
+            Ver recepciones
+          </button>
         </div>
 
         <form className="space-y-6" noValidate onSubmit={enviarRecepcion}>
@@ -231,42 +277,39 @@ export default function RegistrarRecepcion() {
               <Select
                 label="Almacén *"
                 value={form.id_almacen}
-                onChange={(event) =>
-                  setForm({ ...form, id_almacen: event.target.value })
-                }
+                onChange={(event) => setForm({ ...form, id_almacen: event.target.value })}
                 options={opcionesAlmacenes}
                 placeholder="Selecciona un almacén"
                 disabled={loadingCatalogos || guardando}
               />
               <div>
-                <label
-                  className="mb-1 block text-sm font-medium"
-                  htmlFor="proveedor"
-                >
-                  Proveedor *
-                </label>
+                <label className="mb-1 block text-sm font-medium">Proveedor *</label>
                 <input
-                  id="proveedor"
                   className="input-field"
                   maxLength="150"
                   required
                   value={form.proveedor}
-                  onChange={(event) =>
-                    setForm({ ...form, proveedor: event.target.value })
-                  }
+                  onChange={(event) => setForm({ ...form, proveedor: event.target.value })}
                   disabled={guardando}
                   placeholder="Nombre del proveedor"
                 />
               </div>
               <div>
-                <label
-                  className="mb-1 block text-sm font-medium"
-                  htmlFor="referencia-externa"
-                >
+                <label className="mb-1 block text-sm font-medium">Fecha de recepción *</label>
+                <input
+                  className="input-field"
+                  type="date"
+                  required
+                  value={form.fecha_entrada}
+                  onChange={(event) => setForm({ ...form, fecha_entrada: event.target.value })}
+                  disabled={guardando}
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">
                   Referencia de factura o remisión
                 </label>
                 <input
-                  id="referencia-externa"
                   className="input-field"
                   value={form.referencia_externa}
                   onChange={(event) =>
@@ -277,19 +320,11 @@ export default function RegistrarRecepcion() {
                 />
               </div>
               <div>
-                <label
-                  className="mb-1 block text-sm font-medium"
-                  htmlFor="observaciones-recepcion"
-                >
-                  Observaciones
-                </label>
+                <label className="mb-1 block text-sm font-medium">Observaciones</label>
                 <input
-                  id="observaciones-recepcion"
                   className="input-field"
                   value={form.observaciones}
-                  onChange={(event) =>
-                    setForm({ ...form, observaciones: event.target.value })
-                  }
+                  onChange={(event) => setForm({ ...form, observaciones: event.target.value })}
                   disabled={guardando}
                   placeholder="Opcional"
                 />
@@ -302,8 +337,8 @@ export default function RegistrarRecepcion() {
               <div>
                 <h2 className="text-lg font-semibold">Verificación por producto</h2>
                 <p className="text-sm text-gray-500">
-                  Si las cantidades coinciden, la línea queda conforme. Si no,
-                  queda con diferencia.
+                  Si las cantidades coinciden, la línea queda conforme. Si no, queda con
+                  diferencia.
                 </p>
               </div>
               <button
@@ -319,9 +354,7 @@ export default function RegistrarRecepcion() {
             {loadingCatalogos ? (
               <p className="text-sm text-gray-500">Cargando catálogos...</p>
             ) : productos.length === 0 ? (
-              <p className="text-sm text-amber-700">
-                No hay productos activos disponibles para recibir.
-              </p>
+              <p className="text-sm text-amber-700">No hay productos activos disponibles.</p>
             ) : (
               <div className="space-y-3">
                 {detalles.map((detalle, indice) => (
@@ -333,64 +366,44 @@ export default function RegistrarRecepcion() {
                       <Select
                         label="Producto *"
                         value={detalle.id_producto}
-                        onChange={(event) =>
-                          actualizarDetalle(
-                            indice,
-                            "id_producto",
-                            event.target.value,
-                          )
-                        }
+                        onChange={(event) => cambiarProducto(indice, event.target.value)}
                         options={opcionesProductos}
                         placeholder="Selecciona un producto"
                         disabled={guardando}
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label
-                        className="mb-1 block text-sm font-medium"
-                        htmlFor={`esperada-${indice}`}
-                      >
+                      <label className="mb-1 block text-sm font-medium" htmlFor={`esperada-${indice}`}>
                         Cantidad esperada *
                       </label>
                       <input
                         id={`esperada-${indice}`}
                         className="input-field"
                         type="number"
-                        min="0.001"
-                        step="any"
+                        min="1"
+                        step="1"
                         required
                         value={detalle.cantidad_solicitada}
                         onChange={(event) =>
-                          actualizarDetalle(
-                            indice,
-                            "cantidad_solicitada",
-                            event.target.value,
-                          )
+                          actualizarDetalle(indice, "cantidad_solicitada", event.target.value)
                         }
                         disabled={guardando}
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label
-                        className="mb-1 block text-sm font-medium"
-                        htmlFor={`cantidad-${indice}`}
-                      >
+                      <label className="mb-1 block text-sm font-medium" htmlFor={`cantidad-${indice}`}>
                         Cantidad recibida *
                       </label>
                       <input
                         id={`cantidad-${indice}`}
                         className="input-field"
                         type="number"
-                        min="0.001"
-                        step="any"
+                        min="1"
+                        step="1"
                         required
                         value={detalle.cantidad_recibida}
                         onChange={(event) =>
-                          actualizarDetalle(
-                            indice,
-                            "cantidad_recibida",
-                            event.target.value,
-                          )
+                          actualizarDetalle(indice, "cantidad_recibida", event.target.value)
                         }
                         disabled={guardando}
                       />
@@ -408,14 +421,51 @@ export default function RegistrarRecepcion() {
                         aria-label={`Quitar producto ${indice + 1}`}
                         disabled={guardando || detalles.length === 1}
                         onClick={() =>
-                          setDetalles((actuales) =>
-                            actuales.filter((_, posicion) => posicion !== indice),
-                          )
+                          setDetalles((actuales) => actuales.filter((_, posicion) => posicion !== indice))
                         }
                       >
                         ×
                       </button>
                     </div>
+                    {controlaVencimiento(detalle.id_producto) && (
+                      <>
+                        <div className="md:col-span-4">
+                          <label className="mb-1 block text-sm font-medium">
+                            Fecha de vencimiento *
+                          </label>
+                          <input
+                            className="input-field"
+                            type="date"
+                            required
+                            min={fechaLocalHoy()}
+                            value={detalle.fecha_vencimiento}
+                            onChange={(event) =>
+                              actualizarDetalle(indice, "fecha_vencimiento", event.target.value)
+                            }
+                            disabled={guardando}
+                          />
+                        </div>
+                        <div className="md:col-span-4">
+                          <label className="mb-1 block text-sm font-medium">N° de lote</label>
+                          <input
+                            className="input-field"
+                            maxLength="100"
+                            value={detalle.numero_lote}
+                            onChange={(event) =>
+                              actualizarDetalle(indice, "numero_lote", event.target.value)
+                            }
+                            disabled={guardando}
+                            placeholder="Opcional (se genera automáticamente)"
+                          />
+                        </div>
+                        <div className="md:col-span-4">
+                          <p className="text-xs text-amber-700">
+                            Este producto controla vencimiento: la fecha queda asociada al lote y a
+                            la cantidad recibida.
+                          </p>
+                        </div>
+                      </>
+                    )}
                     <div className="md:col-span-12">
                       <label
                         className="mb-1 block text-sm font-medium"
@@ -428,11 +478,7 @@ export default function RegistrarRecepcion() {
                         className="input-field"
                         value={detalle.observaciones}
                         onChange={(event) =>
-                          actualizarDetalle(
-                            indice,
-                            "observaciones",
-                            event.target.value,
-                          )
+                          actualizarDetalle(indice, "observaciones", event.target.value)
                         }
                         disabled={guardando}
                         placeholder="Opcional"
@@ -444,11 +490,7 @@ export default function RegistrarRecepcion() {
             )}
           </section>
 
-          {error && (
-            <p className="rounded bg-red-50 p-3 text-sm text-red-600">
-              {error}
-            </p>
-          )}
+          {error && <p className="rounded bg-red-50 p-3 text-sm text-red-600">{error}</p>}
           {confirmacion && (
             <p className="rounded bg-green-50 p-3 text-sm text-green-700">
               {confirmacion}{" "}
@@ -469,7 +511,7 @@ export default function RegistrarRecepcion() {
               className="btn-primary"
               disabled={guardando || loadingCatalogos || productos.length === 0}
             >
-              {guardando ? "Registrando recepción..." : "Registrar recepción"}
+              {guardando ? "Registrando..." : "Registrar recepción y verificar"}
             </button>
           </div>
         </form>
@@ -477,8 +519,8 @@ export default function RegistrarRecepcion() {
         <section className="card space-y-3">
           <h2 className="text-lg font-semibold">Recepciones registradas</h2>
           <p className="text-sm text-gray-500">
-            Abre una recepción para registrar faltantes, sobrantes o productos
-            dañados y consultar las diferencias.
+            Abre una recepción para registrar faltantes, sobrantes o productos dañados y consultar
+            las diferencias.
           </p>
           {errorLista && (
             <p className="rounded bg-red-50 p-3 text-sm text-red-600">{errorLista}</p>
@@ -507,7 +549,7 @@ export default function RegistrarRecepcion() {
                           ? new Date(recepcion.fecha_entrada).toLocaleString("es-BO")
                           : "-"}
                       </td>
-                      <td className="py-2 pr-3">{recepcion.origen || "-"}</td>
+                      <td className="py-2 pr-3">{recepcion.origen || recepcion.proveedor || "-"}</td>
                       <td className="py-2 pr-3">
                         {recepcion.resultado_verificacion === "CONFORME"
                           ? "Conforme"

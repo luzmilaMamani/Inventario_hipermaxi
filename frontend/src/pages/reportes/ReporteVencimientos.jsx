@@ -205,7 +205,7 @@ export default function ReporteVencimientos() {
                         </div>
                       </td>
                       <td className="py-2 text-right">
-                        {Number(r.cantidad).toLocaleString("es-BO")} {r.unidad}
+                        {Number(r.cantidad).toLocaleString("es-BO")} unid.
                       </td>
                       <td className="py-2 text-right font-semibold">
                         Bs {Number(r.valor_total || 0).toFixed(2)}

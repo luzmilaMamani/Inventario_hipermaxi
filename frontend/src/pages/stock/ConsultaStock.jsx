@@ -176,12 +176,12 @@ export default function ConsultaStock() {
                         )}
                       </td>
                       <td className="py-2 text-right">
-                        {Number(registro.cantidad).toLocaleString("es-BO")} {registro.unidad}
+                        {Number(registro.cantidad).toLocaleString("es-BO")} unid.
                       </td>
                       <td className="py-2 text-right">
                         {registro.cantidad_reservada === null
                           ? "-"
-                          : `${Number(registro.cantidad_reservada).toLocaleString("es-BO")} ${registro.unidad}`}
+                          : `${Number(registro.cantidad_reservada).toLocaleString("es-BO")} unid.`}
                       </td>
                       <td className="py-2 text-right font-semibold">
                         <div
@@ -191,7 +191,7 @@ export default function ConsultaStock() {
                               : "text-green-700"
                           }
                         >
-                          {Number(registro.cantidad_disponible).toLocaleString("es-BO")} {registro.unidad}
+                          {Number(registro.cantidad_disponible).toLocaleString("es-BO")} unid.
                         </div>
                         <span
                           className={`text-xs font-normal ${

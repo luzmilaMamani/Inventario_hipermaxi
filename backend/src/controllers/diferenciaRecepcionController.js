@@ -70,6 +70,7 @@ const obtenerRecepcion = asyncHandler(async (req, res) => {
        e.id_entrada,
        e.numero_entrada,
        e.fecha_entrada,
+       e.origen,
        e.origen AS proveedor,
        e.referencia_externa,
        e.estado,
@@ -77,9 +78,11 @@ const obtenerRecepcion = asyncHandler(async (req, res) => {
        e.stock_confirmado,
        e.observaciones,
        a.codigo AS almacen_codigo,
-       a.nombre AS almacen
+       a.nombre AS almacen,
+       u.nombre_completo AS usuario
      FROM entradas_inventario e
      LEFT JOIN almacenes a ON a.id_almacen = e.id_almacen
+     LEFT JOIN usuarios u ON u.id_usuario = e.id_usuario
      WHERE e.id_entrada = $1`,
     [idEntrada],
   );
@@ -91,14 +94,20 @@ const obtenerRecepcion = asyncHandler(async (req, res) => {
     `SELECT
        de.id_detalle_entrada,
        de.id_producto,
+       de.id_lote,
        de.cantidad_solicitada,
        de.cantidad_recibida,
+       (de.cantidad_recibida - de.cantidad_solicitada) AS diferencia,
        de.estado_verificacion,
        de.observaciones,
        p.codigo AS producto_codigo,
-       p.nombre AS producto
+       p.nombre AS producto,
+       p.controla_vencimiento,
+       lp.numero_lote,
+       lp.fecha_vencimiento
      FROM detalle_entradas de
      JOIN productos p ON p.id_producto = de.id_producto
+     LEFT JOIN lotes_productos lp ON lp.id_lote = de.id_lote
      WHERE de.id_entrada = $1
      ORDER BY de.id_detalle_entrada`,
     [idEntrada],
