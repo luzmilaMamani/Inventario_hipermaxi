@@ -219,4 +219,78 @@ const consultarHistorialProducto = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { consultarStock, consultarHistorialProducto };
+const consultarProximosVencer = asyncHandler(async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 200);
+  const page = Math.max(Number(req.query.page || 1), 1);
+  const offset = (page - 1) * limit;
+
+  const dias = req.query.dias === undefined || req.query.dias === "" ? 30 : Number(req.query.dias);
+  if (!Number.isSafeInteger(dias) || dias < 0 || dias > 365) {
+    throw new ApiError(400, "Los días restantes deben ser un entero entre 0 y 365");
+  }
+
+  const valores = [dias];
+  const condiciones = [
+    "lp.fecha_vencimiento IS NOT NULL",
+    "lp.cantidad_actual > 0",
+    "lp.fecha_vencimiento >= CURRENT_DATE",
+    "lp.fecha_vencimiento <= CURRENT_DATE + $1::int",
+  ];
+
+  for (const [parametro, columna, mensaje] of [
+    ["id_almacen", "lp.id_almacen", "El almacén no es válido"],
+    ["id_categoria", "p.id_categoria", "La categoría no es válida"],
+  ]) {
+    const valor = req.query[parametro];
+    if (valor === undefined || valor === "") continue;
+    const id = Number(valor);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new ApiError(400, mensaje);
+    }
+    valores.push(id);
+    condiciones.push(`${columna} = $${valores.length}`);
+  }
+
+  const fromSql = `
+    FROM lotes_productos lp
+    INNER JOIN productos p ON p.id_producto = lp.id_producto
+    INNER JOIN almacenes a ON a.id_almacen = lp.id_almacen
+    LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
+    LEFT JOIN unidades_medida um ON um.id_unidad = p.id_unidad
+    WHERE ${condiciones.join(" AND ")}`;
+
+  const [dataResult, countResult] = await Promise.all([
+    db.query(
+      `SELECT
+         lp.id_lote,
+         lp.numero_lote,
+         TO_CHAR(lp.fecha_vencimiento, 'YYYY-MM-DD') AS fecha_vencimiento,
+         (lp.fecha_vencimiento - CURRENT_DATE)::int AS dias_restantes,
+         lp.cantidad_actual AS cantidad,
+         lp.estado,
+         p.id_producto,
+         p.codigo AS producto_codigo,
+         p.nombre AS producto,
+         um.abreviatura AS unidad,
+         c.id_categoria,
+         c.nombre AS categoria,
+         a.id_almacen,
+         a.codigo AS almacen_codigo,
+         a.nombre AS almacen
+       ${fromSql}
+       ORDER BY lp.fecha_vencimiento ASC, p.nombre ASC, lp.id_lote ASC
+       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2}`,
+      [...valores, limit, offset],
+    ),
+    db.query(`SELECT COUNT(*)::int AS total ${fromSql}`, valores),
+  ]);
+
+  res.json({
+    ok: true,
+    data: dataResult.rows,
+    filtros: { dias },
+    pagination: { page, limit, total: countResult.rows[0].total },
+  });
+});
+
+module.exports = { consultarStock, consultarHistorialProducto, consultarProximosVencer };

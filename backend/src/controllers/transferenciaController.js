@@ -16,6 +16,33 @@ const generarNumeroTransferencia = async (client) => {
   return `TRF-${year}-${String(result.rows[0].total + 1).padStart(4, "0")}`;
 };
 
+/**
+ * RF57: devuelve al stock disponible del origen lo reservado por cada línea.
+ */
+const liberarReservas = async (client, transferencia) => {
+  const detalles = await client.query(
+    `SELECT id_detalle_transferencia, id_producto, cantidad_reservada
+     FROM detalle_transferencias
+     WHERE id_transferencia = $1 AND cantidad_reservada > 0`,
+    [transferencia.id_transferencia],
+  );
+
+  for (const d of detalles.rows) {
+    await client.query(
+      `UPDATE stock
+       SET cantidad_reservada = GREATEST(COALESCE(cantidad_reservada, 0) - $1::numeric, 0),
+           fecha_actualizacion = CURRENT_TIMESTAMP
+       WHERE id_producto = $2 AND id_almacen = $3`,
+      [d.cantidad_reservada, d.id_producto, transferencia.almacen_origen],
+    );
+    await client.query(
+      `UPDATE detalle_transferencias SET cantidad_reservada = 0
+       WHERE id_detalle_transferencia = $1`,
+      [d.id_detalle_transferencia],
+    );
+  }
+};
+
 const listarTransferencias = asyncHandler(async (req, res) => {
   const { estado } = req.query;
   const condiciones = [];
@@ -47,9 +74,17 @@ const listarTransferencias = asyncHandler(async (req, res) => {
 const obtenerTransferencia = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const result = await db.query(
-    `SELECT vt.*, tr.fecha_llegada_estimada, tr.observaciones
+    `SELECT vt.*, tr.fecha_llegada_estimada, tr.observaciones,
+       tr.fecha_aprobacion AS fecha_aprobacion_trazabilidad,
+       tr.fecha_rechazo AS fecha_rechazo_trazabilidad,
+       tr.fecha_cancelacion AS fecha_cancelacion_trazabilidad,
+       tr.fecha_envio AS fecha_envio_trazabilidad,
+       tr.fecha_recepcion AS fecha_recepcion_trazabilidad,
+       tr.motivo_cancelacion,
+       uc.nombre_completo AS usuario_cancela
      FROM vw_transferencias vt
      INNER JOIN transferencias tr ON tr.id_transferencia = vt.id_transferencia
+     LEFT JOIN usuarios uc ON uc.id_usuario = tr.id_usuario_cancela
      WHERE vt.id_transferencia = $1`,
     [id]
   );
@@ -57,7 +92,7 @@ const obtenerTransferencia = asyncHandler(async (req, res) => {
   if (!result.rowCount) throw new ApiError(404, "Transferencia no encontrada");
 
   const detalles = await db.query(
-    `SELECT dt.*, p.nombre AS producto, p.codigo
+    `SELECT dt.*, p.nombre AS producto, p.codigo, p.codigo AS producto_codigo
      FROM detalle_transferencias dt
      INNER JOIN productos p ON p.id_producto = dt.id_producto
      WHERE dt.id_transferencia = $1`,
@@ -145,11 +180,29 @@ const crearTransferencia = asyncHandler(async (req, res) => {
 
     const transferencia = result.rows[0];
 
+    // RF57: la solicitud reserva el stock en origen hasta enviarse o cancelarse.
     for (const d of detalles) {
+      const cantidad = Number(d.cantidad);
+      const reserva = await client.query(
+        `UPDATE stock
+         SET cantidad_reservada = COALESCE(cantidad_reservada, 0) + $1::numeric,
+             fecha_actualizacion = CURRENT_TIMESTAMP
+         WHERE id_producto = $2 AND id_almacen = $3
+           AND cantidad - COALESCE(cantidad_reservada, 0) >= $1::numeric
+         RETURNING id_stock`,
+        [cantidad, d.id_producto, idAlmacenOrigen],
+      );
+      if (!reserva.rowCount) {
+        throw new ApiError(
+          400,
+          `Stock disponible insuficiente en el origen para el producto ${d.id_producto}`,
+        );
+      }
+
       await client.query(
-        `INSERT INTO detalle_transferencias (id_transferencia, id_producto, cantidad_solicitada)
-         VALUES ($1, $2, $3)`,
-        [transferencia.id_transferencia, d.id_producto, d.cantidad]
+        `INSERT INTO detalle_transferencias (id_transferencia, id_producto, cantidad_solicitada, cantidad_reservada)
+         VALUES ($1, $2, $3, $3)`,
+        [transferencia.id_transferencia, d.id_producto, cantidad]
       );
     }
 
@@ -206,6 +259,9 @@ const cambiarEstado = asyncHandler(async (req, res) => {
          WHERE id_transferencia = $3`,
         [estado, req.user.id_usuario, id],
       );
+      if (estado === "RECHAZADA") {
+        await liberarReservas(client, transferencia);
+      }
     } else if (estado === "ENVIADA") {
       if (transferencia.estado !== "APROBADA") {
         throw new ApiError(400, "Solo se pueden enviar transferencias en estado APROBADA");
@@ -220,7 +276,8 @@ const cambiarEstado = asyncHandler(async (req, res) => {
       }
 
       const detalles = await client.query(
-        `SELECT id_detalle_transferencia, id_producto, cantidad_solicitada
+        `SELECT id_detalle_transferencia, id_producto, cantidad_solicitada,
+                cantidad_reservada
          FROM detalle_transferencias WHERE id_transferencia = $1`,
         [id]
       );
@@ -231,18 +288,25 @@ const cambiarEstado = asyncHandler(async (req, res) => {
            FROM stock WHERE id_producto = $1 AND id_almacen = $2 FOR UPDATE`,
           [d.id_producto, transferencia.almacen_origen]
         );
+        // Lo reservado por esta misma transferencia cuenta como disponible para enviarla.
+        const reservadoLinea = Number(d.cantidad_reservada || 0);
         const disponible = stockRes.rowCount
           ? Number(stockRes.rows[0].cantidad) -
-            Number(stockRes.rows[0].cantidad_reservada || 0)
+            Number(stockRes.rows[0].cantidad_reservada || 0) +
+            reservadoLinea
           : 0;
         if (!stockRes.rowCount || disponible < Number(d.cantidad_solicitada)) {
           throw new ApiError(400, `Stock insuficiente en el origen para el producto ${d.id_producto}`);
         }
 
         const nuevoStock = Number(stockRes.rows[0].cantidad) - Number(d.cantidad_solicitada);
+        const nuevaReserva = Math.max(
+          Number(stockRes.rows[0].cantidad_reservada || 0) - reservadoLinea,
+          0,
+        );
         await client.query(
-          `UPDATE stock SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id_stock = $2`,
-          [nuevoStock, stockRes.rows[0].id_stock]
+          `UPDATE stock SET cantidad = $1, cantidad_reservada = $2, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id_stock = $3`,
+          [nuevoStock, nuevaReserva, stockRes.rows[0].id_stock]
         );
 
         // Registrar movimiento
@@ -262,7 +326,8 @@ const cambiarEstado = asyncHandler(async (req, res) => {
         );
         await client.query(
           `UPDATE detalle_transferencias
-           SET cantidad_enviada = cantidad_solicitada
+           SET cantidad_enviada = cantidad_solicitada,
+               cantidad_reservada = 0
            WHERE id_detalle_transferencia = $1`,
           [d.id_detalle_transferencia],
         );
@@ -369,4 +434,70 @@ const cambiarEstado = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { listarTransferencias, obtenerTransferencia, crearTransferencia, cambiarEstado };
+/**
+ * RF57: Cancelar una solicitud que aún no fue enviada
+ */
+const cancelarTransferencia = asyncHandler(async (req, res) => {
+  const idTransferencia = Number(req.params.id);
+  if (!Number.isSafeInteger(idTransferencia) || idTransferencia <= 0) {
+    throw new ApiError(400, "El ID de la transferencia no es válido");
+  }
+  if (!["ENCARGADO_ALMACEN", "ADMINISTRADOR"].includes(req.user.rol)) {
+    throw new ApiError(403, "Solo un encargado o administrador puede cancelar transferencias");
+  }
+
+  const motivo = typeof req.body?.motivo === "string" ? req.body.motivo.trim() : "";
+  if (!motivo) {
+    throw new ApiError(400, "Debe indicar el motivo de la cancelación");
+  }
+  if (motivo.length > 500) {
+    throw new ApiError(400, "El motivo no puede superar los 500 caracteres");
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const transfResult = await client.query(
+      `SELECT * FROM transferencias WHERE id_transferencia = $1 FOR UPDATE`,
+      [idTransferencia],
+    );
+    if (!transfResult.rowCount) throw new ApiError(404, "Transferencia no encontrada");
+    const transferencia = transfResult.rows[0];
+
+    if (!["SOLICITADA", "APROBADA"].includes(transferencia.estado)) {
+      throw new ApiError(
+        400,
+        `Solo se pueden cancelar transferencias SOLICITADAS o APROBADAS; esta está ${transferencia.estado}`,
+      );
+    }
+
+    await liberarReservas(client, transferencia);
+
+    await client.query(
+      `UPDATE transferencias
+       SET estado = 'CANCELADA',
+           motivo_cancelacion = $1,
+           id_usuario_cancela = $2,
+           fecha_cancelacion = CURRENT_TIMESTAMP
+       WHERE id_transferencia = $3`,
+      [motivo, req.user.id_usuario, idTransferencia],
+    );
+
+    await client.query("COMMIT");
+    res.json({ ok: true, message: "Transferencia cancelada y stock reservado liberado" });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+});
+
+module.exports = {
+  listarTransferencias,
+  obtenerTransferencia,
+  crearTransferencia,
+  cambiarEstado,
+  cancelarTransferencia,
+};

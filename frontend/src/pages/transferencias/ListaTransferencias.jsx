@@ -103,6 +103,7 @@ export default function ListaTransferencias() {
       case "RECHAZADA": return "bg-red-100 text-red-700";
       case "ENVIADA": return "bg-amber-100 text-amber-700";
       case "RECIBIDA": return "bg-purple-100 text-purple-700";
+      case "CANCELADA": return "bg-gray-200 text-gray-600";
       default: return "bg-gray-100 text-gray-700";
     }
   };
@@ -131,6 +132,8 @@ export default function ListaTransferencias() {
                 { value: "APROBADA", label: "Aprobada" },
                 { value: "ENVIADA", label: "Enviada (En Tránsito)" },
                 { value: "RECIBIDA", label: "Recibida" },
+                { value: "RECHAZADA", label: "Rechazada" },
+                { value: "CANCELADA", label: "Cancelada" },
               ]}
               placeholder="Todos los estados"
               className="w-64"
@@ -182,6 +185,11 @@ export default function ListaTransferencias() {
                           <button onClick={() => setEnvioPendiente({ id: t.id_transferencia, fecha: "" })} className="text-amber-600 hover:underline font-medium">Registrar Envío</button>
                         )}
 
+                        {/* RF57: Cancelar solicitud no enviada (motivo en el detalle) */}
+                        {["SOLICITADA", "APROBADA"].includes(t.estado) && puedeDecidir && (
+                          <button onClick={() => setTransferenciaDetalleId(t.id_transferencia)} className="text-gray-600 hover:underline font-medium">Cancelar</button>
+                        )}
+
                         {/* RF32: Registrar Recepción */}
                         {t.estado === "ENVIADA" && (
                           <button onClick={() => abrirRecepcion(t.id_transferencia)} className="text-purple-600 hover:underline font-medium">Registrar Recepción</button>
@@ -197,7 +205,7 @@ export default function ListaTransferencias() {
       </div>
 
       {formOpen && <FormTransferencia onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); cargar(); }} />}
-      {transferenciaDetalleId && <DetalleTransferencia transferenciaId={transferenciaDetalleId} onClose={() => setTransferenciaDetalleId(null)} />}
+      {transferenciaDetalleId && <DetalleTransferencia transferenciaId={transferenciaDetalleId} onClose={() => setTransferenciaDetalleId(null)} onCancelada={cargar} />}
 
       {/* Modal RF31 */}
       {envioPendiente && (
