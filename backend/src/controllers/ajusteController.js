@@ -20,8 +20,10 @@ const CONSULTA_AJUSTE = `
     a.id_almacen,
     a.id_producto,
     a.id_lote,
+    a.id_usuario,
     a.cantidad_anterior,
     a.cantidad_nueva,
+    (a.cantidad_nueva - a.cantidad_anterior) AS diferencia,
     a.motivo,
     a.comentario,
     a.estado,
@@ -44,6 +46,12 @@ function leerEnteroPositivo(valor, mensaje) {
     throw new ApiError(400, mensaje);
   }
   return numero;
+}
+
+function esFechaValida(fecha) {
+  if (typeof fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return false;
+  const fechaParseada = new Date(`${fecha}T00:00:00.000Z`);
+  return !Number.isNaN(fechaParseada.getTime()) && fechaParseada.toISOString().slice(0, 10) === fecha;
 }
 
 function leerJustificacion(body) {
@@ -79,6 +87,41 @@ const listarAjustes = asyncHandler(async (req, res) => {
     const idAlmacen = leerEnteroPositivo(req.query.id_almacen, "El almacén no es válido");
     valores.push(idAlmacen);
     condiciones.push(`a.id_almacen = $${valores.length}`);
+  }
+  if (req.query.id_producto) {
+    const idProducto = leerEnteroPositivo(req.query.id_producto, "El producto no es válido");
+    valores.push(idProducto);
+    condiciones.push(`a.id_producto = $${valores.length}`);
+  }
+  if (req.query.id_usuario) {
+    const idUsuario = leerEnteroPositivo(req.query.id_usuario, "El responsable no es válido");
+    valores.push(idUsuario);
+    condiciones.push(
+      `(a.id_usuario = $${valores.length} OR a.id_usuario_aprueba = $${valores.length})`,
+    );
+  }
+  for (const [parametro, operador] of [
+    ["fecha_desde", ">="],
+    ["fecha_hasta", "<"],
+  ]) {
+    const fecha = req.query[parametro];
+    if (!fecha) continue;
+    if (!esFechaValida(fecha)) throw new ApiError(400, "La fecha del filtro no es válida");
+    valores.push(fecha);
+    const expresion =
+      operador === "<"
+        ? `$${valores.length}::date + INTERVAL '1 day'`
+        : `$${valores.length}::date`;
+    condiciones.push(`a.fecha_ajuste ${operador} ${expresion}`);
+  }
+  if (
+    req.query.fecha_desde &&
+    req.query.fecha_hasta &&
+    esFechaValida(req.query.fecha_desde) &&
+    esFechaValida(req.query.fecha_hasta) &&
+    req.query.fecha_desde > req.query.fecha_hasta
+  ) {
+    throw new ApiError(400, "La fecha inicial no puede ser posterior a la final");
   }
   if (req.query.search) {
     valores.push(`%${String(req.query.search).trim()}%`);

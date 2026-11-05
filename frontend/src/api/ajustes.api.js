@@ -13,10 +13,33 @@ export const MOTIVOS_AJUSTE = [
 export const etiquetaMotivo = (motivo) =>
   MOTIVOS_AJUSTE.find((item) => item.value === motivo)?.label || motivo || "-";
 
+function fechaDeAjuste(ajuste) {
+  return String(ajuste.fecha_ajuste || "").slice(0, 10);
+}
+
 export const listarAjustes = (params = {}) => {
   if (esVistaPrevia) {
-    let data = ajustesPreview.data;
+    let data = [...ajustesPreview.data];
     if (params.motivo) data = data.filter((ajuste) => ajuste.motivo === params.motivo);
+    if (params.id_almacen) {
+      data = data.filter((ajuste) => String(ajuste.id_almacen) === String(params.id_almacen));
+    }
+    if (params.id_producto) {
+      data = data.filter((ajuste) => String(ajuste.id_producto) === String(params.id_producto));
+    }
+    if (params.id_usuario) {
+      data = data.filter(
+        (ajuste) =>
+          String(ajuste.id_usuario) === String(params.id_usuario) ||
+          String(ajuste.id_usuario_aprueba) === String(params.id_usuario),
+      );
+    }
+    if (params.fecha_desde) {
+      data = data.filter((ajuste) => fechaDeAjuste(ajuste) >= params.fecha_desde);
+    }
+    if (params.fecha_hasta) {
+      data = data.filter((ajuste) => fechaDeAjuste(ajuste) <= params.fecha_hasta);
+    }
     if (params.search) {
       const texto = String(params.search).toLowerCase();
       data = data.filter((ajuste) =>
@@ -26,10 +49,16 @@ export const listarAjustes = (params = {}) => {
           .includes(texto),
       );
     }
+    data.sort(
+      (a, b) =>
+        new Date(b.fecha_ajuste) - new Date(a.fecha_ajuste) || b.id_ajuste - a.id_ajuste,
+    );
+    const page = Math.max(Number(params.page || 1), 1);
+    const limit = Math.min(Math.max(Number(params.limit || 20), 1), 100);
     return Promise.resolve({
       ok: true,
-      data,
-      pagination: { page: 1, limit: 20, total: data.length },
+      data: data.slice((page - 1) * limit, page * limit),
+      pagination: { page, limit, total: data.length },
     });
   }
   return api.get("/ajustes-inventario", { params }).then((r) => r.data);

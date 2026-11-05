@@ -122,17 +122,50 @@ export const productosPreview = {
   pagination: { page: 1, limit: 10, total: 3 },
 };
 
+export const usuariosPreview = {
+  ok: true,
+  data: [
+    { id_usuario: 2, nombre_usuario: "ana", nombre_completo: "Ana Quispe", activo: true },
+    { id_usuario: 3, nombre_usuario: "carlos", nombre_completo: "Carlos Mendoza", activo: true },
+  ],
+  pagination: { page: 1, limit: 20, total: 2 },
+};
+
 export const ajustesPreview = {
   ok: true,
   data: [
+    {
+      id_ajuste: 3,
+      numero_ajuste: "AJU-1003",
+      fecha_ajuste: "2026-11-03T18:00:00.000Z",
+      id_almacen: 2,
+      id_producto: 3,
+      id_usuario: 2,
+      id_usuario_aprueba: 2,
+      cantidad_anterior: 8,
+      cantidad_nueva: 5,
+      diferencia: -3,
+      motivo: "DANO",
+      comentario: "Tres unidades dañadas en el transporte a la sucursal norte.",
+      estado: "APLICADO",
+      almacen_codigo: "SUC-02",
+      almacen: "Sucursal Norte",
+      producto_codigo: "ACE-003",
+      producto: "Aceite vegetal",
+      usuario: "Ana Quispe",
+      usuario_aprueba: "Ana Quispe",
+    },
     {
       id_ajuste: 1,
       numero_ajuste: "AJU-1001",
       fecha_ajuste: "2026-11-01T15:30:00.000Z",
       id_almacen: 1,
       id_producto: 1,
+      id_usuario: 2,
+      id_usuario_aprueba: 2,
       cantidad_anterior: 10,
       cantidad_nueva: 12,
+      diferencia: 2,
       motivo: "CONTEO_FISICO",
       comentario: "Se contó una caja adicional en el pasillo 1 durante la supervisión.",
       estado: "APLICADO",
@@ -143,8 +176,29 @@ export const ajustesPreview = {
       usuario: "Ana Quispe",
       usuario_aprueba: "Ana Quispe",
     },
+    {
+      id_ajuste: 2,
+      numero_ajuste: "AJU-1002",
+      fecha_ajuste: "2026-10-20T13:00:00.000Z",
+      id_almacen: 1,
+      id_producto: 2,
+      id_usuario: 3,
+      id_usuario_aprueba: 3,
+      cantidad_anterior: 40,
+      cantidad_nueva: 36,
+      diferencia: -4,
+      motivo: "MERMA",
+      comentario: "Cuatro unidades vencidas se retiraron del refrigerador.",
+      estado: "APLICADO",
+      almacen_codigo: "SUC-01",
+      almacen: "Sucursal Centro",
+      producto_codigo: "LEC-010",
+      producto: "Leche entera",
+      usuario: "Carlos Mendoza",
+      usuario_aprueba: "Carlos Mendoza",
+    },
   ],
-  pagination: { page: 1, limit: 20, total: 1 },
+  pagination: { page: 1, limit: 20, total: 3 },
 };
 
 export const almacenesPreview = {
@@ -159,8 +213,17 @@ export const almacenesPreview = {
       superficie_m2: 7280,
       activo: true,
     },
+    {
+      id_almacen: 2,
+      codigo: "SUC-02",
+      nombre: "Sucursal Norte",
+      tipo: "SUCURSAL",
+      ciudad: "Santa Cruz",
+      superficie_m2: 4100,
+      activo: true,
+    },
   ],
-  pagination: { page: 1, limit: 10, total: 1 },
+  pagination: { page: 1, limit: 10, total: 2 },
 };
 
 export const stockAlmacenPreview = {
