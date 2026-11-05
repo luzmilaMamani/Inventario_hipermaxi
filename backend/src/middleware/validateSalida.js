@@ -126,6 +126,28 @@ function validarCrearSalida(req, _res, next) {
         new ApiError(400, `Detalle ${i + 1}: la cantidad debe ser un número entero mayor a 0`),
       );
     }
+
+    // RF49: lote elegido manualmente en lugar del sugerido por FEFO.
+    if (d.id_lote !== undefined && d.id_lote !== null && d.id_lote !== "") {
+      if (motivo === "VENCIMIENTO") {
+        return next(
+          new ApiError(400, `Detalle ${i + 1}: en salidas por vencimiento el lote vencido lo selecciona el sistema`),
+        );
+      }
+      const idLote = Number(d.id_lote);
+      if (typeof d.id_lote === "boolean" || !Number.isSafeInteger(idLote) || idLote <= 0) {
+        return next(new ApiError(400, `Detalle ${i + 1}: el lote no es válido`));
+      }
+    }
+    if (
+      d.justificacion_lote !== undefined &&
+      d.justificacion_lote !== null &&
+      (typeof d.justificacion_lote !== "string" || d.justificacion_lote.length > 500)
+    ) {
+      return next(
+        new ApiError(400, `Detalle ${i + 1}: la justificación del lote debe ser un texto de hasta 500 caracteres`),
+      );
+    }
   }
 
   return next();

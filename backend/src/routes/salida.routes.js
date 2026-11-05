@@ -5,6 +5,7 @@ const { validarCrearSalida } = require("../middleware/validateSalida");
 const router = express.Router();
 
 router.get("/", salidaController.listarSalidas);
+router.get("/sugerencia-lotes", salidaController.sugerirLotes);
 router.get("/:id", salidaController.obtenerSalida);
 router.post("/", validarCrearSalida, salidaController.crearSalida);
 

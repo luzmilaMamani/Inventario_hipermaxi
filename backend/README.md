@@ -143,7 +143,8 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 - `GET /api/entradas-inventario` y `GET /api/entradas-inventario/:id` (consulta paginada y detalle de recepciones)
 - `POST /api/entradas-inventario` (registra cantidades esperadas y recibidas, diferencias, stock y movimientos en una transacción)
 - `GET /api/salidas` y `GET /api/salidas/:id` (consulta de salidas)
-- `POST /api/salidas` (registra la salida, descuenta existencias y crea un movimiento trazable por producto; selecciona el lote disponible con vencimiento más próximo)
+- `GET /api/salidas/sugerencia-lotes?id_producto=&id_almacen=&cantidad=` (RF49: lotes vigentes en orden FEFO y reparto sugerido de la cantidad; excluye lotes vencidos, que vencen hoy, bloqueados o agotados)
+- `POST /api/salidas` (registra la salida y descuenta existencias aplicando FEFO: si un lote no alcanza, completa con el siguiente y crea una línea de detalle y un movimiento por lote. Cada detalle admite `id_lote` para usar otro lote vigente; si no es el sugerido, `justificacion_lote` es obligatoria y queda registrada junto al lote sugerido)
 - `PUT /api/transferencias/:id/estado` (aprobar o rechazar solicitudes solo para `ENCARGADO_ALMACEN` y `ADMINISTRADOR`; marcar como enviada requiere `fecha_llegada_estimada` en formato `YYYY-MM-DD`)
 - `GET /api/transferencias` y `GET /api/transferencias/:id` incluyen fechas y datos del recorrido
 - `/api/ajustes-inventario` y `/api/movimientos-inventario` son de solo lectura. Sus escrituras directas quedan bloqueadas para evitar ajustes de stock o movimientos de historial sin actualizar existencias en una transacción.
