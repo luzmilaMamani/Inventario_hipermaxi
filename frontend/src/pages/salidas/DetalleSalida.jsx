@@ -118,8 +118,24 @@ export default function DetalleSalida({ salidaId, onClose }) {
                             {d.producto_codigo}
                           </div>
                         </td>
-                        <td className="py-2 px-3 font-mono text-xs">
-                          {d.numero_lote || "-"}
+                        <td className="py-2 px-3 text-xs">
+                          <div className="font-mono">{d.numero_lote || "-"}</div>
+                          {d.fecha_vencimiento && (
+                            <div className="text-gray-500">
+                              Vence{" "}
+                              {String(d.fecha_vencimiento)
+                                .slice(0, 10)
+                                .split("-")
+                                .reverse()
+                                .join("/")}
+                            </div>
+                          )}
+                          {d.justificacion_lote && (
+                            <div className="text-amber-700">
+                              Sugerido: {d.numero_lote_sugerido}. Motivo del
+                              cambio: {d.justificacion_lote}
+                            </div>
+                          )}
                         </td>
                         <td className="py-2 px-3 text-right">
                           {Number(d.cantidad).toLocaleString("es-BO")}{" "}

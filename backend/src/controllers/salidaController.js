@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
+const { obtenerLotesVigentes, planificarFefo, asignarLotes } = require("../services/lotesFefo");
 
 async function generarNumeroSalida(client, motivo) {
   let prefijo = "SAL";
@@ -86,10 +87,10 @@ const crearSalida = asyncHandler(async (req, res) => {
       const cantidad = Number(d.cantidad);
       const id_producto = Number(d.id_producto);
 
-      let loteResult;
+      let asignaciones;
 
       if (motivo === "VENCIMIENTO") {
-        loteResult = await client.query(
+        const loteResult = await client.query(
           `SELECT lp.id_lote, lp.cantidad_actual, lp.fecha_vencimiento
            FROM lotes_productos lp
            INNER JOIN productos p ON p.id_producto = lp.id_producto
@@ -110,29 +111,25 @@ const crearSalida = asyncHandler(async (req, res) => {
             `El producto ${id_producto} no tiene lotes vencidos disponibles para dar de baja. Verifique que controle vencimiento y que el lote haya expirado.`,
           );
         }
+
+        asignaciones = [
+          {
+            lote: loteResult.rows[0],
+            cantidad,
+            id_lote_sugerido: null,
+            justificacion_lote: null,
+          },
+        ];
       } else {
-        loteResult = await client.query(
-          `SELECT id_lote, cantidad_actual
-           FROM lotes_productos
-           WHERE id_producto = $1
-             AND id_almacen = $2
-             AND cantidad_actual >= $3
-             AND estado IN ('DISPONIBLE', 'PROXIMO_A_VENCER')
-           ORDER BY fecha_vencimiento ASC NULLS LAST, id_lote ASC
-           LIMIT 1
-           FOR UPDATE`,
-          [id_producto, id_almacen, cantidad],
-        );
-
-        if (!loteResult.rowCount) {
-          throw new ApiError(
-            400,
-            `No hay lote disponible para el producto ${id_producto} en este almacén (o cantidad insuficiente)`,
-          );
-        }
+        // RF49: lote(s) vigentes por vencimiento más próximo (FEFO).
+        asignaciones = await asignarLotes(client, {
+          id_producto,
+          id_almacen,
+          cantidad,
+          id_lote: d.id_lote,
+          justificacion_lote: d.justificacion_lote,
+        });
       }
-
-      const lote = loteResult.rows[0];
 
       const stockResult = await client.query(
         `SELECT id_stock, cantidad, cantidad_reservada
@@ -166,67 +163,83 @@ const crearSalida = asyncHandler(async (req, res) => {
         [id_producto],
       );
       const precio = Number(precioResult.rows[0]?.precio || 0);
-      const valor_total = precio * cantidad;
-
-      const detalleResult = await client.query(
-        `INSERT INTO detalle_salidas
-          (id_salida, id_producto, id_lote, cantidad, precio_unitario, valor_total, observaciones)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING *`,
-        [
-          salida.id_salida,
-          id_producto,
-          lote.id_lote,
-          cantidad,
-          precio,
-          valor_total,
-          d.observaciones || null,
-        ],
-      );
-      detallesInsertados.push(detalleResult.rows[0]);
-
-      const stockNuevo = Number(stockActual.cantidad) - cantidad;
-      await client.query(
-        `UPDATE stock
-         SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP
-         WHERE id_stock = $2`,
-        [stockNuevo, stockActual.id_stock],
-      );
-
-      const loteNuevo = Number(lote.cantidad_actual) - cantidad;
-      await client.query(
-        `UPDATE lotes_productos
-         SET cantidad_actual = $1,
-             estado = CASE
-               WHEN $1::numeric = 0::numeric THEN 'AGOTADO'
-               ELSE estado
-             END
-         WHERE id_lote = $2`,
-        [loteNuevo, lote.id_lote],
-      );
 
       let tipoMovimiento = "SALIDA";
       if (motivo === "PERDIDA") tipoMovimiento = "SALIDA_PERDIDA";
       else if (motivo === "DANO") tipoMovimiento = "SALIDA_DANO";
       else if (motivo === "VENCIMIENTO") tipoMovimiento = "SALIDA_VENCIMIENTO";
 
+      // Una línea de detalle y un movimiento por cada lote usado.
+      let stockCorriente = Number(stockActual.cantidad);
+      for (const asignacion of asignaciones) {
+        const { lote } = asignacion;
+        const cantidadLote = asignacion.cantidad;
+
+        const detalleResult = await client.query(
+          `INSERT INTO detalle_salidas
+            (id_salida, id_producto, id_lote, cantidad, precio_unitario, valor_total,
+             observaciones, id_lote_sugerido, justificacion_lote)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+           RETURNING *`,
+          [
+            salida.id_salida,
+            id_producto,
+            lote.id_lote,
+            cantidadLote,
+            precio,
+            precio * cantidadLote,
+            d.observaciones || null,
+            asignacion.id_lote_sugerido,
+            asignacion.justificacion_lote,
+          ],
+        );
+        detallesInsertados.push({
+          ...detalleResult.rows[0],
+          numero_lote: lote.numero_lote,
+          fecha_vencimiento: lote.fecha_vencimiento,
+        });
+
+        const loteNuevo = Number(lote.cantidad_actual) - cantidadLote;
+        await client.query(
+          `UPDATE lotes_productos
+           SET cantidad_actual = $1,
+               estado = CASE
+                 WHEN $1::numeric = 0::numeric THEN 'AGOTADO'
+                 ELSE estado
+               END
+           WHERE id_lote = $2`,
+          [loteNuevo, lote.id_lote],
+        );
+
+        const stockNuevo = stockCorriente - cantidadLote;
+        await client.query(
+          `INSERT INTO movimientos_inventario
+            (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento,
+             cantidad, stock_anterior, stock_nuevo, referencia, observaciones)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [
+            id_producto,
+            id_almacen,
+            lote.id_lote,
+            id_usuario,
+            tipoMovimiento,
+            cantidadLote,
+            stockCorriente,
+            stockNuevo,
+            numero_salida,
+            asignacion.justificacion_lote
+              ? `${observaciones ? `${observaciones} | ` : ""}Cambio de lote FEFO: ${asignacion.justificacion_lote}`
+              : observaciones,
+          ],
+        );
+        stockCorriente = stockNuevo;
+      }
+
       await client.query(
-        `INSERT INTO movimientos_inventario
-          (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento,
-           cantidad, stock_anterior, stock_nuevo, referencia, observaciones)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [
-          id_producto,
-          id_almacen,
-          lote.id_lote,
-          id_usuario,
-          tipoMovimiento,
-          cantidad,
-          Number(stockActual.cantidad),
-          stockNuevo,
-          numero_salida,
-          observaciones,
-        ],
+        `UPDATE stock
+         SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP
+         WHERE id_stock = $2`,
+        [stockCorriente, stockActual.id_stock],
       );
     }
 
@@ -254,6 +267,41 @@ const crearSalida = asyncHandler(async (req, res) => {
   } finally {
     client.release();
   }
+});
+
+// RF49: lotes vigentes en orden FEFO y reparto sugerido para una cantidad.
+const sugerirLotes = asyncHandler(async (req, res) => {
+  const id_producto = Number(req.query.id_producto);
+  const id_almacen = Number(req.query.id_almacen);
+  const cantidad = req.query.cantidad === undefined ? 0 : Number(req.query.cantidad);
+
+  if (!Number.isSafeInteger(id_producto) || id_producto <= 0) {
+    throw new ApiError(400, "Debe indicar un producto válido");
+  }
+  if (!Number.isSafeInteger(id_almacen) || id_almacen <= 0) {
+    throw new ApiError(400, "Debe indicar un almacén válido");
+  }
+  if (!Number.isSafeInteger(cantidad) || cantidad < 0) {
+    throw new ApiError(400, "La cantidad debe ser un número entero mayor o igual a 0");
+  }
+
+  const lotes = await obtenerLotesVigentes(db, { id_producto, id_almacen });
+  const { asignaciones, faltante } = planificarFefo(lotes, cantidad);
+
+  res.json({
+    ok: true,
+    data: {
+      lotes,
+      sugerencia: asignaciones.map((a) => ({
+        id_lote: a.lote.id_lote,
+        numero_lote: a.lote.numero_lote,
+        fecha_vencimiento: a.lote.fecha_vencimiento,
+        cantidad: a.cantidad,
+      })),
+      total_disponible: lotes.reduce((acc, l) => acc + Number(l.cantidad_actual), 0),
+      faltante,
+    },
+  });
 });
 
 const listarSalidas = asyncHandler(async (req, res) => {
@@ -354,14 +402,18 @@ const obtenerSalida = asyncHandler(async (req, res) => {
        c.nombre AS categoria,
        m.nombre AS marca,
        um.abreviatura AS unidad,
-       lp.numero_lote
+       lp.numero_lote,
+       TO_CHAR(lp.fecha_vencimiento, 'YYYY-MM-DD') AS fecha_vencimiento,
+       lps.numero_lote AS numero_lote_sugerido
      FROM detalle_salidas ds
      INNER JOIN productos p ON p.id_producto = ds.id_producto
      INNER JOIN categorias c ON c.id_categoria = p.id_categoria
      LEFT JOIN marcas m ON m.id_marca = p.id_marca
      INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
      LEFT JOIN lotes_productos lp ON lp.id_lote = ds.id_lote
-     WHERE ds.id_salida = $1`,
+     LEFT JOIN lotes_productos lps ON lps.id_lote = ds.id_lote_sugerido
+     WHERE ds.id_salida = $1
+     ORDER BY ds.id_detalle_salida`,
     [id],
   );
 
@@ -507,6 +559,7 @@ const reporteVencimientos = asyncHandler(async (req, res) => {
 
 module.exports = {
   crearSalida,
+  sugerirLotes,
   listarSalidas,
   obtenerSalida,
   reportePerdidas,
