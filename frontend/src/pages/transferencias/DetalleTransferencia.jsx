@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import Modal from "../../components/ui/Modal";
-import { obtenerTransferencia } from "../../api/transferencias.api";
+import { useAuth } from "../../context/AuthContext";
+import {
+  cancelarTransferencia,
+  obtenerTransferencia,
+} from "../../api/transferencias.api";
+
+const ESTADOS_CANCELABLES = ["SOLICITADA", "APROBADA"];
 
 function mostrarFecha(fecha, soloFecha = false) {
   if (!fecha) return "Pendiente";
@@ -8,10 +14,47 @@ function mostrarFecha(fecha, soloFecha = false) {
   return valor.toLocaleString("es-BO", soloFecha ? { dateStyle: "long" } : {});
 }
 
-export default function DetalleTransferencia({ transferenciaId, onClose }) {
+export default function DetalleTransferencia({
+  transferenciaId,
+  onClose,
+  onCancelada,
+}) {
+  const { user } = useAuth();
   const [transferencia, setTransferencia] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [recarga, setRecarga] = useState(0);
+  const [cancelando, setCancelando] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [errorCancelacion, setErrorCancelacion] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  const puedeCancelar =
+    ["ENCARGADO_ALMACEN", "ADMINISTRADOR"].includes(user?.rol) &&
+    ESTADOS_CANCELABLES.includes(transferencia?.estado);
+
+  const confirmarCancelacion = async (e) => {
+    e.preventDefault();
+    if (!motivo.trim()) {
+      setErrorCancelacion("Debe indicar el motivo de la cancelación");
+      return;
+    }
+    setGuardando(true);
+    setErrorCancelacion("");
+    try {
+      await cancelarTransferencia(transferenciaId, motivo.trim());
+      setCancelando(false);
+      setMotivo("");
+      setRecarga((valor) => valor + 1);
+      onCancelada?.();
+    } catch (err) {
+      setErrorCancelacion(
+        err.response?.data?.message || "Error al cancelar la transferencia",
+      );
+    } finally {
+      setGuardando(false);
+    }
+  };
 
   useEffect(() => {
     let activo = true;
@@ -37,48 +80,59 @@ export default function DetalleTransferencia({ transferenciaId, onClose }) {
     return () => {
       activo = false;
     };
-  }, [transferenciaId]);
+  }, [transferenciaId, recarga]);
 
   const estado = transferencia?.estado;
-  const etapas = [
+  const finalizadaSinEnvio = estado === "RECHAZADA" || estado === "CANCELADA";
+  const etapasVisibles = [
     {
       nombre: "Solicitud creada",
       fecha: transferencia?.fecha_solicitud,
       completada: Boolean(transferencia?.fecha_solicitud),
     },
-    {
-      nombre:
-        estado === "RECHAZADA"
-          ? "Solicitud rechazada"
-          : estado === "CANCELADA"
-            ? "Transferencia cancelada"
-            : "Solicitud aprobada",
-      fecha:
-        estado === "RECHAZADA"
-          ? transferencia?.fecha_rechazo_trazabilidad
-          : estado === "CANCELADA"
-            ? transferencia?.fecha_cancelacion_trazabilidad
-            : transferencia?.fecha_aprobacion_trazabilidad,
-      completada:
-        estado === "RECHAZADA" ||
-        estado === "CANCELADA" ||
-        Boolean(transferencia?.fecha_aprobacion_trazabilidad),
-    },
-    {
-      nombre: "Mercadería enviada",
-      fecha: transferencia?.fecha_envio_trazabilidad,
-      completada: Boolean(transferencia?.fecha_envio_trazabilidad),
-    },
-    {
-      nombre: "Recibida en destino",
-      fecha: transferencia?.fecha_recepcion_trazabilidad,
-      completada: Boolean(transferencia?.fecha_recepcion_trazabilidad),
-    },
   ];
-  const etapasVisibles =
-    estado === "RECHAZADA" || estado === "CANCELADA"
-      ? etapas.slice(0, 2)
-      : etapas;
+  // Una cancelación posterior a la aprobación conserva la etapa de aprobación.
+  if (transferencia?.fecha_aprobacion_trazabilidad || !finalizadaSinEnvio) {
+    etapasVisibles.push({
+      nombre: "Solicitud aprobada",
+      fecha: transferencia?.fecha_aprobacion_trazabilidad,
+      completada: Boolean(transferencia?.fecha_aprobacion_trazabilidad),
+    });
+  }
+  if (estado === "RECHAZADA") {
+    etapasVisibles.push({
+      nombre: "Solicitud rechazada",
+      fecha: transferencia?.fecha_rechazo_trazabilidad,
+      completada: true,
+      tono: "rojo",
+    });
+  } else if (estado === "CANCELADA") {
+    etapasVisibles.push({
+      nombre: "Transferencia cancelada",
+      fecha: transferencia?.fecha_cancelacion_trazabilidad,
+      completada: true,
+      tono: "rojo",
+      detalle: [
+        transferencia?.usuario_cancela &&
+          `Por ${transferencia.usuario_cancela}`,
+        transferencia?.motivo_cancelacion &&
+          `Motivo: ${transferencia.motivo_cancelacion}`,
+      ].filter(Boolean),
+    });
+  } else {
+    etapasVisibles.push(
+      {
+        nombre: "Mercadería enviada",
+        fecha: transferencia?.fecha_envio_trazabilidad,
+        completada: Boolean(transferencia?.fecha_envio_trazabilidad),
+      },
+      {
+        nombre: "Recibida en destino",
+        fecha: transferencia?.fecha_recepcion_trazabilidad,
+        completada: Boolean(transferencia?.fecha_recepcion_trazabilidad),
+      },
+    );
+  }
 
   return (
     <Modal
@@ -124,13 +178,22 @@ export default function DetalleTransferencia({ transferenciaId, onClose }) {
                 <li key={etapa.nombre} className="relative">
                   <span
                     className={`absolute -left-[21px] top-1 h-3 w-3 rounded-full ${
-                      etapa.completada ? "bg-green-500" : "bg-gray-300"
+                      etapa.tono === "rojo"
+                        ? "bg-red-500"
+                        : etapa.completada
+                          ? "bg-green-500"
+                          : "bg-gray-300"
                     }`}
                   />
                   <p className="font-medium">{etapa.nombre}</p>
                   <p className="text-xs text-gray-500">
                     {mostrarFecha(etapa.fecha)}
                   </p>
+                  {etapa.detalle?.map((linea) => (
+                    <p key={linea} className="text-xs text-gray-700">
+                      {linea}
+                    </p>
+                  ))}
                 </li>
               ))}
             </ol>
@@ -196,7 +259,67 @@ export default function DetalleTransferencia({ transferenciaId, onClose }) {
             </div>
           </section>
 
-          <div className="flex justify-end">
+          {cancelando && (
+            <form
+              onSubmit={confirmarCancelacion}
+              className="space-y-2 rounded border border-red-200 bg-red-50 p-3"
+            >
+              <label
+                htmlFor="motivo-cancelacion"
+                className="block font-medium text-red-800"
+              >
+                Motivo de la cancelación *
+              </label>
+              <textarea
+                id="motivo-cancelacion"
+                className="input-field"
+                rows={3}
+                maxLength={500}
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej.: pedido duplicado, cantidad equivocada"
+                autoFocus
+              />
+              <p className="text-xs text-gray-600">
+                El stock reservado en el almacén de origen quedará disponible
+                nuevamente.
+              </p>
+              {errorCancelacion && (
+                <p className="text-sm text-red-600">{errorCancelacion}</p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setCancelando(false);
+                    setMotivo("");
+                    setErrorCancelacion("");
+                  }}
+                  disabled={guardando}
+                >
+                  Volver
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                  disabled={guardando || !motivo.trim()}
+                >
+                  {guardando ? "Cancelando..." : "Confirmar cancelación"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="flex justify-end gap-2">
+            {puedeCancelar && !cancelando && (
+              <button
+                className="rounded-lg border border-red-300 px-4 py-2 font-medium text-red-600 hover:bg-red-50"
+                onClick={() => setCancelando(true)}
+              >
+                Cancelar transferencia
+              </button>
+            )}
             <button className="btn-secondary" onClick={onClose}>
               Cerrar
             </button>

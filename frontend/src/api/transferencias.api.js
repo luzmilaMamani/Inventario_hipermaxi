@@ -11,3 +11,6 @@ export const crearTransferencia = (data) =>
 
 export const cambiarEstadoTransferencia = (id, estado, payloadExtra = {}) =>
   api.put(`/transferencias/${id}/estado`, { estado, ...payloadExtra }).then((r) => r.data);
+
+export const cancelarTransferencia = (id, motivo) =>
+  api.post(`/transferencias/${id}/cancelar`, { motivo }).then((r) => r.data);
