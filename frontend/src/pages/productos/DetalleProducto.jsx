@@ -130,6 +130,16 @@ export default function DetalleProducto({ productoId, onClose }) {
               {producto.controla_vencimiento ? "Sí" : "No"}
             </span>
           </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-gray-500">Perecible:</span>
+            <span className="font-semibold">{producto.perecible ? "Sí" : "No"}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-gray-500">Requiere refrigeración:</span>
+            <span className="font-semibold">
+              {producto.requiere_refrigeracion ? "Sí" : "No"}
+            </span>
+          </div>
 
           <div className="flex justify-end pt-3">
             <button className="btn-secondary" onClick={onClose}>

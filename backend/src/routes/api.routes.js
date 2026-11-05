@@ -18,10 +18,11 @@ const ventaRouter = require("./ventas.routes");
 const transferenciaRouter = require("./transferencia.routes");
 const inventarioRouter = require("./inventarios.routes");
 const diferenciasRouter = require("./diferencias.routes");
+const ajustesRouter = require("./ajustes.routes");
+const alertasStockRouter = require("./alertasStock.routes");
 
 const router = express.Router();
 const recursosSoloLectura = new Set([
-  "ajustes_inventario",
   "movimientos_inventario",
 ]);
 
@@ -40,6 +41,8 @@ router.use("/ventas", ventaRouter);
 router.use("/transferencias", transferenciaRouter);
 router.use("/inventarios", inventarioRouter);
 router.use("/diferencias", diferenciasRouter);
+router.use("/ajustes-inventario", ajustesRouter);
+router.use("/alertas-stock", alertasStockRouter);
 
 router.use(
   "/entradas-inventario",
@@ -74,7 +77,8 @@ for (const [path, resource] of Object.entries(resources)) {
     path === "transferencias" ||
     path === "detalle_transferencias" ||
     path === "inventarios_fisicos" ||
-    path === "detalle_inventario_fisico"
+    path === "detalle_inventario_fisico" ||
+    path === "ajustes_inventario"
   ) {
     continue;
   }

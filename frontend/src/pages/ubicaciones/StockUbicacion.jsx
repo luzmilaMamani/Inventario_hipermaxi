@@ -61,6 +61,13 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
       setError("La cantidad debe ser mayor a 0");
       return;
     }
+    const producto = productos.find(
+      (item) => String(item.id_producto) === String(form.id_producto),
+    );
+    if (producto?.requiere_refrigeracion && ubicacion.tipo_ubicacion !== "FRIO") {
+      setError("Un producto refrigerado no puede asignarse a una ubicación normal");
+      return;
+    }
 
     setGuardando(true);
     try {
@@ -103,7 +110,7 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
 
   const opcionesProductos = productos.map((p) => ({
     value: p.id_producto,
-    label: `${p.codigo} - ${p.nombre}`,
+    label: `${p.codigo} - ${p.nombre}${p.requiere_refrigeracion ? " · refrigerado" : ""}`,
   }));
 
   return (
@@ -124,6 +131,10 @@ export default function StockUbicacion({ ubicacion, onClose, onChanged }) {
                 {[ubicacion.zona, ubicacion.pasillo, ubicacion.estante, ubicacion.nivel]
                   .filter(Boolean)
                   .join(" / ")}
+              </p>
+              <p>
+                <strong>Tipo:</strong>{" "}
+                {ubicacion.tipo_ubicacion === "FRIO" ? "Frío" : "Normal"}
               </p>
             </div>
             <RoleGate roles={ROLES_GESTION}>

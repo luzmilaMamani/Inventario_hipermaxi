@@ -12,11 +12,26 @@ async function validarProducto(id_producto) {
 
 async function validarUbicacion(id_ubicacion) {
   const r = await db.query(
-    "SELECT id_ubicacion FROM ubicaciones WHERE id_ubicacion = $1 AND activo = TRUE",
+    "SELECT id_ubicacion, tipo_ubicacion FROM ubicaciones WHERE id_ubicacion = $1 AND activo = TRUE",
     [id_ubicacion],
   );
   if (!r.rowCount) {
     throw new ApiError(400, "La ubicación no existe o está inactiva");
+  }
+  return r.rows[0];
+}
+
+async function validarAlmacenamiento(id_producto, ubicacion) {
+  const producto = await db.query(
+    "SELECT requiere_refrigeracion FROM productos WHERE id_producto = $1",
+    [id_producto],
+  );
+  if (!producto.rowCount) throw new ApiError(400, "El producto no existe");
+  if (producto.rows[0].requiere_refrigeracion === true && ubicacion.tipo_ubicacion !== "FRIO") {
+    throw new ApiError(
+      400,
+      "Un producto que requiere refrigeración solo puede asignarse a una ubicación de tipo frío",
+    );
   }
 }
 
@@ -24,7 +39,8 @@ const asignarProducto = asyncHandler(async (req, res) => {
   const { id_producto, id_ubicacion, cantidad } = req.body;
 
   await validarProducto(id_producto);
-  await validarUbicacion(id_ubicacion);
+  const ubicacion = await validarUbicacion(id_ubicacion);
+  await validarAlmacenamiento(id_producto, ubicacion);
 
   const result = await db.query(
     `INSERT INTO stock_ubicaciones (id_producto, id_ubicacion, cantidad)

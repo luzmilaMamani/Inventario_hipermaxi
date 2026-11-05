@@ -19,6 +19,7 @@ import HistorialStock from "./pages/stock/HistorialStock";
 import ProximosVencimientos from "./pages/stock/ProximosVencimientos";
 import ListaRecepciones from "./pages/stock/ListaRecepciones";
 import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
+import DetalleRecepcion from "./pages/stock/DetalleRecepcion";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 
 // Reportes
@@ -33,6 +34,8 @@ import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
 
 // Transferencias (RF29)
 import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
+import ListaAjustes from "./pages/ajustes/ListaAjustes";
+import PanelAlertasStock from "./pages/alertas/PanelAlertasStock";
 
 export default function App() {
   return (
@@ -114,6 +117,14 @@ export default function App() {
             }
           />
           <Route
+            path="/recepciones/:id"
+            element={
+              <ProtectedRoute>
+                <DetalleRecepcion />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/clasificacion"
             element={
               <ProtectedRoute>
@@ -185,6 +196,23 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DiferenciasInventario />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/ajustes"
+            element={
+              <ProtectedRoute>
+                <ListaAjustes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alertas-stock"
+            element={
+              <ProtectedRoute>
+                <PanelAlertasStock />
               </ProtectedRoute>
             }
           />
