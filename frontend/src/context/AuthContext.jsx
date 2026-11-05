@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { login as loginApi } from "../api/auth.api";
+import { esVistaPrevia, usuarioPreview } from "../api/preview";
 
 const AuthContext = createContext(null);
 
@@ -8,6 +9,12 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (esVistaPrevia) {
+      setUser(usuarioPreview);
+      setLoading(false);
+      return;
+    }
+
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
 

@@ -114,13 +114,37 @@ export default function BuscarCodigoBarras() {
                   <p className="font-medium">{producto.marca || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-gray-500">Unidad</p>
-                  <p className="font-medium">{producto.unidad}</p>
+                  <p className="text-gray-500">Conteo</p>
+                  <p className="font-medium">Unidad / pieza</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Controla vencimiento</p>
                   <p className="font-medium">
                     {producto.controla_vencimiento ? "Sí" : "No"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Stock mínimo</p>
+                  <p className="font-medium">
+                    {Number(producto.stock_minimo ?? 0).toLocaleString("es-BO")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Stock máximo</p>
+                  <p className="font-medium">
+                    {Number(producto.stock_maximo ?? 0).toLocaleString("es-BO")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Punto de reposición</p>
+                  <p className="font-medium">
+                    {Number(producto.punto_reposicion ?? 0).toLocaleString("es-BO")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Stock reservado</p>
+                  <p className="font-medium">
+                    {Number(producto.cantidad_reservada ?? 0).toLocaleString("es-BO")}
                   </p>
                 </div>
               </div>

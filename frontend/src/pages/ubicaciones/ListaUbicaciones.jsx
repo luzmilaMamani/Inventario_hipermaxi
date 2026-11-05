@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/layout/Layout";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_ADMINISTRACION } from "../../utils/permissions";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
 import FormUbicacion from "./FormUbicacion";
@@ -112,9 +114,11 @@ export default function ListaUbicaciones() {
               Administración de zonas, pasillos y estantes (RF08)
             </p>
           </div>
-          <button className="btn-primary" onClick={abrirCrear}>
-            + Nueva ubicación
-          </button>
+          <RoleGate roles={ROLES_ADMINISTRACION}>
+            <button className="btn-primary" onClick={abrirCrear}>
+              + Nueva ubicación
+            </button>
+          </RoleGate>
         </div>
 
         <div className="card">
@@ -248,27 +252,29 @@ export default function ListaUbicaciones() {
                         >
                           Ver stock
                         </button>
-                        <button
-                          className="text-brand-red hover:underline text-sm font-medium mr-3"
-                          onClick={() => abrirEditar(u)}
-                        >
-                          Editar
-                        </button>
-                        {u.activo ? (
+                        <RoleGate roles={ROLES_ADMINISTRACION}>
                           <button
-                            className="text-gray-500 hover:underline text-sm font-medium"
-                            onClick={() => desactivar(u)}
+                            className="text-brand-red hover:underline text-sm font-medium mr-3"
+                            onClick={() => abrirEditar(u)}
                           >
-                            Desactivar
+                            Editar
                           </button>
-                        ) : (
-                          <button
-                            className="text-green-600 hover:underline text-sm font-medium"
-                            onClick={() => activar(u)}
-                          >
-                            Activar
-                          </button>
-                        )}
+                          {u.activo ? (
+                            <button
+                              className="text-gray-500 hover:underline text-sm font-medium"
+                              onClick={() => desactivar(u)}
+                            >
+                              Desactivar
+                            </button>
+                          ) : (
+                            <button
+                              className="text-green-600 hover:underline text-sm font-medium"
+                              onClick={() => activar(u)}
+                            >
+                              Activar
+                            </button>
+                          )}
+                        </RoleGate>
                       </td>
                     </tr>
                   ))

@@ -11,6 +11,8 @@ function validarCrearProducto(req, _res, next) {
     stock_minimo,
     stock_maximo,
     punto_reposicion,
+    unidades_por_pale,
+    precio,
     estado,
   } = req.body;
 
@@ -26,8 +28,15 @@ function validarCrearProducto(req, _res, next) {
   if (!id_unidad) {
     return next(new ApiError(400, "La unidad de medida es obligatoria"));
   }
-  if (stock_minimo !== undefined && Number(stock_minimo) < 0) {
-    return next(new ApiError(400, "El stock mínimo no puede ser negativo"));
+  if (stock_minimo !== undefined &&
+      (!Number.isSafeInteger(Number(stock_minimo)) || Number(stock_minimo) < 0)) {
+    return next(new ApiError(400, "El stock mínimo debe ser un número entero igual o mayor a 0"));
+  }
+  if (
+    stock_maximo !== undefined &&
+    (!Number.isSafeInteger(Number(stock_maximo)) || Number(stock_maximo) < 0)
+  ) {
+    return next(new ApiError(400, "El stock máximo debe ser un número entero igual o mayor a 0"));
   }
   if (
     stock_maximo !== undefined &&
@@ -38,10 +47,27 @@ function validarCrearProducto(req, _res, next) {
       new ApiError(400, "El stock máximo debe ser mayor o igual al mínimo"),
     );
   }
-  if (punto_reposicion !== undefined && Number(punto_reposicion) < 0) {
+  if (punto_reposicion !== undefined &&
+      (!Number.isSafeInteger(Number(punto_reposicion)) || Number(punto_reposicion) < 0)) {
     return next(
-      new ApiError(400, "El punto de reposición no puede ser negativo"),
+      new ApiError(400, "El punto de reposición debe ser un número entero igual o mayor a 0"),
     );
+  }
+  if (
+    unidades_por_pale !== undefined &&
+    unidades_por_pale !== null &&
+    (!Number.isSafeInteger(Number(unidades_por_pale)) ||
+      Number(unidades_por_pale) <= 0)
+  ) {
+    return next(
+      new ApiError(400, "Las unidades por palé deben ser un número entero mayor a 0"),
+    );
+  }
+  if (
+    precio !== undefined &&
+    (!Number.isFinite(Number(precio)) || Number(precio) < 0)
+  ) {
+    return next(new ApiError(400, "El precio debe ser un número mayor o igual a 0"));
   }
   if (estado && !ESTADOS_VALIDOS.includes(estado)) {
     return next(
@@ -55,10 +81,24 @@ function validarCrearProducto(req, _res, next) {
 }
 
 function validarActualizarProducto(req, _res, next) {
-  const { stock_minimo, stock_maximo, punto_reposicion, estado } = req.body;
+  const {
+    stock_minimo,
+    stock_maximo,
+    punto_reposicion,
+    unidades_por_pale,
+    precio,
+    estado,
+  } = req.body;
 
-  if (stock_minimo !== undefined && Number(stock_minimo) < 0) {
-    return next(new ApiError(400, "El stock mínimo no puede ser negativo"));
+  if (stock_minimo !== undefined &&
+      (!Number.isSafeInteger(Number(stock_minimo)) || Number(stock_minimo) < 0)) {
+    return next(new ApiError(400, "El stock mínimo debe ser un número entero igual o mayor a 0"));
+  }
+  if (
+    stock_maximo !== undefined &&
+    (!Number.isSafeInteger(Number(stock_maximo)) || Number(stock_maximo) < 0)
+  ) {
+    return next(new ApiError(400, "El stock máximo debe ser un número entero igual o mayor a 0"));
   }
   if (
     stock_maximo !== undefined &&
@@ -69,10 +109,27 @@ function validarActualizarProducto(req, _res, next) {
       new ApiError(400, "El stock máximo debe ser mayor o igual al mínimo"),
     );
   }
-  if (punto_reposicion !== undefined && Number(punto_reposicion) < 0) {
+  if (punto_reposicion !== undefined &&
+      (!Number.isSafeInteger(Number(punto_reposicion)) || Number(punto_reposicion) < 0)) {
     return next(
-      new ApiError(400, "El punto de reposición no puede ser negativo"),
+      new ApiError(400, "El punto de reposición debe ser un número entero igual o mayor a 0"),
     );
+  }
+  if (
+    unidades_por_pale !== undefined &&
+    unidades_por_pale !== null &&
+    (!Number.isSafeInteger(Number(unidades_por_pale)) ||
+      Number(unidades_por_pale) <= 0)
+  ) {
+    return next(
+      new ApiError(400, "Las unidades por palé deben ser un número entero mayor a 0"),
+    );
+  }
+  if (
+    precio !== undefined &&
+    (!Number.isFinite(Number(precio)) || Number(precio) < 0)
+  ) {
+    return next(new ApiError(400, "El precio debe ser un número mayor o igual a 0"));
   }
   if (estado && !ESTADOS_VALIDOS.includes(estado)) {
     return next(

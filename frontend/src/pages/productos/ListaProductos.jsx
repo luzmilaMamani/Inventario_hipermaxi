@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../../components/layout/Layout";
+import RoleGate from "../../components/ui/RoleGate";
+import { ROLES_ADMINISTRACION } from "../../utils/permissions";
 import Badge from "../../components/ui/Badge";
 import Modal from "../../components/ui/Modal";
 import Pagination from "../../components/ui/Pagination";
@@ -20,6 +22,7 @@ const ESTADOS = ["ACTIVO", "INACTIVO", "DESCONTINUADO"];
 const ORDENES = [
   { value: "nombre", label: "Nombre" },
   { value: "codigo", label: "Código" },
+  { value: "precio", label: "Precio" },
   { value: "fecha_creacion", label: "Fecha de creación" },
   { value: "estado", label: "Estado" },
 ];
@@ -46,26 +49,21 @@ export default function ListaProductos() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Catálogos
   const [categorias, setCategorias] = useState([]);
   const [subcategorias, setSubcategorias] = useState([]);
   const [marcas, setMarcas] = useState([]);
 
-  // Modal de cambio de estado (HIP-15)
   const [modalOpen, setModalOpen] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [nuevoEstado, setNuevoEstado] = useState("");
   const [motivo, setMotivo] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  // Modal de detalle (HIP-12)
   const [detalleId, setDetalleId] = useState(null);
 
-  // Modal de crear/editar producto
   const [formOpen, setFormOpen] = useState(false);
   const [productoEditar, setProductoEditar] = useState(null);
 
-  // Cargar catálogos al montar
   useEffect(() => {
     listarCategorias()
       .then((res) => setCategorias(res.data))
@@ -75,7 +73,6 @@ export default function ListaProductos() {
       .catch(() => {});
   }, []);
 
-  // Cargar subcategorías cuando cambia la categoría
   useEffect(() => {
     if (!filtros.id_categoria) {
       setSubcategorias([]);
@@ -160,7 +157,7 @@ export default function ListaProductos() {
       await cambiarEstadoProducto(
         productoSeleccionado.id_producto,
         nuevoEstado,
-        motivo
+        motivo,
       );
       setModalOpen(false);
       cargar(pagination.page);
@@ -171,7 +168,6 @@ export default function ListaProductos() {
     }
   };
 
-  // Opciones para los selects
   const opcionesCategorias = categorias.map((c) => ({
     value: c.id_categoria,
     label: c.nombre,
@@ -199,18 +195,17 @@ export default function ListaProductos() {
               Consulta y gestión de productos (RF01, RF02, RF03, RF06)
             </p>
           </div>
-          <button className="btn-primary" onClick={abrirCrear}>
-            + Nuevo producto
-          </button>
+          <RoleGate roles={ROLES_ADMINISTRACION}>
+            <button className="btn-primary" onClick={abrirCrear}>
+              + Nuevo producto
+            </button>
+          </RoleGate>
         </div>
 
         <div className="card">
-          {/* Filtros */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">
-                Buscar
-              </label>
+              <label className="block text-sm font-medium mb-1">Buscar</label>
               <input
                 className="input-field"
                 placeholder="Nombre, código o código de barras"
@@ -303,10 +298,7 @@ export default function ListaProductos() {
             />
 
             <div className="flex items-end">
-              <button
-                onClick={limpiarFiltros}
-                className="btn-secondary w-full"
-              >
+              <button onClick={limpiarFiltros} className="btn-secondary w-full">
                 Limpiar filtros
               </button>
             </div>
@@ -333,6 +325,12 @@ export default function ListaProductos() {
                   <th className="py-2">Categoría</th>
                   <th className="py-2">Subcategoría</th>
                   <th className="py-2">Marca</th>
+                  <th className="py-2 text-right">Precio</th>
+                  <th className="py-2 text-right">Unidades / palé</th>
+                  <th className="py-2 text-right">Stock mínimo</th>
+                  <th className="py-2 text-right">Stock máximo</th>
+                  <th className="py-2 text-right">Punto de reposición</th>
+                  <th className="py-2 text-right">Stock reservado</th>
                   <th className="py-2">Estado</th>
                   <th className="py-2 text-right">Acciones</th>
                 </tr>
@@ -340,13 +338,13 @@ export default function ListaProductos() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-500">
+                    <td colSpan="13" className="py-6 text-center text-gray-500">
                       Cargando...
                     </td>
                   </tr>
                 ) : productos.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="py-6 text-center text-gray-500">
+                    <td colSpan="13" className="py-6 text-center text-gray-500">
                       No se encontraron productos con esos filtros
                     </td>
                   </tr>
@@ -366,6 +364,30 @@ export default function ListaProductos() {
                       <td className="py-2">{p.categoria}</td>
                       <td className="py-2">{p.subcategoria || "-"}</td>
                       <td className="py-2">{p.marca || "-"}</td>
+                      <td className="py-2 text-right">
+                        Bs {Number(p.precio || 0).toFixed(2)} / unidad
+                      </td>
+                      <td className="py-2 text-right">
+                        {p.unidades_por_pale
+                          ? Number(p.unidades_por_pale).toLocaleString("es-BO")
+                          : "Pendiente"}
+                      </td>
+                      <td className="py-2 text-right">
+                        {Number(p.stock_minimo ?? 0).toLocaleString("es-BO")}
+                      </td>
+                      <td className="py-2 text-right">
+                        {Number(p.stock_maximo ?? 0).toLocaleString("es-BO")}
+                      </td>
+                      <td className="py-2 text-right">
+                        {Number(p.punto_reposicion ?? 0).toLocaleString(
+                          "es-BO",
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        {Number(p.cantidad_reservada ?? 0).toLocaleString(
+                          "es-BO",
+                        )}
+                      </td>
                       <td className="py-2">
                         <Badge estado={p.estado} />
                       </td>
@@ -376,24 +398,26 @@ export default function ListaProductos() {
                         >
                           Ver
                         </button>
-                        <button
-                          onClick={() => abrirEditar(p)}
-                          className="text-green-600 hover:underline text-sm font-medium mr-3"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => abrirDuplicar(p)}
-                          className="text-purple-600 hover:underline text-sm font-medium mr-3"
-                        >
-                          Duplicar
-                        </button>
-                        <button
-                          onClick={() => abrirModalEstado(p)}
-                          className="text-brand-red hover:underline text-sm font-medium"
-                        >
-                          Estado
-                        </button>
+                        <RoleGate roles={ROLES_ADMINISTRACION}>
+                          <button
+                            onClick={() => abrirEditar(p)}
+                            className="text-green-600 hover:underline text-sm font-medium mr-3"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => abrirDuplicar(p)}
+                            className="text-purple-600 hover:underline text-sm font-medium mr-3"
+                          >
+                            Duplicar
+                          </button>
+                          <button
+                            onClick={() => abrirModalEstado(p)}
+                            className="text-brand-red hover:underline text-sm font-medium"
+                          >
+                            Estado
+                          </button>
+                        </RoleGate>
                       </td>
                     </tr>
                   ))
@@ -411,7 +435,6 @@ export default function ListaProductos() {
         </div>
       </div>
 
-      {/* Modal cambio de estado (HIP-15) */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -477,13 +500,11 @@ export default function ListaProductos() {
         )}
       </Modal>
 
-      {/* Modal detalle (HIP-12) */}
       <DetalleProducto
         productoId={detalleId}
         onClose={() => setDetalleId(null)}
       />
 
-      {/* Modal crear/editar/duplicar producto */}
       {formOpen && (
         <FormProducto
           producto={productoEditar}

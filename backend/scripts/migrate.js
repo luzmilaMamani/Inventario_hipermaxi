@@ -23,6 +23,8 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD
 });
 
+const migrationLock = [1464420401, 1];
+
 async function migrate() {
   const migrationsDirectory = path.join(backendDirectory, 'migrations');
   const migrationFiles = (await fs.readdir(migrationsDirectory))
@@ -33,13 +35,57 @@ async function migrate() {
     throw new Error(`No se encontraron migraciones versionadas en ${migrationsDirectory}`);
   }
 
-  for (const file of migrationFiles) {
-    const migrationPath = path.join(migrationsDirectory, file);
-    const sql = await fs.readFile(migrationPath, 'utf8');
+  const client = await pool.connect();
+  let lockAcquired = false;
 
-    console.log(`Aplicando ${file}...`);
-    await pool.query(sql);
-    console.log(`Correcto: ${file}`);
+  try {
+    await client.query('SELECT pg_advisory_lock($1, $2)', migrationLock);
+    lockAcquired = true;
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    const appliedMigrations = await client.query(
+      'SELECT filename FROM schema_migrations'
+    );
+    const appliedFiles = new Set(appliedMigrations.rows.map((row) => row.filename));
+    let pendingCount = 0;
+
+    for (const file of migrationFiles) {
+      if (appliedFiles.has(file)) continue;
+
+      const migrationPath = path.join(migrationsDirectory, file);
+      const sql = await fs.readFile(migrationPath, 'utf8');
+
+      console.log(`Aplicando ${file}...`);
+      await client.query('BEGIN');
+
+      try {
+        await client.query(sql);
+        await client.query('INSERT INTO schema_migrations (filename) VALUES ($1)', [file]);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+
+      appliedFiles.add(file);
+      pendingCount += 1;
+      console.log(`Correcto: ${file}`);
+    }
+
+    if (pendingCount === 0) {
+      console.log('La base de datos ya está actualizada.');
+    }
+  } finally {
+    if (lockAcquired) {
+      await client.query('SELECT pg_advisory_unlock($1, $2)', migrationLock);
+    }
+    client.release();
   }
 }
 

@@ -1,0 +1,100 @@
+classDiagram
+  direction LR
+
+  class VentaController {
+    +registrarVenta(req, res)
+  }
+  class SalidaController {
+    +registrarSalida(req, res)
+  }
+  class TransferenciaController {
+    +enviar(req, res)
+    +recibir(req, res)
+  }
+  class StockBajoPubSubController {
+    +publicarStockBajo(req, res)
+  }
+  class StockBajoPubSubService {
+    -CANAL_STOCK_BAJO = "stock_bajo"
+    -INTERVALO_REINTENTO_MS = 60000
+    -MAX_INTENTOS = 10
+    +consultarStockBajo(idProducto, idAlmacen) ReporteStockBajo[]
+    +publicarMensaje(payload, attributes) messageId
+    -publicarEvento(evento) messageId
+    -procesarSiguienteEvento() boolean
+    -procesarPendientes() void
+    -conectarListener() void
+    +iniciarPublicadorStockBajo() void
+  }
+  class TriggerStockBajo {
+    <<trigger PostgreSQL>>
+    trg_stock_bajo
+    +fn_registrar_evento_stock_bajo()
+  }
+  class Stock {
+    <<tabla>>
+    +id_stock: int
+    +id_producto: int
+    +id_almacen: int
+    +cantidad: numeric
+    +cantidad_reservada: numeric
+    +fecha_actualizacion: timestamp
+  }
+  class Producto {
+    <<tabla>>
+    +id_producto: int
+    +codigo: varchar
+    +nombre: varchar
+    +stock_minimo: numeric
+    +punto_reposicion: numeric
+    +stock_maximo: numeric
+  }
+  class Almacen {
+    <<tabla>>
+    +id_almacen: int
+    +codigo: varchar
+    +nombre: varchar
+  }
+  class LoteProducto {
+    <<tabla>>
+    +id_lote: int
+    +numero_lote: varchar
+    +cantidad_actual: numeric
+    +fecha_vencimiento: date
+  }
+  class EventoStockBajo {
+    <<tabla eventos_stock_bajo>>
+    +id_evento: bigint
+    +id_producto: int
+    +id_almacen: int
+    +cantidad_anterior: numeric
+    +cantidad_actual: numeric
+    +estado: PENDIENTE | PUBLICADO | ERROR
+    +intentos: int
+    +message_id: varchar
+    +ultimo_error: text
+    +fecha_creacion: timestamp
+    +fecha_publicacion: timestamp
+  }
+  class GooglePubSubTopic {
+    <<externo>>
+    topic = PUBSUB_TOPIC (.env)
+    +publishMessage(data, attributes) messageId
+  }
+
+  VentaController ..> Stock : UPDATE cantidad
+  SalidaController ..> Stock : UPDATE cantidad
+  TransferenciaController ..> Stock : UPDATE / INSERT
+  Stock "*" --> "1" Producto
+  Stock "*" --> "1" Almacen
+  LoteProducto "*" --> "1" Producto
+  LoteProducto "*" --> "1" Almacen
+  TriggerStockBajo ..> Stock : AFTER INSERT/UPDATE
+  TriggerStockBajo ..> EventoStockBajo : INSERT + NOTIFY
+  EventoStockBajo "*" --> "1" Producto
+  EventoStockBajo "*" --> "1" Almacen
+  StockBajoPubSubController ..> StockBajoPubSubService : usa
+  StockBajoPubSubService ..> EventoStockBajo : LISTEN / lee / actualiza
+  StockBajoPubSubService ..> Stock : consulta reporte
+  StockBajoPubSubService ..> LoteProducto : lotes disponibles
+  StockBajoPubSubService ..> GooglePubSubTopic : publica mensaje

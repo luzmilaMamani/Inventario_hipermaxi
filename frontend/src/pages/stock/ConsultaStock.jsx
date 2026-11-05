@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
@@ -13,6 +14,7 @@ const FILTROS_INICIALES = {
 };
 
 export default function ConsultaStock() {
+  const navigate = useNavigate();
   const [registros, setRegistros] = useState([]);
   const [almacenes, setAlmacenes] = useState([]);
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
@@ -127,20 +129,24 @@ export default function ConsultaStock() {
                   <th className="py-2">Almacén</th>
                   <th className="py-2">Origen / ubicación</th>
                   <th className="py-2 text-right">Cantidad</th>
-                  <th className="py-2 text-right">Reservada</th>
+                  <th className="py-2 text-right">Stock reservado</th>
                   <th className="py-2 text-right">Disponible</th>
+                  <th className="py-2 text-right">Stock mínimo</th>
+                  <th className="py-2 text-right">Stock máximo</th>
+                  <th className="py-2 text-right">Punto de reposición</th>
+                  <th className="py-2 text-right">Historial</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="py-6 text-center text-gray-500">
+                    <td colSpan="10" className="py-6 text-center text-gray-500">
                       Consultando stock...
                     </td>
                   </tr>
                 ) : registros.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="py-6 text-center text-gray-500">
+                    <td colSpan="10" className="py-6 text-center text-gray-500">
                       No hay registros de stock para esos filtros.
                     </td>
                   </tr>
@@ -170,28 +176,89 @@ export default function ConsultaStock() {
                         )}
                       </td>
                       <td className="py-2 text-right">
-                        {Number(registro.cantidad).toLocaleString("es-BO")} {registro.unidad}
+                        {Number(registro.cantidad).toLocaleString("es-BO")} unid.
                       </td>
                       <td className="py-2 text-right">
                         {registro.cantidad_reservada === null
                           ? "-"
-                          : `${Number(registro.cantidad_reservada).toLocaleString("es-BO")} ${registro.unidad}`}
+                          : `${Number(registro.cantidad_reservada).toLocaleString("es-BO")} unid.`}
                       </td>
                       <td className="py-2 text-right font-semibold">
                         <div
                           className={
-                            Number(registro.cantidad_disponible) > 0
-                              ? "text-green-700"
-                              : "text-red-600"
+                            Number(registro.cantidad_disponible) < 2
+                              ? "text-red-600"
+                              : "text-green-700"
                           }
                         >
-                          {Number(registro.cantidad_disponible).toLocaleString("es-BO")} {registro.unidad}
+                          {Number(registro.cantidad_disponible).toLocaleString("es-BO")} unid.
                         </div>
-                        <span className="text-xs font-normal text-gray-500">
-                          {Number(registro.cantidad_disponible) > 0
-                            ? "Disponible"
-                            : "Agotado"}
+                        <span
+                          className={`text-xs font-normal ${
+                            Number(registro.cantidad_disponible) < 2
+                              ? "text-red-600 font-semibold"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {Number(registro.cantidad_disponible) < 2
+                            ? "Stock crítico"
+                            : "Disponible"}
                         </span>
+                      </td>
+                      <td className="py-2 text-right">
+                        <div
+                          className={
+                            Number(registro.stock_minimo) > 0 &&
+                            Number(registro.cantidad_disponible) <= Number(registro.stock_minimo)
+                              ? "text-red-600 font-semibold"
+                              : ""
+                          }
+                        >
+                          {Number(registro.stock_minimo ?? 0).toLocaleString("es-BO")}
+                        </div>
+                        {Number(registro.stock_minimo) > 0 &&
+                          Number(registro.cantidad_disponible) <= Number(registro.stock_minimo) && (
+                          <span className="text-xs font-medium text-red-600">
+                            Bajo el mínimo
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <div>{Number(registro.stock_maximo ?? 0).toLocaleString("es-BO")}</div>
+                        {Number(registro.stock_maximo) > 0 &&
+                          Number(registro.cantidad_disponible) >= Number(registro.stock_maximo) && (
+                          <span className="text-xs font-medium text-amber-700">
+                            Sobre el máximo
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <div
+                          className={
+                            Number(registro.punto_reposicion) > 0 &&
+                            Number(registro.cantidad_disponible) <= Number(registro.punto_reposicion)
+                              ? "text-red-600 font-semibold"
+                              : ""
+                          }
+                        >
+                          {Number(registro.punto_reposicion ?? 0).toLocaleString("es-BO")}
+                        </div>
+                        {Number(registro.punto_reposicion) > 0 &&
+                          Number(registro.cantidad_disponible) <= Number(registro.punto_reposicion) && (
+                          <span className="text-xs font-medium text-red-600">
+                            Reponer urgente
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        <button
+                          className="btn-secondary text-xs"
+                          onClick={() =>
+                            navigate(`/stock/historial/${registro.id_producto}`)
+                          }
+                        >
+                          Ver movimientos
+                        </button>
                       </td>
                     </tr>
                   ))

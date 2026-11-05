@@ -36,31 +36,51 @@ http://localhost:3000
 
 ## Actualizar la base de datos
 
-Para aplicar a una base existente los cambios de esquema incluidos en el
-repositorio, configura la conexión PostgreSQL en `backend/.env` y, desde la
-carpeta `backend`, ejecuta:
+Configura la conexión PostgreSQL en `backend/.env`. Desde la carpeta `backend`,
+ejecuta:
 
 ```bash
-npm install
 npm run migrate
 ```
 
-El migrador aplica en orden los archivos `migrations/YYYYMMDD_*.sql`. La base
-debe existir y tener previamente el esquema inicial del sistema. Este comando
-no crea una base nueva ni carga datos de prueba.
+El comando aplica en orden las migraciones versionadas pendientes de
+`migrations/` y registra las ya aplicadas en `schema_migrations`. La base de
+datos debe existir y tener el esquema inicial del sistema. Este comando no crea
+la base ni carga datos de prueba.
 
 ## Login
 
-El script SQL crea este usuario inicial:
+El script SQL crea este usuario inicial para pruebas:
 
 ```json
 {
   "nombre_usuario": "admin",
-  "password": "Admin123*"
+  "password": "<configurar según el seed local>"
 }
 ```
 
-Peticion:
+Las cuentas de prueba adicionales creadas en la base local son:
+
+| Rol | Usuario |
+|---|---|
+| ENCARGADO_ALMACEN | `encargado_almacen` |IjxQfHtAmHECciqkvRtaRDdq
+| SUPERVISOR | `supervisor` |R2d1eJPJ_eG-ySolkLPdKfoZ
+| EMPLEADO | `empleado` |LJjw4JUcYNLUcXFHQ8YD9dMt
+| GERENTE | `gerente` |lBxTEgD-uUnnKHQE3Wc45bBD
+| AUDITOR | `auditor` |r7xv8HXOPv-dfbNYuoo4E8L5
+
+Las contraseñas temporales se entregaron durante la sesión de desarrollo y no se guardan en este README para evitar incluir credenciales en el repositorio. Cámbialas antes de usar estas cuentas fuera de pruebas locales.
+
+## Permisos por rol
+
+- `ADMINISTRADOR`: acceso completo.
+- `ENCARGADO_ALMACEN`: operaciones de inventario, transferencias y ajustes; consulta de los catálogos, sin modificarlos.
+- `EMPLEADO`: captura de recepciones, salidas, solicitudes de transferencia, conteos y recepción de transferencias; solo lectura en el resto.
+- `SUPERVISOR`, `GERENTE` y `AUDITOR`: solo consultas.
+
+Los permisos se verifican en la API; ocultar acciones en la interfaz no reemplaza la autorización del servidor.
+
+Petición:
 
 ```http
 POST /api/auth/login
@@ -119,8 +139,109 @@ Todas estas rutas tienen CRUD basico: `GET`, `GET /:id`, `POST`, `PUT /:id`, `DE
 - `GET /api/reportes/productos-proximo-vencimiento`
 - `GET /api/reportes/lotes-proximos-vencer`
 - `GET /api/reportes/stock-bajo`
+- `GET /api/stock/historial/:id_producto` (historial paginado de movimientos; admite `id_almacen`, `fecha_desde` y `fecha_hasta`)
+- `GET /api/entradas-inventario` y `GET /api/entradas-inventario/:id` (consulta paginada y detalle de recepciones)
+- `POST /api/entradas-inventario` (registra cantidades esperadas y recibidas, diferencias, stock y movimientos en una transacción)
+- `GET /api/salidas` y `GET /api/salidas/:id` (consulta de salidas)
+- `POST /api/salidas` (registra la salida, descuenta existencias y crea un movimiento trazable por producto; selecciona el lote disponible con vencimiento más próximo)
+- `PUT /api/transferencias/:id/estado` (aprobar o rechazar solicitudes solo para `ENCARGADO_ALMACEN` y `ADMINISTRADOR`; marcar como enviada requiere `fecha_llegada_estimada` en formato `YYYY-MM-DD`)
+- `GET /api/transferencias` y `GET /api/transferencias/:id` incluyen fechas y datos del recorrido
+- `/api/ajustes-inventario` y `/api/movimientos-inventario` son de solo lectura. Sus escrituras directas quedan bloqueadas para evitar ajustes de stock o movimientos de historial sin actualizar existencias en una transacción.
+- `GET /api/reportes/perdidas` (reporte de pérdidas con filtros por fecha, almacén y subtipo)
+- `POST /api/reportes/stock-bajo/publicar` (publica en Google Pub/Sub todos los productos que cumplen la alerta de stock bajo)
+
+### Publicar inventario con stock bajo en Google Pub/Sub
+
+Configura `PUBSUB_TOPIC` en `backend/.env` con el nombre completo del topic.
+Para autenticar localmente, configura Application Default Credentials de Google
+Cloud o define `GOOGLE_APPLICATION_CREDENTIALS` con la ruta local al JSON de
+una cuenta de servicio autorizada para publicar en ese topic. No subas el JSON
+de credenciales al repositorio.
+
+Con el backend iniciado, llama a `POST /api/reportes/stock-bajo/publicar` con
+el token de un usuario autorizado. El backend vuelve a consultar el inventario
+en ese momento, crea un único mensaje JSON con todos los productos bajo el
+mínimo o punto de reposición, e incluye sus lotes disponibles. La respuesta
+incluye el ID que devuelve Pub/Sub. No se publica un mensaje vacío si no hay
+productos con stock bajo.
+
+La migración `20261022_use_piece_counts_and_warehouse_area.sql` configura los
+productos para conteo por pieza y conserva las cantidades/precios existentes,
+establece una superficie de 7.280 m² por almacén y valida que los movimientos
+usen cantidades enteras. El precio del producto se interpreta como precio por
+pieza; cada salida registra el precio unitario y el total de la línea.
+
+La migración `20261022_add_units_per_pallet.sql` agrega la conversión de
+unidades por palé. Configura ese dato desde el formulario de cada producto para
+que la API calcule palés ocupados y área de almacenamiento estimada. La
+estimación supone 12 m de altura, 6 niveles y 60% del área útil para almacenar;
+a 7.280 m² muestra una capacidad de referencia de 10.500 a 11.500 palés.
+Mientras falte la conversión de algún producto con existencias, no se calcula
+un porcentaje incompleto.
+
+La migración `20261022_set_warehouse_unit_capacities.sql` configura el límite
+operativo en unidades para el indicador de ocupación de la lista de almacenes:
+8.000 para Almacén Central, 800 para Sucursal Norte, 50 para Sucursal Sur y
+8.000 para Depósito 1. El porcentaje compara ese límite con la suma de piezas
+en stock; no modifica las existencias ni representa una medición de superficie
+ocupada.
+
+```http
+POST /api/reportes/stock-bajo/publicar
+Authorization: Bearer <token>
+```
+
+#### Alertas automáticas (integración asíncrona)
+
+Además del envío manual, cada vez que un movimiento (venta, salida,
+transferencia, ajuste, etc.) deja el stock de un producto en un almacén igual o
+por debajo del stock mínimo o del punto de reposición, el trigger `trg_stock_bajo`
+registra un evento en la tabla `eventos_stock_bajo` y avisa por `NOTIFY stock_bajo`.
+Al iniciar, el backend escucha ese canal y publica un mensaje por evento en el
+topic (`tipo_evento: "STOCK_BAJO"`, con el producto, el almacén, la cantidad
+anterior/resultante y los lotes disponibles). Los atributos del mensaje incluyen
+`id_evento`, `id_producto` e `id_almacen`.
+
+Como los eventos quedan guardados en la base, si Pub/Sub o el backend no
+están disponibles se publican después: los pendientes y fallidos se reintentan
+cada minuto (hasta 10 intentos). Revisa el estado con:
+
+```sql
+SELECT id_evento, estado, intentos, message_id, ultimo_error
+FROM eventos_stock_bajo ORDER BY id_evento DESC;
+```
+
+Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
+En cada línea de recepción, `cantidad_solicitada` es la cantidad esperada y
+`cantidad_recibida` la cantidad física recibida. El backend calcula la
+diferencia, registra faltantes/sobrantes y actualiza el stock por lo realmente
+recibido dentro de la misma transacción.
+
+Al recibir una transferencia, `PUT /api/transferencias/:id/estado` requiere
+`estado: "RECIBIDA"` y `detalles_recibidos`, con una línea por detalle que
+incluya `id_detalle_transferencia` y `cantidad_recibida`. Solo esas cantidades
+se incorporan al almacén destino; el detalle conserva lo solicitado, enviado
+y recibido.
+
+Las migraciones para instalaciones existentes agregan la fecha estimada de
+llegada y las fechas de rechazo/cancelación, además de las vistas de reportes.
+Ejecuta `npm run migrate` para aplicarlas.
 
 ## Filtros y paginacion
+
+### Precio de productos
+
+Para guardar precios en productos existentes, ejecutar una vez en PostgreSQL:
+
+```sql
+ALTER TABLE productos
+ADD COLUMN IF NOT EXISTS precio NUMERIC(12, 2) NOT NULL DEFAULT 0;
+```
+
+El mismo cambio está disponible en `migrations/20261016_add_precio_productos.sql`.
+Los productos existentes comienzan con precio `0`; actualiza sus precios desde
+el formulario de productos. El precio queda guardado en cada detalle de salida
+al registrarla, para conservar el valor usado en ese momento.
 
 Ejemplo:
 
