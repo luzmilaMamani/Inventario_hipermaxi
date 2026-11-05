@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Modal from "../../components/ui/Modal";
 import Select from "../../components/ui/Select";
-import { crearSalida } from "../../api/salidas.api";
+import { crearSalida, sugerirLotes } from "../../api/salidas.api";
 import { listarAlmacenes } from "../../api/almacenes.api";
 import { listarProductos } from "../../api/productos.api";
 
@@ -28,6 +28,13 @@ const SUBTIPOS_DANO = [
   { value: "OTRO", label: "Otro" },
 ];
 
+function formatearFecha(fecha) {
+  // La fecha llega como YYYY-MM-DD; se formatea sin pasar por Date para evitar desfases.
+  if (!fecha) return "sin vencimiento";
+  const [anio, mes, dia] = String(fecha).slice(0, 10).split("-");
+  return `${dia}/${mes}/${anio}`;
+}
+
 const FORM_INICIAL = {
   id_almacen: "",
   motivo: "PERDIDA",
@@ -48,6 +55,7 @@ export default function FormSalida({ onClose, onSaved }) {
   const [productos, setProductos] = useState([]);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [buscandoLotes, setBuscandoLotes] = useState(false);
 
   const esPerdida = form.motivo === "PERDIDA";
   const esDano = form.motivo === "DANO";
@@ -84,10 +92,22 @@ export default function FormSalida({ onClose, onSaved }) {
       motivo: nuevoMotivo,
       subtipo_perdida: "",
     });
+    // Los lotes de vencimiento y los FEFO se calculan distinto: se vacía el detalle.
+    if ((nuevoMotivo === "VENCIMIENTO") !== esVencimiento) setDetalles([]);
   };
 
-  const agregarDetalle = () => {
+  // Los lotes sugeridos dependen del almacén: al cambiarlo se vacía el detalle.
+  const handleAlmacenChange = (e) => {
+    setForm({ ...form, id_almacen: e.target.value });
+    setDetalles([]);
+  };
+
+  const agregarDetalle = async () => {
     setError("");
+    if (!form.id_almacen) {
+      setError("Selecciona primero el almacén");
+      return;
+    }
     if (!productoActual.id_producto) {
       setError("Selecciona un producto");
       return;
@@ -100,15 +120,64 @@ export default function FormSalida({ onClose, onSaved }) {
       setError("El producto ya está en la lista");
       return;
     }
+    const cantidad = Number(productoActual.cantidad);
+    let lotes = [];
+    let sugerencia = [];
+
+    // RF49: en salidas que no son por vencimiento se sugieren lotes FEFO.
+    if (!esVencimiento) {
+      setBuscandoLotes(true);
+      try {
+        const res = await sugerirLotes({
+          id_producto: productoActual.id_producto,
+          id_almacen: form.id_almacen,
+          cantidad,
+        });
+        if (res.data.faltante > 0) {
+          setError(
+            `Solo hay ${res.data.total_disponible} unidades en lotes vigentes de este producto en el almacén`,
+          );
+          return;
+        }
+        lotes = res.data.lotes;
+        sugerencia = res.data.sugerencia;
+      } catch (err) {
+        setError(
+          err.response?.data?.message ||
+            "No se pudieron obtener los lotes sugeridos",
+        );
+        return;
+      } finally {
+        setBuscandoLotes(false);
+      }
+    }
+
     setDetalles([
       ...detalles,
       {
         id_producto: productoActual.id_producto,
-        cantidad: Number(productoActual.cantidad),
+        cantidad,
+        lotes,
+        sugerencia,
+        id_lote: "",
+        justificacion_lote: "",
+        cambiandoLote: false,
       },
     ]);
     setProductoActual({ id_producto: "", cantidad: "" });
   };
+
+  const actualizarDetalle = (id_producto, cambios) => {
+    setDetalles(
+      detalles.map((d) =>
+        d.id_producto === id_producto ? { ...d, ...cambios } : d,
+      ),
+    );
+  };
+
+  const loteCambiado = (d) =>
+    Boolean(d.id_lote) &&
+    Number(d.id_lote) !== Number(d.sugerencia[0]?.id_lote);
 
   const quitarDetalle = (id_producto) => {
     setDetalles(detalles.filter((d) => d.id_producto !== id_producto));
@@ -129,6 +198,15 @@ export default function FormSalida({ onClose, onSaved }) {
       }
     }
 
+    const sinJustificar = detalles.find(
+      (d) => loteCambiado(d) && d.justificacion_lote.trim().length < 5,
+    );
+    if (sinJustificar) {
+      return setError(
+        `Justifica el cambio de lote de ${nombreProducto(sinJustificar.id_producto)} (mínimo 5 caracteres)`,
+      );
+    }
+
     setGuardando(true);
     try {
       const payload = {
@@ -140,6 +218,14 @@ export default function FormSalida({ onClose, onSaved }) {
         detalles: detalles.map((d) => ({
           id_producto: Number(d.id_producto),
           cantidad: Number(d.cantidad),
+          ...(d.id_lote
+            ? {
+                id_lote: Number(d.id_lote),
+                justificacion_lote: loteCambiado(d)
+                  ? d.justificacion_lote.trim()
+                  : null,
+              }
+            : {}),
         })),
       };
       await crearSalida(payload);
@@ -178,7 +264,7 @@ export default function FormSalida({ onClose, onSaved }) {
           <Select
             label="Almacén *"
             value={form.id_almacen}
-            onChange={(e) => setForm({ ...form, id_almacen: e.target.value })}
+            onChange={handleAlmacenChange}
             options={opcionesAlmacenes}
             placeholder="Selecciona almacén"
           />
@@ -292,8 +378,9 @@ export default function FormSalida({ onClose, onSaved }) {
               type="button"
               className="btn-secondary whitespace-nowrap"
               onClick={agregarDetalle}
+              disabled={buscandoLotes}
             >
-              + Agregar
+              {buscandoLotes ? "Buscando lotes..." : "+ Agregar"}
             </button>
           </div>
 
@@ -304,27 +391,126 @@ export default function FormSalida({ onClose, onSaved }) {
                   <tr>
                     <th className="text-left py-2 px-3">Producto</th>
                     <th className="text-right py-2 px-3">Cantidad</th>
+                    {!esVencimiento && (
+                      <th className="text-left py-2 px-3">Lote (FEFO)</th>
+                    )}
                     <th className="text-right py-2 px-3">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {detalles.map((d) => (
-                    <tr key={d.id_producto} className="border-t">
-                      <td className="py-2 px-3">
-                        {nombreProducto(d.id_producto)}
-                      </td>
-                      <td className="py-2 px-3 text-right">{d.cantidad}</td>
-                      <td className="py-2 px-3 text-right">
-                        <button
-                          type="button"
-                          className="text-red-600 hover:underline text-sm font-medium"
-                          onClick={() => quitarDetalle(d.id_producto)}
-                        >
-                          Quitar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {detalles.map((d) => {
+                    const loteElegido = d.lotes.find(
+                      (l) => Number(l.id_lote) === Number(d.id_lote),
+                    );
+                    const lotesConCantidad = d.lotes.filter(
+                      (l) => Number(l.cantidad_actual) >= d.cantidad,
+                    );
+                    return (
+                      <tr key={d.id_producto} className="border-t align-top">
+                        <td className="py-2 px-3">
+                          {nombreProducto(d.id_producto)}
+                        </td>
+                        <td className="py-2 px-3 text-right">{d.cantidad}</td>
+                        {!esVencimiento && (
+                          <td className="py-2 px-3">
+                            {loteElegido ? (
+                              <div>
+                                <span className="font-mono text-xs">
+                                  {loteElegido.numero_lote}
+                                </span>{" "}
+                                <span className="text-xs text-gray-500">
+                                  vence{" "}
+                                  {formatearFecha(loteElegido.fecha_vencimiento)}
+                                </span>
+                                {loteCambiado(d) && (
+                                  <span className="ml-1 text-xs text-amber-700">
+                                    (cambiado)
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              d.sugerencia.map((s) => (
+                                <div key={s.id_lote}>
+                                  <span className="font-mono text-xs">
+                                    {s.numero_lote}
+                                  </span>{" "}
+                                  <span className="text-xs text-gray-500">
+                                    vence {formatearFecha(s.fecha_vencimiento)}{" "}
+                                    · {s.cantidad} unid.
+                                  </span>
+                                </div>
+                              ))
+                            )}
+
+                            {d.cambiandoLote ? (
+                              <div className="mt-2 space-y-2">
+                                <select
+                                  className="input-field"
+                                  value={d.id_lote}
+                                  onChange={(e) =>
+                                    actualizarDetalle(d.id_producto, {
+                                      id_lote: e.target.value,
+                                    })
+                                  }
+                                >
+                                  <option value="">
+                                    Sugerencia FEFO del sistema
+                                  </option>
+                                  {lotesConCantidad.map((l) => (
+                                    <option key={l.id_lote} value={l.id_lote}>
+                                      {l.numero_lote} · vence{" "}
+                                      {formatearFecha(l.fecha_vencimiento)} ·
+                                      disp. {Number(l.cantidad_actual)}
+                                    </option>
+                                  ))}
+                                </select>
+                                {loteCambiado(d) && (
+                                  <input
+                                    className="input-field"
+                                    value={d.justificacion_lote}
+                                    onChange={(e) =>
+                                      actualizarDetalle(d.id_producto, {
+                                        justificacion_lote: e.target.value,
+                                      })
+                                    }
+                                    maxLength={500}
+                                    placeholder="Motivo del cambio de lote (obligatorio)"
+                                  />
+                                )}
+                                {lotesConCantidad.length === 0 && (
+                                  <p className="text-xs text-gray-500">
+                                    Ningún lote cubre por sí solo la cantidad;
+                                    se usa la sugerencia FEFO.
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="mt-1 text-xs text-blue-600 hover:underline"
+                                onClick={() =>
+                                  actualizarDetalle(d.id_producto, {
+                                    cambiandoLote: true,
+                                  })
+                                }
+                              >
+                                Cambiar lote
+                              </button>
+                            )}
+                          </td>
+                        )}
+                        <td className="py-2 px-3 text-right">
+                          <button
+                            type="button"
+                            className="text-red-600 hover:underline text-sm font-medium"
+                            onClick={() => quitarDetalle(d.id_producto)}
+                          >
+                            Quitar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
