@@ -34,6 +34,7 @@ import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
 // Transferencias (RF29)
 import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
 import ListaAjustes from "./pages/ajustes/ListaAjustes";
+import PanelAlertasStock from "./pages/alertas/PanelAlertasStock";
 
 export default function App() {
   return (
@@ -195,6 +196,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ListaAjustes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alertas-stock"
+            element={
+              <ProtectedRoute>
+                <PanelAlertasStock />
               </ProtectedRoute>
             }
           />

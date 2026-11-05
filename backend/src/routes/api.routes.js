@@ -19,6 +19,7 @@ const transferenciaRouter = require("./transferencia.routes");
 const inventarioRouter = require("./inventarios.routes");
 const diferenciasRouter = require("./diferencias.routes");
 const ajustesRouter = require("./ajustes.routes");
+const alertasStockRouter = require("./alertasStock.routes");
 
 const router = express.Router();
 const recursosSoloLectura = new Set([
@@ -41,6 +42,7 @@ router.use("/transferencias", transferenciaRouter);
 router.use("/inventarios", inventarioRouter);
 router.use("/diferencias", diferenciasRouter);
 router.use("/ajustes-inventario", ajustesRouter);
+router.use("/alertas-stock", alertasStockRouter);
 
 router.use(
   "/entradas-inventario",
