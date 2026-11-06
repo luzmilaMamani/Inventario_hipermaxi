@@ -8,8 +8,11 @@ import { listarCategorias } from "../../api/catalogos.api";
 
 const OPCIONES_DIAS = [7, 15, 30, 60, 90];
 
+// RF50: "parametro" aplica los días de anticipación configurados por categoría.
+const DIAS_PARAMETRO = "parametro";
+
 const FILTROS_INICIALES = {
-  dias: "30",
+  dias: DIAS_PARAMETRO,
   id_almacen: "",
   id_categoria: "",
 };
@@ -113,6 +116,20 @@ export default function ProximosVencimientos() {
                     {dias} días
                   </button>
                 ))}
+                <button
+                  type="button"
+                  title="Usa los días de anticipación configurados para cada categoría"
+                  className={
+                    filtros.dias === DIAS_PARAMETRO
+                      ? "btn-primary text-xs"
+                      : "btn-secondary text-xs"
+                  }
+                  onClick={() =>
+                    setFiltros({ ...filtros, dias: DIAS_PARAMETRO })
+                  }
+                >
+                  Según parámetro
+                </button>
               </div>
             </div>
             <Select
@@ -145,7 +162,10 @@ export default function ProximosVencimientos() {
 
           <div className="mb-3 mt-4 text-sm text-gray-600">
             {pagination.total} lote{pagination.total !== 1 && "s"} vence
-            {pagination.total !== 1 && "n"} en los próximos {filtros.dias} días
+            {pagination.total !== 1 && "n"}{" "}
+            {filtros.dias === DIAS_PARAMETRO
+              ? "dentro de la anticipación configurada para su categoría"
+              : `en los próximos ${filtros.dias} días`}
           </div>
 
           {error && (
@@ -190,6 +210,8 @@ export default function ProximosVencimientos() {
                         <div className="font-mono text-xs text-gray-500">
                           {registro.producto_codigo}
                           {registro.categoria && ` · ${registro.categoria}`}
+                          {registro.dias_anticipacion != null &&
+                            ` · alerta ${registro.dias_anticipacion} días antes`}
                         </div>
                       </td>
                       <td className="py-2 font-mono text-xs">

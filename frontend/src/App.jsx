@@ -17,6 +17,7 @@ import BuscarCodigoBarras from "./pages/barcode/BuscarCodigoBarras";
 import ConsultaStock from "./pages/stock/ConsultaStock";
 import HistorialStock from "./pages/stock/HistorialStock";
 import ProximosVencimientos from "./pages/stock/ProximosVencimientos";
+import ParametrosVencimiento from "./pages/stock/ParametrosVencimiento";
 import ListaRecepciones from "./pages/stock/ListaRecepciones";
 import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
 import DetalleRecepcion from "./pages/stock/DetalleRecepcion";
@@ -97,6 +98,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ProximosVencimientos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stock/parametros-vencimiento"
+            element={
+              <ProtectedRoute>
+                <ParametrosVencimiento />
               </ProtectedRoute>
             }
           />
