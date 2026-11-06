@@ -224,18 +224,32 @@ const consultarProximosVencer = asyncHandler(async (req, res) => {
   const page = Math.max(Number(req.query.page || 1), 1);
   const offset = (page - 1) * limit;
 
-  const dias = req.query.dias === undefined || req.query.dias === "" ? 30 : Number(req.query.dias);
-  if (!Number.isSafeInteger(dias) || dias < 0 || dias > 365) {
+  // RF50: con dias=parametro cada lote usa los días de anticipación de su
+  // categoría (o el valor general si la categoría no tiene uno propio).
+  const usarParametro = req.query.dias === "parametro";
+  const dias = usarParametro
+    ? null
+    : req.query.dias === undefined || req.query.dias === ""
+      ? 30
+      : Number(req.query.dias);
+  if (!usarParametro && (!Number.isSafeInteger(dias) || dias < 0 || dias > 365)) {
     throw new ApiError(400, "Los días restantes deben ser un entero entre 0 y 365");
   }
 
-  const valores = [dias];
+  const valores = [];
   const condiciones = [
     "lp.fecha_vencimiento IS NOT NULL",
     "lp.cantidad_actual > 0",
     "lp.fecha_vencimiento >= CURRENT_DATE",
-    "lp.fecha_vencimiento <= CURRENT_DATE + $1::int",
   ];
+  if (usarParametro) {
+    condiciones.push(
+      "lp.fecha_vencimiento <= CURRENT_DATE + COALESCE(pvc.dias_anticipacion, pvg.dias_anticipacion, 30)",
+    );
+  } else {
+    valores.push(dias);
+    condiciones.push(`lp.fecha_vencimiento <= CURRENT_DATE + $${valores.length}::int`);
+  }
 
   for (const [parametro, columna, mensaje] of [
     ["id_almacen", "lp.id_almacen", "El almacén no es válido"],
@@ -257,6 +271,8 @@ const consultarProximosVencer = asyncHandler(async (req, res) => {
     INNER JOIN almacenes a ON a.id_almacen = lp.id_almacen
     LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
     LEFT JOIN unidades_medida um ON um.id_unidad = p.id_unidad
+    LEFT JOIN parametros_vencimiento_categoria pvc ON pvc.id_categoria = p.id_categoria
+    LEFT JOIN parametro_vencimiento_general pvg ON pvg.id_parametro = 1
     WHERE ${condiciones.join(" AND ")}`;
 
   const [dataResult, countResult] = await Promise.all([
@@ -274,6 +290,7 @@ const consultarProximosVencer = asyncHandler(async (req, res) => {
          um.abreviatura AS unidad,
          c.id_categoria,
          c.nombre AS categoria,
+         COALESCE(pvc.dias_anticipacion, pvg.dias_anticipacion, 30) AS dias_anticipacion,
          a.id_almacen,
          a.codigo AS almacen_codigo,
          a.nombre AS almacen
@@ -288,7 +305,7 @@ const consultarProximosVencer = asyncHandler(async (req, res) => {
   res.json({
     ok: true,
     data: dataResult.rows,
-    filtros: { dias },
+    filtros: { dias: usarParametro ? "parametro" : dias },
     pagination: { page, limit, total: countResult.rows[0].total },
   });
 });

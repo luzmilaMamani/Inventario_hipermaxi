@@ -1,6 +1,8 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import IndicadorAlertasVencimiento from "../ui/IndicadorAlertasVencimiento";
 import {
+  ROLES_GESTION,
   ROLES_LECTURA_Y_OPERACION,
   ROLES_SIN_EMPLEADO,
   tieneRol,
@@ -14,6 +16,8 @@ const links = [
   { to: "/ubicaciones", label: "Ubicaciones", icon: "📍", roles: ROLES_SIN_EMPLEADO },
   { to: "/stock", label: "Consulta de stock", icon: "📈", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/stock/proximos-vencer", label: "Próximos vencimientos", icon: "📅", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/stock/parametros-vencimiento", label: "Parámetros de vencimiento", icon: "⚙️", roles: ROLES_SIN_EMPLEADO },
+  { to: "/alertas-vencimiento", label: "Alertas de vencimiento", icon: "⏰", roles: ROLES_LECTURA_Y_OPERACION, indicador: IndicadorAlertasVencimiento },
   { to: "/alertas-stock", label: "Alertas de stock", icon: "🔔", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/recepciones", label: "Recepciones", icon: "📥", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/salidas", label: "Salidas", icon: "📤", roles: ROLES_LECTURA_Y_OPERACION },
@@ -24,6 +28,7 @@ const links = [
   { to: "/reportes/danos", label: "Reporte daños", icon: "⚠️" },
   { to: "/reportes/vencimientos", label: "Reporte vencimientos", icon: "⏳" },
   { to: "/barcode", label: "Buscar por código", icon: "🔍" },
+  { to: "/etiquetas", label: "Imprimir etiquetas", icon: "🖨️", roles: ROLES_GESTION },
 ];
 
 export default function Sidebar() {
@@ -55,6 +60,7 @@ export default function Sidebar() {
           >
             <span>{link.icon}</span>
             <span>{link.label}</span>
+            {link.indicador && <link.indicador />}
           </NavLink>
         ))}
       </nav>
