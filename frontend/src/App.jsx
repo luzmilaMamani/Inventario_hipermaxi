@@ -37,6 +37,7 @@ import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
 import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
 import ListaAjustes from "./pages/ajustes/ListaAjustes";
 import PanelAlertasStock from "./pages/alertas/PanelAlertasStock";
+import PanelAlertasVencimiento from "./pages/alertas/PanelAlertasVencimiento";
 
 export default function App() {
   return (
@@ -222,6 +223,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <PanelAlertasStock />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alertas-vencimiento"
+            element={
+              <ProtectedRoute>
+                <PanelAlertasVencimiento />
               </ProtectedRoute>
             }
           />
