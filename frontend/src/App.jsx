@@ -12,6 +12,7 @@ import ListaAlmacenes from "./pages/almacenes/ListaAlmacenes";
 import ListaUbicaciones from "./pages/ubicaciones/ListaUbicaciones";
 import Clasificacion from "./pages/clasificacion/Clasificacion";
 import BuscarCodigoBarras from "./pages/barcode/BuscarCodigoBarras";
+import ImprimirEtiquetas from "./pages/barcode/ImprimirEtiquetas";
 
 // Stock y Salidas
 import ConsultaStock from "./pages/stock/ConsultaStock";
@@ -147,6 +148,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <BuscarCodigoBarras />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/etiquetas"
+            element={
+              <ProtectedRoute>
+                <ImprimirEtiquetas />
               </ProtectedRoute>
             }
           />

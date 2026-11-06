@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import IndicadorAlertasVencimiento from "../ui/IndicadorAlertasVencimiento";
 import {
+  ROLES_GESTION,
   ROLES_LECTURA_Y_OPERACION,
   ROLES_SIN_EMPLEADO,
   tieneRol,
@@ -27,6 +28,7 @@ const links = [
   { to: "/reportes/danos", label: "Reporte daños", icon: "⚠️" },
   { to: "/reportes/vencimientos", label: "Reporte vencimientos", icon: "⏳" },
   { to: "/barcode", label: "Buscar por código", icon: "🔍" },
+  { to: "/etiquetas", label: "Imprimir etiquetas", icon: "🖨️", roles: ROLES_GESTION },
 ];
 
 export default function Sidebar() {
