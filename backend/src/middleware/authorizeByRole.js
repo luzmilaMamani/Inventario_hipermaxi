@@ -25,6 +25,8 @@ const OPERACIONES_ENCARGADO = [
   { method: "POST", path: "/diferencias" },
   { method: "POST", path: "/stock-ubicaciones" },
   { method: "POST", path: "/reportes/stock-bajo/publicar" },
+  { method: "POST", path: "/alertas-vencimiento/generar" },
+  { method: "PUT", path: "/alertas-vencimiento" },
   { method: "PUT", path: "/stock-ubicaciones" },
   { method: "DELETE", path: "/stock-ubicaciones" },
 ];

@@ -21,6 +21,7 @@ const diferenciasRouter = require("./diferencias.routes");
 const ajustesRouter = require("./ajustes.routes");
 const alertasStockRouter = require("./alertasStock.routes");
 const parametrosVencimientoRouter = require("./parametrosVencimiento.routes");
+const alertasVencimientoRouter = require("./alertasVencimiento.routes");
 
 const router = express.Router();
 const recursosSoloLectura = new Set([
@@ -45,6 +46,7 @@ router.use("/diferencias", diferenciasRouter);
 router.use("/ajustes-inventario", ajustesRouter);
 router.use("/alertas-stock", alertasStockRouter);
 router.use("/parametros-vencimiento", parametrosVencimientoRouter);
+router.use("/alertas-vencimiento", alertasVencimientoRouter);
 
 router.use(
   "/entradas-inventario",
