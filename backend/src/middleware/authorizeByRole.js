@@ -14,6 +14,7 @@ const RUTAS_CATALOGO = [
   "/integraciones",
   "/logs-integracion",
   "/referencias-externas",
+  "/parametros-vencimiento",
 ];
 const OPERACIONES_ENCARGADO = [
   { method: "POST", path: "/entradas-inventario" },
