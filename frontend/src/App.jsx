@@ -16,6 +16,9 @@ import BuscarCodigoBarras from "./pages/barcode/BuscarCodigoBarras";
 // Stock y Salidas
 import ConsultaStock from "./pages/stock/ConsultaStock";
 import HistorialStock from "./pages/stock/HistorialStock";
+import ProximosVencimientos from "./pages/stock/ProximosVencimientos";
+import ListaRecepciones from "./pages/stock/ListaRecepciones";
+import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 
 // Reportes
@@ -83,6 +86,30 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <HistorialStock />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/stock/proximos-vencer"
+            element={
+              <ProtectedRoute>
+                <ProximosVencimientos />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recepciones"
+            element={
+              <ProtectedRoute>
+                <ListaRecepciones />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recepciones/nueva"
+            element={
+              <ProtectedRoute>
+                <RegistrarRecepcion />
               </ProtectedRoute>
             }
           />

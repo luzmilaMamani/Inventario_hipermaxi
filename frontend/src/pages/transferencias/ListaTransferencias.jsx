@@ -5,7 +5,11 @@ import Select from "../../components/ui/Select";
 import { useAuth } from "../../context/AuthContext";
 import DetalleTransferencia from "./DetalleTransferencia";
 import FormTransferencia from "./FormTransferencia";
-import { listarTransferencias, cambiarEstadoTransferencia } from "../../api/transferencias.api";
+import {
+  listarTransferencias,
+  cambiarEstadoTransferencia,
+  obtenerTransferencia,
+} from "../../api/transferencias.api";
 
 export default function ListaTransferencias() {
   const { user } = useAuth();
@@ -62,9 +66,34 @@ export default function ListaTransferencias() {
 
   const confirmarRecepcion = async (e) => {
     e.preventDefault();
-    // Aquí podrías enviar detalles_recibidos si quisieras controlar diferencias exactas por producto
-    const exito = await handleCambiarEstado(recepcionPendiente.id, "RECIBIDA", {});
+    const exito = await handleCambiarEstado(
+      recepcionPendiente.id,
+      "RECIBIDA",
+      {
+        detalles_recibidos: recepcionPendiente.detalles.map((detalle) => ({
+          id_detalle_transferencia: detalle.id_detalle_transferencia,
+          cantidad_recibida: Number(detalle.cantidad_recibida),
+        })),
+      },
+    );
     if (exito) setRecepcionPendiente(null);
+  };
+
+  const abrirRecepcion = async (id) => {
+    try {
+      const respuesta = await obtenerTransferencia(id);
+      setRecepcionPendiente({
+        id,
+        detalles: respuesta.data.detalles.map((detalle) => ({
+          id_detalle_transferencia: detalle.id_detalle_transferencia,
+          producto: detalle.producto,
+          cantidad_enviada: Number(detalle.cantidad_enviada),
+          cantidad_recibida: String(detalle.cantidad_enviada),
+        })),
+      });
+    } catch (err) {
+      alert(err.response?.data?.message || "Error al cargar el detalle enviado");
+    }
   };
 
   const getBadgeColor = (estado) => {
@@ -74,6 +103,7 @@ export default function ListaTransferencias() {
       case "RECHAZADA": return "bg-red-100 text-red-700";
       case "ENVIADA": return "bg-amber-100 text-amber-700";
       case "RECIBIDA": return "bg-purple-100 text-purple-700";
+      case "CANCELADA": return "bg-gray-200 text-gray-600";
       default: return "bg-gray-100 text-gray-700";
     }
   };
@@ -102,6 +132,8 @@ export default function ListaTransferencias() {
                 { value: "APROBADA", label: "Aprobada" },
                 { value: "ENVIADA", label: "Enviada (En Tránsito)" },
                 { value: "RECIBIDA", label: "Recibida" },
+                { value: "RECHAZADA", label: "Rechazada" },
+                { value: "CANCELADA", label: "Cancelada" },
               ]}
               placeholder="Todos los estados"
               className="w-64"
@@ -153,9 +185,14 @@ export default function ListaTransferencias() {
                           <button onClick={() => setEnvioPendiente({ id: t.id_transferencia, fecha: "" })} className="text-amber-600 hover:underline font-medium">Registrar Envío</button>
                         )}
 
+                        {/* RF57: Cancelar solicitud no enviada (motivo en el detalle) */}
+                        {["SOLICITADA", "APROBADA"].includes(t.estado) && puedeDecidir && (
+                          <button onClick={() => setTransferenciaDetalleId(t.id_transferencia)} className="text-gray-600 hover:underline font-medium">Cancelar</button>
+                        )}
+
                         {/* RF32: Registrar Recepción */}
                         {t.estado === "ENVIADA" && (
-                          <button onClick={() => setRecepcionPendiente({ id: t.id_transferencia })} className="text-purple-600 hover:underline font-medium">Registrar Recepción</button>
+                          <button onClick={() => abrirRecepcion(t.id_transferencia)} className="text-purple-600 hover:underline font-medium">Registrar Recepción</button>
                         )}
                       </td>
                     </tr>
@@ -168,7 +205,7 @@ export default function ListaTransferencias() {
       </div>
 
       {formOpen && <FormTransferencia onClose={() => setFormOpen(false)} onSaved={() => { setFormOpen(false); cargar(); }} />}
-      {transferenciaDetalleId && <DetalleTransferencia transferenciaId={transferenciaDetalleId} onClose={() => setTransferenciaDetalleId(null)} />}
+      {transferenciaDetalleId && <DetalleTransferencia transferenciaId={transferenciaDetalleId} onClose={() => setTransferenciaDetalleId(null)} onCancelada={cargar} />}
 
       {/* Modal RF31 */}
       {envioPendiente && (
@@ -191,10 +228,50 @@ export default function ListaTransferencias() {
       {recepcionPendiente && (
         <Modal open onClose={() => setRecepcionPendiente(null)} title="Registrar Recepción (Ingresa al Almacén)">
           <form onSubmit={confirmarRecepcion} className="space-y-4">
-            <p className="text-sm text-gray-600">Al confirmar, el stock ingresará al almacén de destino y se cerrará la transferencia.</p>
-            <div>
-              <label className="block text-sm font-medium mb-1">Observaciones de recepción</label>
-              <textarea className="input-field" rows="2" placeholder="Ej: Llegó todo en buen estado, o detallar faltantes..." />
+            <p className="text-sm text-gray-600">Registra lo recibido. Solo esas cantidades ingresarán al stock del almacén de destino.</p>
+            <div className="space-y-3">
+              {recepcionPendiente.detalles.map((detalle, indice) => (
+                <div
+                  key={detalle.id_detalle_transferencia}
+                  className="grid grid-cols-[1fr_110px_120px] items-end gap-3"
+                >
+                  <div className="text-sm">
+                    <p className="font-medium">{detalle.producto}</p>
+                    <p className="text-xs text-gray-500">
+                      Enviado: {detalle.cantidad_enviada}
+                    </p>
+                  </div>
+                  <label className="text-sm">
+                    Recibido
+                    <input
+                      type="number"
+                      min="0"
+                      max={detalle.cantidad_enviada}
+                      step="1"
+                      required
+                      className="input-field mt-1"
+                      value={detalle.cantidad_recibida}
+                      onChange={(e) =>
+                        setRecepcionPendiente((actual) => ({
+                          ...actual,
+                          detalles: actual.detalles.map((linea, posicion) =>
+                            posicion === indice
+                              ? { ...linea, cantidad_recibida: e.target.value }
+                              : linea,
+                          ),
+                        }))
+                      }
+                    />
+                  </label>
+                  <span className="pb-2 text-xs text-gray-500">
+                    Diferencia:{" "}
+                    {detalle.cantidad_recibida === ""
+                      ? "-"
+                      : Number(detalle.cantidad_recibida) -
+                        detalle.cantidad_enviada}
+                  </span>
+                </div>
+              ))}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" className="btn-secondary" onClick={() => setRecepcionPendiente(null)}>Cancelar</button>

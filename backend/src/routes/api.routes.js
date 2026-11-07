@@ -3,6 +3,7 @@ const resources = require("../config/resources");
 const { authenticate } = require("../middleware/auth");
 const autorizarPorRol = require("../middleware/authorizeByRole");
 const createCrudRouter = require("../utils/crudFactory");
+const ApiError = require("../utils/apiError");
 
 const reportsRouter = require("./reports.routes");
 const productoRouter = require("./producto.routes");
@@ -19,6 +20,10 @@ const inventarioRouter = require("./inventarios.routes");
 const diferenciasRouter = require("./diferencias.routes");
 
 const router = express.Router();
+const recursosSoloLectura = new Set([
+  "ajustes_inventario",
+  "movimientos_inventario",
+]);
 
 router.use("/auth", require("./auth.routes"));
 router.use(authenticate, autorizarPorRol);
@@ -73,10 +78,21 @@ for (const [path, resource] of Object.entries(resources)) {
   ) {
     continue;
   }
-  router.use(
-    `/${path.replaceAll("_", "-")}`,
-    createCrudRouter(resource),
-  );
+  const resourcePath = `/${path.replaceAll("_", "-")}`;
+  if (recursosSoloLectura.has(path)) {
+    router.use(resourcePath, (req, _res, next) => {
+      if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method.toUpperCase())) {
+        return next(
+          new ApiError(
+            405,
+            "Este recurso solo permite consulta; use las operaciones de inventario para registrar cambios",
+          ),
+        );
+      }
+      return next();
+    });
+  }
+  router.use(resourcePath, createCrudRouter(resource));
 }
 
 module.exports = router;

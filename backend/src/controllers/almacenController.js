@@ -78,8 +78,26 @@ const listarAlmacenes = asyncHandler(async (req, res) => {
         (SELECT COALESCE(SUM(s.cantidad), 0)
          FROM stock s
          WHERE s.id_almacen = almacenes.id_almacen) AS ocupacion,
+        superficie_m2,
+        superficie_m2 * 0.6 AS area_almacenamiento_m2,
+        ROUND(superficie_m2 * 10500 / 7280)::int AS capacidad_pallets_min,
+        ROUND(superficie_m2 * 11500 / 7280)::int AS capacidad_pallets_max,
+        CASE
+          WHEN ocupacion.productos_sin_conversion > 0 THEN NULL
+          ELSE ocupacion.pallets_ocupados
+        END AS pallets_ocupados,
+        ocupacion.productos_sin_conversion,
         activo, fecha_creacion
        FROM almacenes
+       LEFT JOIN LATERAL (
+         SELECT
+           COALESCE(SUM(CEIL(s.cantidad / NULLIF(p.unidades_por_pale, 0)))
+             FILTER (WHERE s.cantidad > 0 AND p.unidades_por_pale IS NOT NULL), 0)::int AS pallets_ocupados,
+           COUNT(*) FILTER (WHERE s.cantidad > 0 AND p.unidades_por_pale IS NULL)::int AS productos_sin_conversion
+         FROM stock s
+         INNER JOIN productos p ON p.id_producto = s.id_producto
+         WHERE s.id_almacen = almacenes.id_almacen
+       ) ocupacion ON TRUE
        ${whereSql}
        ORDER BY ${orderBy} ${order}
        LIMIT $${i++} OFFSET $${i++}`,
@@ -106,7 +124,7 @@ const obtenerAlmacen = asyncHandler(async (req, res) => {
 
   const result = await db.query(
     `SELECT id_almacen, codigo, nombre, tipo, direccion, ciudad,
-            capacidad, activo, fecha_creacion
+            superficie_m2, activo, fecha_creacion
      FROM almacenes
      WHERE id_almacen = $1`,
     [id],
@@ -165,7 +183,7 @@ const crearAlmacen = asyncHandler(async (req, res) => {
     tipo = "SUCURSAL",
     direccion,
     ciudad,
-    capacidad,
+    superficie_m2 = 7280,
     activo = true,
   } = req.body;
 
@@ -173,17 +191,17 @@ const crearAlmacen = asyncHandler(async (req, res) => {
 
   const result = await db.query(
     `INSERT INTO almacenes
-      (codigo, nombre, tipo, direccion, ciudad, capacidad, activo)
+      (codigo, nombre, tipo, direccion, ciudad, superficie_m2, activo)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id_almacen, codigo, nombre, tipo, direccion, ciudad,
-               capacidad, activo, fecha_creacion`,
+               superficie_m2, activo, fecha_creacion`,
     [
       codigo,
       nombre,
       tipo,
       direccion || null,
       ciudad || null,
-      capacidad || null,
+      superficie_m2,
       activo,
     ],
   );
@@ -214,7 +232,7 @@ const actualizarAlmacen = asyncHandler(async (req, res) => {
     tipo,
     direccion,
     ciudad,
-    capacidad,
+    superficie_m2,
     activo,
   } = req.body;
 
@@ -229,18 +247,18 @@ const actualizarAlmacen = asyncHandler(async (req, res) => {
       tipo = COALESCE($3, tipo),
       direccion = COALESCE($4, direccion),
       ciudad = COALESCE($5, ciudad),
-      capacidad = COALESCE($6, capacidad),
+      superficie_m2 = COALESCE($6, superficie_m2),
       activo = COALESCE($7, activo)
      WHERE id_almacen = $8
      RETURNING id_almacen, codigo, nombre, tipo, direccion, ciudad,
-               capacidad, activo, fecha_creacion`,
+               superficie_m2, activo, fecha_creacion`,
     [
       codigo ?? null,
       nombre ?? null,
       tipo ?? null,
       direccion ?? null,
       ciudad ?? null,
-      capacidad ?? null,
+      superficie_m2 ?? null,
       activo ?? null,
       id,
     ],

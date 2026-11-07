@@ -53,7 +53,7 @@ const resources = {
   almacenes: {
     table: 'almacenes',
     primaryKey: 'id_almacen',
-    columns: ['codigo', 'nombre', 'tipo', 'direccion', 'ciudad', 'capacidad', 'activo']
+    columns: ['codigo', 'nombre', 'tipo', 'direccion', 'ciudad', 'superficie_m2', 'activo']
   },
   ubicaciones: {
     table: 'ubicaciones',

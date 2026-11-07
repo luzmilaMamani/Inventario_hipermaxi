@@ -12,6 +12,22 @@ const registrarVenta = asyncHandler(async (req, res) => {
   if (!id_almacen || !referencia_externa || !Array.isArray(detalles) || detalles.length === 0) {
     throw new ApiError(400, "Almacén, referencia externa y detalles son obligatorios");
   }
+  for (const [index, detalle] of detalles.entries()) {
+    if (
+      !detalle ||
+      typeof detalle !== "object" ||
+      !Number.isSafeInteger(Number(detalle.id_producto)) ||
+      Number(detalle.id_producto) <= 0
+    ) {
+      throw new ApiError(400, `El producto del detalle ${index + 1} no es válido`);
+    }
+    if (
+      !Number.isSafeInteger(Number(detalle.cantidad)) ||
+      Number(detalle.cantidad) <= 0
+    ) {
+      throw new ApiError(400, `La cantidad del detalle ${index + 1} debe ser un número entero mayor a 0`);
+    }
+  }
 
   const client = await db.pool.connect();
   try {
@@ -48,10 +64,16 @@ const registrarVenta = asyncHandler(async (req, res) => {
         throw new ApiError(400, `Stock insuficiente para el producto ${id_producto}. Disponible: ${disponible}`);
       }
 
+      const precioResult = await client.query(
+        "SELECT COALESCE(precio, 0) AS precio FROM productos WHERE id_producto = $1",
+        [id_producto]
+      );
+      const precio = Number(precioResult.rows[0]?.precio || 0);
       await client.query(
-        `INSERT INTO detalle_salidas (id_salida, id_producto, cantidad)
-         VALUES ($1, $2, $3)`,
-        [salida.id_salida, id_producto, cantidad]
+        `INSERT INTO detalle_salidas
+          (id_salida, id_producto, cantidad, precio_unitario, valor_total)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [salida.id_salida, id_producto, cantidad, precio, precio * cantidad]
       );
 
       const nuevoStock = Number(stockActual.cantidad) - cantidad;

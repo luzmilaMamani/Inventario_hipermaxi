@@ -219,7 +219,7 @@ export default function ReporteDanos() {
                         </div>
                       </td>
                       <td className="py-2 text-right">
-                        {Number(r.cantidad).toLocaleString("es-BO")} {r.unidad}
+                        {Number(r.cantidad).toLocaleString("es-BO")} unid.
                       </td>
                       <td className="py-2 text-right">
                         Bs {Number(r.precio_unitario || 0).toFixed(2)}

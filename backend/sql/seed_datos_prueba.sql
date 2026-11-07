@@ -1,4 +1,6 @@
---Chicos, para que todos tengamos la misma base de datos y probemos el sistema sin errores, hagan esto en pgAdmin:
+-- SOLO PARA PRUEBAS: este script borra los registros actuales mediante TRUNCATE.
+-- Respaldar la base antes de ejecutarlo. Para instalaciones existentes, ejecutar
+-- primero las migraciones versionadas con `npm run migrate`.
 
 --1. Si tienen pgAdmin abierto y les sale un error en rojo, primero ejecuten ROLLBACK;
 --2. Copien y peguen TODO el bloque de SQL de abajo en el Query Tool y denle a F5.
@@ -18,6 +20,10 @@ ALTER TABLE transferencias
     ADD COLUMN IF NOT EXISTS fecha_cancelacion TIMESTAMP;
 ALTER TABLE detalle_salidas ADD COLUMN IF NOT EXISTS precio_unitario NUMERIC(12,2) DEFAULT 0;
 ALTER TABLE detalle_salidas ADD COLUMN IF NOT EXISTS valor_total NUMERIC(14,2) DEFAULT 0;
+ALTER TABLE almacenes ADD COLUMN IF NOT EXISTS superficie_m2 NUMERIC(12,2);
+UPDATE almacenes SET superficie_m2 = 7280 WHERE superficie_m2 IS NULL;
+ALTER TABLE almacenes ALTER COLUMN superficie_m2 SET DEFAULT 7280;
+ALTER TABLE almacenes ALTER COLUMN superficie_m2 SET NOT NULL;
 
 -- Crear tabla de notificaciones
 CREATE TABLE IF NOT EXISTS notificaciones (
@@ -65,10 +71,10 @@ INSERT INTO subcategorias (id_categoria, nombre) VALUES
 INSERT INTO marcas (nombre) VALUES
 ('Coca Cola'), ('Pepsi'), ('Pil'), ('Nestlé'), ('Unilever'), ('Fino');
 
-INSERT INTO almacenes (codigo, nombre, tipo, direccion, ciudad, capacidad) VALUES
-('ALM-CENT', 'Almacén Central', 'CENTRAL', 'Av. Principal 123', 'La Paz', 50000),
-('SUC-NORTE', 'Sucursal Norte', 'SUCURSAL', 'Calle Falsa 456', 'El Alto', 10000),
-('SUC-SUR', 'Sucursal Sur', 'SUCURSAL', 'Av. Sur 789', 'La Paz', 8000);
+INSERT INTO almacenes (codigo, nombre, tipo, direccion, ciudad, capacidad, superficie_m2) VALUES
+('ALM-CENT', 'Almacén Central', 'CENTRAL', 'Av. Principal 123', 'La Paz', 8000, 7280),
+('SUC-NORTE', 'Sucursal Norte', 'SUCURSAL', 'Calle Falsa 456', 'El Alto', 800, 7280),
+('SUC-SUR', 'Sucursal Sur', 'SUCURSAL', 'Av. Sur 789', 'La Paz', 50, 7280);
 
 INSERT INTO ubicaciones (id_almacen, zona, pasillo, estante, nivel) VALUES
 (1, 'A', 'P1', 'E1', 'N1'), (1, 'B', 'P2', 'E3', 'N1'), (2, 'A', 'P1', 'E1', 'N1');
@@ -76,11 +82,11 @@ INSERT INTO ubicaciones (id_almacen, zona, pasillo, estante, nivel) VALUES
 INSERT INTO productos 
 (codigo, codigo_barras, nombre, id_categoria, id_subcategoria, id_marca, id_unidad, controla_vencimiento, precio, stock_minimo, stock_maximo, punto_reposicion, estado) 
 VALUES
-('PROD-001', '750100000001', 'Arroz Extra 1kg', 1, 1, 5, 2, FALSE, 8.50, 20, 200, 50, 'ACTIVO'),
+('PROD-001', '750100000001', 'Arroz Extra 1kg', 1, 1, 5, 1, FALSE, 8.50, 20, 200, 50, 'ACTIVO'),
 ('PROD-002', '750100000002', 'Fideo Tallarín 500g', 1, 2, 5, 1, FALSE, 5.00, 30, 300, 80, 'ACTIVO'),
-('PROD-003', '750100000003', 'Coca Cola 2L', 2, 3, 1, 3, TRUE, 12.00, 50, 500, 100, 'ACTIVO'),
-('PROD-004', '750100000004', 'Pepsi 2L', 2, 3, 2, 3, TRUE, 11.00, 40, 400, 90, 'ACTIVO'),
-('PROD-005', '750100000005', 'Leche Pil 1L', 3, 4, 3, 3, TRUE, 7.50, 60, 600, 150, 'ACTIVO');
+('PROD-003', '750100000003', 'Coca Cola 2L', 2, 3, 1, 1, TRUE, 12.00, 50, 500, 100, 'ACTIVO'),
+('PROD-004', '750100000004', 'Pepsi 2L', 2, 3, 2, 1, TRUE, 11.00, 40, 400, 90, 'ACTIVO'),
+('PROD-005', '750100000005', 'Leche Pil 1L', 3, 4, 3, 1, TRUE, 7.50, 60, 600, 150, 'ACTIVO');
 
 -- 5. Lotes y Stock (Incluye lote vencido para probar RF27)
 INSERT INTO lotes_productos (id_producto, id_almacen, numero_lote, fecha_ingreso, fecha_vencimiento, cantidad_inicial, cantidad_actual, estado) VALUES

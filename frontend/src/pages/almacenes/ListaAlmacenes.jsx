@@ -210,20 +210,6 @@ export default function ListaAlmacenes() {
                       key={a.id_almacen}
                       className="border-b border-gray-100 hover:bg-gray-50"
                     >
-                      {(() => {
-                        const capacidad = a.capacidad === null || a.capacidad === ""
-                          ? null
-                          : Number(a.capacidad);
-                        const ocupacion = Number(a.ocupacion || 0);
-                        const porcentaje = capacidad === 0 && ocupacion > 0
-                          ? 100
-                          : capacidad > 0
-                            ? Math.round((ocupacion / capacidad) * 100)
-                            : 0;
-                        const excedida = capacidad !== null && ocupacion > capacidad;
-
-                        return (
-                          <>
                       <td className="py-2 font-mono text-xs">{a.codigo}</td>
                       <td className="py-2 font-medium">{a.nombre}</td>
                       <td className="py-2">
@@ -233,33 +219,51 @@ export default function ListaAlmacenes() {
                       </td>
                       <td className="py-2">{a.ciudad || "-"}</td>
                       <td className="py-2 text-right">
-                        {capacidad === null ? (
-                          <span className="text-gray-500">
-                            {ocupacion.toLocaleString("es-BO")} registradas · sin límite
-                          </span>
-                        ) : (
-                          <div className="inline-flex min-w-36 flex-col items-end gap-1">
-                            <span>
-                              {ocupacion.toLocaleString("es-BO")} / {capacidad.toLocaleString("es-BO")}
-                            </span>
-                            <div
-                              className="h-1.5 w-full overflow-hidden rounded bg-gray-200"
-                              role="progressbar"
-                              aria-label={`Ocupación de ${a.nombre}`}
-                              aria-valuemin="0"
-                              aria-valuemax={capacidad}
-                              aria-valuenow={Math.min(ocupacion, capacidad)}
-                            >
-                              <div
-                                className={`h-full ${excedida ? "bg-red-600" : "bg-green-600"}`}
-                                style={{ width: `${Math.min(porcentaje, 100)}%` }}
-                              />
+                        {(() => {
+                          const capacidad = a.capacidad === null || a.capacidad === ""
+                            ? null
+                            : Number(a.capacidad);
+                          const ocupacion = Number(a.ocupacion || 0);
+                          const porcentaje = capacidad === 0 && ocupacion > 0
+                            ? 100
+                            : capacidad > 0
+                              ? Math.round((ocupacion / capacidad) * 100)
+                              : 0;
+                          const excedida = capacidad !== null && ocupacion > capacidad;
+
+                          return (
+                            <div className="inline-flex min-w-36 flex-col items-end gap-1">
+                              {capacidad === null ? (
+                                <span className="text-gray-500">
+                                  {ocupacion.toLocaleString("es-BO")} registradas · sin límite
+                                </span>
+                              ) : (
+                                <>
+                                  <span>
+                                    {ocupacion.toLocaleString("es-BO")} /{" "}
+                                    {capacidad.toLocaleString("es-BO")}
+                                  </span>
+                                  <div
+                                    className="h-1.5 w-full overflow-hidden rounded bg-gray-200"
+                                    role="progressbar"
+                                    aria-label={`Ocupación de ${a.nombre}`}
+                                    aria-valuemin="0"
+                                    aria-valuemax={capacidad}
+                                    aria-valuenow={Math.min(ocupacion, capacidad)}
+                                  >
+                                    <div
+                                      className={`h-full ${excedida ? "bg-red-600" : "bg-green-600"}`}
+                                      style={{ width: `${Math.min(porcentaje, 100)}%` }}
+                                    />
+                                  </div>
+                                  <span className={excedida ? "text-red-600" : "text-gray-500"}>
+                                    {excedida ? "Capacidad superada" : `${porcentaje}% ocupado`}
+                                  </span>
+                                </>
+                              )}
                             </div>
-                            <span className={excedida ? "text-red-600" : "text-gray-500"}>
-                              {excedida ? "Capacidad superada" : `${porcentaje}% ocupado`}
-                            </span>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </td>
                       <td className="py-2">
                         <span
@@ -303,15 +307,15 @@ export default function ListaAlmacenes() {
                           )}
                         </RoleGate>
                       </td>
-                          </>
-                        );
-                      })()}
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
           </div>
+          <p className="mt-2 text-xs text-gray-500">
+            *Estimación basada en 60% de superficie para almacenamiento y capacidad de 10.500–11.500 palés a 7.280 m². Configura las unidades por palé de cada producto para calcular la ocupación.
+          </p>
 
           <Pagination
             page={pagination.page}

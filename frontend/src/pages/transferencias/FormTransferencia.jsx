@@ -151,6 +151,7 @@ export default function FormTransferencia({ onClose, onSaved }) {
               <input
                 type="number"
                 min="1"
+                step="1"
                 className="input-field"
                 value={productoActual.cantidad}
                 onChange={(e) =>
