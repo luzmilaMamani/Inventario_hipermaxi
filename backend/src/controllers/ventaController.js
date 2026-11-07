@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
+const { asignarLotes } = require("../services/lotesFefo");
 
 /**
  * POST /api/ventas/descontar
@@ -47,6 +48,9 @@ const registrarVenta = asyncHandler(async (req, res) => {
       const cantidad = Number(d.cantidad);
       const id_producto = Number(d.id_producto);
 
+      // RF49: la venta descuenta de los lotes vigentes que vencen antes (FEFO).
+      const asignaciones = await asignarLotes(client, { id_producto, id_almacen, cantidad });
+
       const stockResult = await client.query(
         `SELECT id_stock, cantidad, cantidad_reservada FROM stock
          WHERE id_producto = $1 AND id_almacen = $2 FOR UPDATE`,
@@ -69,25 +73,40 @@ const registrarVenta = asyncHandler(async (req, res) => {
         [id_producto]
       );
       const precio = Number(precioResult.rows[0]?.precio || 0);
-      await client.query(
-        `INSERT INTO detalle_salidas
-          (id_salida, id_producto, cantidad, precio_unitario, valor_total)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [salida.id_salida, id_producto, cantidad, precio, precio * cantidad]
-      );
 
-      const nuevoStock = Number(stockActual.cantidad) - cantidad;
+
+      let stockCorriente = Number(stockActual.cantidad);
+      for (const { lote, cantidad: cantidadLote, id_lote_sugerido } of asignaciones) {
+        await client.query(
+          `INSERT INTO detalle_salidas
+            (id_salida, id_producto, id_lote, cantidad, precio_unitario, valor_total, id_lote_sugerido)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [salida.id_salida, id_producto, lote.id_lote, cantidadLote, precio, precio * cantidadLote, id_lote_sugerido]
+        );
+
+        const loteNuevo = Number(lote.cantidad_actual) - cantidadLote;
+        await client.query(
+          `UPDATE lotes_productos
+           SET cantidad_actual = $1,
+               estado = CASE WHEN $1::numeric = 0::numeric THEN 'AGOTADO' ELSE estado END
+           WHERE id_lote = $2`,
+          [loteNuevo, lote.id_lote]
+        );
+
+        const stockNuevo = stockCorriente - cantidadLote;
+        await client.query(
+          `INSERT INTO movimientos_inventario
+            (id_producto, id_almacen, id_lote, id_usuario, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, referencia)
+           VALUES ($1, $2, $3, $4, 'VENTA', $5, $6, $7, $8)`,
+          [id_producto, id_almacen, lote.id_lote, req.user.id_usuario, cantidadLote, stockCorriente, stockNuevo, referencia_externa]
+        );
+        stockCorriente = stockNuevo;
+      }
+
       await client.query(
         `UPDATE stock SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP
          WHERE id_stock = $2`,
-        [nuevoStock, stockActual.id_stock]
-      );
-
-      await client.query(
-        `INSERT INTO movimientos_inventario
-          (id_producto, id_almacen, id_usuario, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, referencia)
-         VALUES ($1, $2, $3, 'VENTA', $4, $5, $6, $7)`,
-        [id_producto, id_almacen, req.user.id_usuario, cantidad, stockActual.cantidad, nuevoStock, referencia_externa]
+        [stockCorriente, stockActual.id_stock]
       );
     }
 

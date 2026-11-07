@@ -9,6 +9,9 @@ export const obtenerSalida = (id) =>
 export const crearSalida = (data) =>
   api.post("/salidas", data).then((r) => r.data);
 
+export const sugerirLotes = (params) =>
+  api.get("/salidas/sugerencia-lotes", { params }).then((r) => r.data);
+
 export const reportePerdidas = (params) =>
   api.get("/reportes/perdidas", { params }).then((r) => r.data);
 

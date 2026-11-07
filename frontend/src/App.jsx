@@ -12,13 +12,16 @@ import ListaAlmacenes from "./pages/almacenes/ListaAlmacenes";
 import ListaUbicaciones from "./pages/ubicaciones/ListaUbicaciones";
 import Clasificacion from "./pages/clasificacion/Clasificacion";
 import BuscarCodigoBarras from "./pages/barcode/BuscarCodigoBarras";
+import ImprimirEtiquetas from "./pages/barcode/ImprimirEtiquetas";
 
 // Stock y Salidas
 import ConsultaStock from "./pages/stock/ConsultaStock";
 import HistorialStock from "./pages/stock/HistorialStock";
 import ProximosVencimientos from "./pages/stock/ProximosVencimientos";
+import ParametrosVencimiento from "./pages/stock/ParametrosVencimiento";
 import ListaRecepciones from "./pages/stock/ListaRecepciones";
 import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
+import DetalleRecepcion from "./pages/stock/DetalleRecepcion";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 
 // Reportes
@@ -33,6 +36,9 @@ import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
 
 // Transferencias (RF29)
 import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
+import ListaAjustes from "./pages/ajustes/ListaAjustes";
+import PanelAlertasStock from "./pages/alertas/PanelAlertasStock";
+import PanelAlertasVencimiento from "./pages/alertas/PanelAlertasVencimiento";
 
 export default function App() {
   return (
@@ -98,6 +104,14 @@ export default function App() {
             }
           />
           <Route
+            path="/stock/parametros-vencimiento"
+            element={
+              <ProtectedRoute>
+                <ParametrosVencimiento />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/recepciones"
             element={
               <ProtectedRoute>
@@ -114,6 +128,14 @@ export default function App() {
             }
           />
           <Route
+            path="/recepciones/:id"
+            element={
+              <ProtectedRoute>
+                <DetalleRecepcion />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/clasificacion"
             element={
               <ProtectedRoute>
@@ -126,6 +148,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <BuscarCodigoBarras />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/etiquetas"
+            element={
+              <ProtectedRoute>
+                <ImprimirEtiquetas />
               </ProtectedRoute>
             }
           />
@@ -185,6 +215,31 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DiferenciasInventario />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/ajustes"
+            element={
+              <ProtectedRoute>
+                <ListaAjustes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alertas-stock"
+            element={
+              <ProtectedRoute>
+                <PanelAlertasStock />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/alertas-vencimiento"
+            element={
+              <ProtectedRoute>
+                <PanelAlertasVencimiento />
               </ProtectedRoute>
             }
           />

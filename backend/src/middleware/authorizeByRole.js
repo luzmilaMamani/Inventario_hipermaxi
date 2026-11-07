@@ -14,15 +14,20 @@ const RUTAS_CATALOGO = [
   "/integraciones",
   "/logs-integracion",
   "/referencias-externas",
+  "/parametros-vencimiento",
 ];
 const OPERACIONES_ENCARGADO = [
   { method: "POST", path: "/entradas-inventario" },
   { method: "POST", path: "/salidas" },
   { method: "POST", path: "/transferencias" },
   { method: "POST", path: "/inventarios" },
+  { method: "POST", path: "/ajustes-inventario" },
   { method: "POST", path: "/diferencias" },
   { method: "POST", path: "/stock-ubicaciones" },
   { method: "POST", path: "/reportes/stock-bajo/publicar" },
+  { method: "POST", path: "/alertas-vencimiento/generar" },
+  { method: "PUT", path: "/alertas-vencimiento" },
+  { method: "POST", path: "/etiquetas/pdf" },
   { method: "PUT", path: "/stock-ubicaciones" },
   { method: "DELETE", path: "/stock-ubicaciones" },
 ];
