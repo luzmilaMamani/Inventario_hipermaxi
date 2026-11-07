@@ -22,6 +22,8 @@ import ParametrosVencimiento from "./pages/stock/ParametrosVencimiento";
 import ListaRecepciones from "./pages/stock/ListaRecepciones";
 import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
 import DetalleRecepcion from "./pages/stock/DetalleRecepcion";
+import ListaDevoluciones from "./pages/devoluciones/ListaDevoluciones";
+import RegistrarDevolucion from "./pages/devoluciones/RegistrarDevolucion";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 
 // Reportes
@@ -165,6 +167,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ListaSalidas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/devoluciones"
+            element={
+              <ProtectedRoute>
+                <ListaDevoluciones />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/devoluciones/nueva"
+            element={
+              <ProtectedRoute>
+                <RegistrarDevolucion />
               </ProtectedRoute>
             }
           />

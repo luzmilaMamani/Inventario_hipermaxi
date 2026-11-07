@@ -21,6 +21,7 @@ const links = [
   { to: "/alertas-stock", label: "Alertas de stock", icon: "🔔", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/recepciones", label: "Recepciones", icon: "📥", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/salidas", label: "Salidas", icon: "📤", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/devoluciones", label: "Devoluciones", icon: "↩️", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/transferencias", label: "Transferencias", icon: "🔄", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/inventarios", label: "Inventarios Físicos", icon: "📋", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/ajustes", label: "Ajustes", icon: "📝", roles: ROLES_LECTURA_Y_OPERACION },
