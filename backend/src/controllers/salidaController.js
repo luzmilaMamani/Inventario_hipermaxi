@@ -558,6 +558,7 @@ const reporteVencimientos = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  generarNumeroSalida,
   crearSalida,
   sugerirLotes,
   listarSalidas,
