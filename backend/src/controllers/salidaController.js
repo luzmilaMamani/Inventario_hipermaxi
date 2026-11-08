@@ -2,6 +2,7 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 const { obtenerLotesVigentes, planificarFefo, asignarLotes } = require("../services/lotesFefo");
+const { asignarLotesVencidos, obtenerCantidadVencida } = require("../services/lotesVencidos");
 
 async function generarNumeroSalida(client, motivo) {
   let prefijo = "SAL";
@@ -90,36 +91,14 @@ const crearSalida = asyncHandler(async (req, res) => {
       let asignaciones;
 
       if (motivo === "VENCIMIENTO") {
-        const loteResult = await client.query(
-          `SELECT lp.id_lote, lp.cantidad_actual, lp.fecha_vencimiento
-           FROM lotes_productos lp
-           INNER JOIN productos p ON p.id_producto = lp.id_producto
-           WHERE lp.id_producto = $1
-             AND lp.id_almacen = $2
-             AND lp.cantidad_actual >= $3
-             AND p.controla_vencimiento = TRUE
-             AND lp.fecha_vencimiento <= CURRENT_DATE
-           ORDER BY lp.fecha_vencimiento ASC
-           LIMIT 1
-           FOR UPDATE`,
-          [id_producto, id_almacen, cantidad],
-        );
-
-        if (!loteResult.rowCount) {
-          throw new ApiError(
-            400,
-            `El producto ${id_producto} no tiene lotes vencidos disponibles para dar de baja. Verifique que controle vencimiento y que el lote haya expirado.`,
-          );
-        }
-
-        asignaciones = [
-          {
-            lote: loteResult.rows[0],
-            cantidad,
-            id_lote_sugerido: null,
-            justificacion_lote: null,
-          },
-        ];
+        // RF43/RF27: solo se dan de baja lotes vencidos (el indicado o, si no se
+        // indica, los vencidos más antiguos).
+        asignaciones = await asignarLotesVencidos(client, {
+          id_producto,
+          id_almacen,
+          cantidad,
+          id_lote: d.id_lote,
+        });
       } else {
         // RF49: lote(s) vigentes por vencimiento más próximo (FEFO).
         asignaciones = await asignarLotes(client, {
@@ -147,9 +126,22 @@ const crearSalida = asyncHandler(async (req, res) => {
       }
 
       const stockActual = stockResult.rows[0];
+      // RF43: lo vencido no es stock disponible. Una baja por vencimiento sale
+      // justamente de esa parte del stock físico, pero sin dejar descubierto lo
+      // reservado (transferencias en curso).
+      const reservada = Number(stockActual.cantidad_reservada || 0);
+      if (motivo === "VENCIMIENTO" && cantidad > Number(stockActual.cantidad) - reservada) {
+        throw new ApiError(
+          400,
+          `No se puede dar de baja ${cantidad} unidades del producto ${id_producto}: hay ${reservada} unidades reservadas y el stock quedaría por debajo de lo reservado. Libere o cancele las reservas primero.`,
+        );
+      }
       const disponible =
-        Number(stockActual.cantidad) -
-        Number(stockActual.cantidad_reservada || 0);
+        motivo === "VENCIMIENTO"
+          ? Number(stockActual.cantidad) - reservada
+          : Number(stockActual.cantidad) -
+            reservada -
+            (await obtenerCantidadVencida(client, id_producto, id_almacen));
 
       if (cantidad > disponible) {
         throw new ApiError(

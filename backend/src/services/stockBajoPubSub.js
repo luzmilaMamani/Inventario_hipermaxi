@@ -34,7 +34,8 @@ const consultarStockBajo = async ({ idProducto = null, idAlmacen = null } = {}) 
       a.nombre AS almacen,
       s.cantidad AS cantidad_actual,
       COALESCE(s.cantidad_reservada, 0) AS cantidad_reservada,
-      s.cantidad - COALESCE(s.cantidad_reservada, 0) AS cantidad_disponible,
+      GREATEST(s.cantidad - COALESCE(s.cantidad_reservada, 0)
+        - fn_cantidad_vencida(s.id_producto, s.id_almacen), 0) AS cantidad_disponible,
       p.stock_minimo,
       p.punto_reposicion,
       p.stock_maximo,

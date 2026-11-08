@@ -1,8 +1,14 @@
 const db = require("../config/db");
 const env = require("../config/env");
 
+const { marcarLotesVencidos } = require("./lotesVencidos");
+
 // RF42: proceso programado que revisa los lotes y genera alertas de vencimiento.
+// RF43: antes marca como VENCIDO los lotes cuya fecha ya pasó, para separarlos
+// del stock disponible.
 async function generarAlertasVencimiento() {
+  const marcados = await marcarLotesVencidos(db);
+  if (marcados > 0) console.log(`Lotes marcados como vencidos: ${marcados}`);
   const { rows } = await db.query("SELECT fn_generar_alertas_vencimiento() AS nuevas");
   return Number(rows[0]?.nuevas || 0);
 }

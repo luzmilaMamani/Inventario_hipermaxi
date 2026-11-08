@@ -328,7 +328,7 @@ const listarProductos = asyncHandler(async (req, res) => {
            WHERE st.id_producto = p.id_producto
          ), 0) AS cantidad_reservada,
          COALESCE((
-           SELECT SUM(st.cantidad - st.cantidad_reservada)
+           SELECT SUM(GREATEST(st.cantidad - st.cantidad_reservada - fn_cantidad_vencida(st.id_producto, st.id_almacen), 0))
            FROM stock st
            WHERE st.id_producto = p.id_producto
          ), 0) AS cantidad_disponible,
@@ -407,7 +407,7 @@ const obtenerProducto = asyncHandler(async (req, res) => {
          WHERE st.id_producto = p.id_producto
        ), 0) AS cantidad_reservada,
        COALESCE((
-         SELECT SUM(st.cantidad - st.cantidad_reservada)
+         SELECT SUM(GREATEST(st.cantidad - st.cantidad_reservada - fn_cantidad_vencida(st.id_producto, st.id_almacen), 0))
          FROM stock st
          WHERE st.id_producto = p.id_producto
        ), 0) AS cantidad_disponible
@@ -449,7 +449,7 @@ const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
          WHERE st.id_producto = p.id_producto
        ), 0) AS cantidad_reservada,
        COALESCE((
-         SELECT SUM(st.cantidad - st.cantidad_reservada)
+         SELECT SUM(GREATEST(st.cantidad - st.cantidad_reservada - fn_cantidad_vencida(st.id_producto, st.id_almacen), 0))
          FROM stock st
          WHERE st.id_producto = p.id_producto
        ), 0) AS cantidad_disponible,
@@ -476,7 +476,9 @@ const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
          a.nombre AS almacen,
          COALESCE(s.cantidad, 0) AS cantidad,
          COALESCE(s.cantidad_reservada, 0) AS cantidad_reservada,
-         COALESCE(s.cantidad, 0) - COALESCE(s.cantidad_reservada, 0) AS cantidad_disponible
+         fn_cantidad_vencida(s.id_producto, s.id_almacen) AS cantidad_vencida,
+         GREATEST(COALESCE(s.cantidad, 0) - COALESCE(s.cantidad_reservada, 0)
+           - fn_cantidad_vencida(s.id_producto, s.id_almacen), 0) AS cantidad_disponible
        FROM stock s
        INNER JOIN almacenes a ON a.id_almacen = s.id_almacen
        WHERE s.id_producto = $1
@@ -514,6 +516,7 @@ const buscarPorCodigoBarras = asyncHandler(async (req, res) => {
       almacen: fila.almacen,
       cantidad: fila.cantidad,
       cantidad_reservada: fila.cantidad_reservada,
+      cantidad_vencida: fila.cantidad_vencida,
       cantidad_disponible: fila.cantidad_disponible,
       ubicaciones: [],
     });

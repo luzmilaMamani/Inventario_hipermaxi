@@ -128,12 +128,8 @@ function validarCrearSalida(req, _res, next) {
     }
 
     // RF49: lote elegido manualmente en lugar del sugerido por FEFO.
+    // RF43: en salidas por VENCIMIENTO se puede indicar el lote vencido a dar de baja.
     if (d.id_lote !== undefined && d.id_lote !== null && d.id_lote !== "") {
-      if (motivo === "VENCIMIENTO") {
-        return next(
-          new ApiError(400, `Detalle ${i + 1}: en salidas por vencimiento el lote vencido lo selecciona el sistema`),
-        );
-      }
       const idLote = Number(d.id_lote);
       if (typeof d.id_lote === "boolean" || !Number.isSafeInteger(idLote) || idLote <= 0) {
         return next(new ApiError(400, `Detalle ${i + 1}: el lote no es válido`));

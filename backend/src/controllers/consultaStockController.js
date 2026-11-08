@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
+const { CONDICION_LOTE_VENCIDO } = require("../services/lotesVencidos");
 
 function esFechaValida(fecha) {
   if (typeof fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
@@ -31,9 +32,15 @@ const CTE_EXISTENCIAS = `
       NULL::text AS ubicacion,
       s.cantidad,
       COALESCE(s.cantidad_reservada, 0) AS cantidad_reservada,
-      s.cantidad - COALESCE(s.cantidad_reservada, 0) AS cantidad_disponible,
+      -- RF43: lo vencido se muestra aparte y no cuenta como disponible.
+      vd.cantidad_vencida,
+      GREATEST(s.cantidad - COALESCE(s.cantidad_reservada, 0) - vd.cantidad_vencida, 0)
+        AS cantidad_disponible,
       s.fecha_actualizacion
     FROM stock s
+    CROSS JOIN LATERAL (
+      SELECT fn_cantidad_vencida(s.id_producto, s.id_almacen) AS cantidad_vencida
+    ) vd
     INNER JOIN productos p ON p.id_producto = s.id_producto
     INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
     INNER JOIN almacenes a ON a.id_almacen = s.id_almacen
@@ -58,6 +65,7 @@ const CTE_EXISTENCIAS = `
         NULLIF(BTRIM(u.nivel), '')), '') AS ubicacion,
       su.cantidad,
       NULL::numeric AS cantidad_reservada,
+      NULL::numeric AS cantidad_vencida,
       su.cantidad AS cantidad_disponible,
       su.fecha_actualizacion
     FROM stock_ubicaciones su
@@ -310,4 +318,95 @@ const consultarProximosVencer = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { consultarStock, consultarHistorialProducto, consultarProximosVencer };
+// RF43: vista separada de lotes vencidos con existencia, pendientes de baja
+// por salida de VENCIMIENTO (RF27).
+const consultarLotesVencidos = asyncHandler(async (req, res) => {
+  const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 200);
+  const page = Math.max(Number(req.query.page || 1), 1);
+  const offset = (page - 1) * limit;
+  const valores = [];
+  const condiciones = [CONDICION_LOTE_VENCIDO];
+
+  for (const [parametro, columna, mensaje] of [
+    ["id_almacen", "lp.id_almacen", "El almacén no es válido"],
+    ["id_categoria", "p.id_categoria", "La categoría no es válida"],
+  ]) {
+    const valor = req.query[parametro];
+    if (valor === undefined || valor === "") continue;
+    const id = Number(valor);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new ApiError(400, mensaje);
+    }
+    valores.push(id);
+    condiciones.push(`${columna} = $${valores.length}`);
+  }
+  if (req.query.search) {
+    valores.push(`%${String(req.query.search).trim()}%`);
+    const parametro = `$${valores.length}`;
+    condiciones.push(
+      `(p.nombre ILIKE ${parametro} OR p.codigo ILIKE ${parametro} OR lp.numero_lote ILIKE ${parametro})`,
+    );
+  }
+
+  const fromSql = `
+    FROM lotes_productos lp
+    INNER JOIN productos p ON p.id_producto = lp.id_producto
+    INNER JOIN almacenes a ON a.id_almacen = lp.id_almacen
+    LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
+    LEFT JOIN unidades_medida um ON um.id_unidad = p.id_unidad
+    WHERE ${condiciones.join(" AND ")}`;
+
+  const [dataResult, resumenResult] = await Promise.all([
+    db.query(
+      `SELECT
+         lp.id_lote,
+         lp.numero_lote,
+         TO_CHAR(lp.fecha_vencimiento, 'YYYY-MM-DD') AS fecha_vencimiento,
+         (CURRENT_DATE - lp.fecha_vencimiento)::int AS dias_vencido,
+         lp.cantidad_actual AS cantidad,
+         'VENCIDO' AS estado,
+         COALESCE(p.precio, 0) AS precio,
+         lp.cantidad_actual * COALESCE(p.precio, 0) AS valor,
+         p.id_producto,
+         p.codigo AS producto_codigo,
+         p.nombre AS producto,
+         um.abreviatura AS unidad,
+         c.id_categoria,
+         c.nombre AS categoria,
+         a.id_almacen,
+         a.codigo AS almacen_codigo,
+         a.nombre AS almacen
+       ${fromSql}
+       ORDER BY lp.fecha_vencimiento ASC, p.nombre ASC, lp.id_lote ASC
+       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2}`,
+      [...valores, limit, offset],
+    ),
+    db.query(
+      `SELECT
+         COUNT(*)::int AS total,
+         COALESCE(SUM(lp.cantidad_actual), 0)::numeric AS total_unidades,
+         COALESCE(SUM(lp.cantidad_actual * COALESCE(p.precio, 0)), 0)::numeric AS total_valor
+       ${fromSql}`,
+      valores,
+    ),
+  ]);
+
+  const { total, total_unidades, total_valor } = resumenResult.rows[0];
+  res.json({
+    ok: true,
+    data: dataResult.rows,
+    resumen: {
+      total_lotes: total,
+      total_unidades: Number(total_unidades),
+      total_valor: Number(total_valor),
+    },
+    pagination: { page, limit, total },
+  });
+});
+
+module.exports = {
+  consultarStock,
+  consultarHistorialProducto,
+  consultarProximosVencer,
+  consultarLotesVencidos,
+};

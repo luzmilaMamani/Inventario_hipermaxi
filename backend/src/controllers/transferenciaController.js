@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
+const { obtenerCantidadVencida } = require("../services/lotesVencidos");
 
 const generarNumeroTransferencia = async (client) => {
   const year = new Date().getFullYear();
@@ -181,6 +182,7 @@ const crearTransferencia = asyncHandler(async (req, res) => {
     const transferencia = result.rows[0];
 
     // RF57: la solicitud reserva el stock en origen hasta enviarse o cancelarse.
+    // RF43: las unidades de lotes vencidos no se pueden transferir.
     for (const d of detalles) {
       const cantidad = Number(d.cantidad);
       const reserva = await client.query(
@@ -188,14 +190,15 @@ const crearTransferencia = asyncHandler(async (req, res) => {
          SET cantidad_reservada = COALESCE(cantidad_reservada, 0) + $1::numeric,
              fecha_actualizacion = CURRENT_TIMESTAMP
          WHERE id_producto = $2 AND id_almacen = $3
-           AND cantidad - COALESCE(cantidad_reservada, 0) >= $1::numeric
+           AND cantidad - COALESCE(cantidad_reservada, 0)
+               - fn_cantidad_vencida(id_producto, id_almacen) >= $1::numeric
          RETURNING id_stock`,
         [cantidad, d.id_producto, idAlmacenOrigen],
       );
       if (!reserva.rowCount) {
         throw new ApiError(
           400,
-          `Stock disponible insuficiente en el origen para el producto ${d.id_producto}`,
+          `Stock disponible insuficiente en el origen para el producto ${d.id_producto} (no se cuentan lo reservado ni los lotes vencidos)`,
         );
       }
 
@@ -289,14 +292,16 @@ const cambiarEstado = asyncHandler(async (req, res) => {
           [d.id_producto, transferencia.almacen_origen]
         );
         // Lo reservado por esta misma transferencia cuenta como disponible para enviarla.
+        // RF43: lo que venció desde la solicitud ya no puede enviarse.
         const reservadoLinea = Number(d.cantidad_reservada || 0);
         const disponible = stockRes.rowCount
           ? Number(stockRes.rows[0].cantidad) -
             Number(stockRes.rows[0].cantidad_reservada || 0) +
-            reservadoLinea
+            reservadoLinea -
+            (await obtenerCantidadVencida(client, d.id_producto, transferencia.almacen_origen))
           : 0;
         if (!stockRes.rowCount || disponible < Number(d.cantidad_solicitada)) {
-          throw new ApiError(400, `Stock insuficiente en el origen para el producto ${d.id_producto}`);
+          throw new ApiError(400, `Stock insuficiente en el origen para el producto ${d.id_producto} (no se cuentan los lotes vencidos)`);
         }
 
         const nuevoStock = Number(stockRes.rows[0].cantidad) - Number(d.cantidad_solicitada);
