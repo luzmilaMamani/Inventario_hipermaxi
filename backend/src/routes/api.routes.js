@@ -24,6 +24,7 @@ const parametrosVencimientoRouter = require("./parametrosVencimiento.routes");
 const alertasVencimientoRouter = require("./alertasVencimiento.routes");
 const etiquetasRouter = require("./etiquetas.routes");
 const devolucionesRouter = require("./devoluciones.routes");
+const devolucionesProveedorRouter = require("./devolucionesProveedor.routes");
 
 const router = express.Router();
 const recursosSoloLectura = new Set([
@@ -51,6 +52,7 @@ router.use("/parametros-vencimiento", parametrosVencimientoRouter);
 router.use("/alertas-vencimiento", alertasVencimientoRouter);
 router.use("/etiquetas", etiquetasRouter);
 router.use("/devoluciones", devolucionesRouter);
+router.use("/devoluciones-proveedor", devolucionesProveedorRouter);
 
 router.use(
   "/entradas-inventario",

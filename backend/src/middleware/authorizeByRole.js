@@ -29,6 +29,9 @@ const OPERACIONES_ENCARGADO = [
   { method: "PUT", path: "/alertas-vencimiento" },
   { method: "POST", path: "/etiquetas/pdf" },
   { method: "POST", path: "/devoluciones" },
+  // RF56: devolución a proveedor y cierre de su reposición.
+  { method: "POST", path: "/devoluciones-proveedor" },
+  { method: "PUT", path: "/devoluciones-proveedor" },
   { method: "PUT", path: "/stock-ubicaciones" },
   { method: "DELETE", path: "/stock-ubicaciones" },
 ];
