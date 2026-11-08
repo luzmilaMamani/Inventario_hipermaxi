@@ -25,6 +25,8 @@ import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
 import DetalleRecepcion from "./pages/stock/DetalleRecepcion";
 import ListaDevoluciones from "./pages/devoluciones/ListaDevoluciones";
 import RegistrarDevolucion from "./pages/devoluciones/RegistrarDevolucion";
+import ListaDevolucionesProveedor from "./pages/devolucionesProveedor/ListaDevolucionesProveedor";
+import RegistrarDevolucionProveedor from "./pages/devolucionesProveedor/RegistrarDevolucionProveedor";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 
 // Reportes
@@ -195,6 +197,23 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <RegistrarDevolucion />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF56: Devoluciones a proveedor */}
+          <Route
+            path="/devoluciones-proveedor"
+            element={
+              <ProtectedRoute>
+                <ListaDevolucionesProveedor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/devoluciones-proveedor/nueva"
+            element={
+              <ProtectedRoute>
+                <RegistrarDevolucionProveedor />
               </ProtectedRoute>
             }
           />
