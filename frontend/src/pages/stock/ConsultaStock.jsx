@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Pagination from "../../components/ui/Pagination";
 import Select from "../../components/ui/Select";
@@ -130,6 +130,9 @@ export default function ConsultaStock() {
                   <th className="py-2">Origen / ubicación</th>
                   <th className="py-2 text-right">Cantidad</th>
                   <th className="py-2 text-right">Stock reservado</th>
+                  <th className="py-2 text-right" title="Lotes vencidos: no cuentan como disponibles (RF43)">
+                    Vencido
+                  </th>
                   <th className="py-2 text-right">Disponible</th>
                   <th className="py-2 text-right">Stock mínimo</th>
                   <th className="py-2 text-right">Stock máximo</th>
@@ -140,13 +143,13 @@ export default function ConsultaStock() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="10" className="py-6 text-center text-gray-500">
+                    <td colSpan="11" className="py-6 text-center text-gray-500">
                       Consultando stock...
                     </td>
                   </tr>
                 ) : registros.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="py-6 text-center text-gray-500">
+                    <td colSpan="11" className="py-6 text-center text-gray-500">
                       No hay registros de stock para esos filtros.
                     </td>
                   </tr>
@@ -182,6 +185,21 @@ export default function ConsultaStock() {
                         {registro.cantidad_reservada === null
                           ? "-"
                           : `${Number(registro.cantidad_reservada).toLocaleString("es-BO")} unid.`}
+                      </td>
+                      <td className="py-2 text-right">
+                        {registro.cantidad_vencida === null || registro.cantidad_vencida === undefined ? (
+                          "-"
+                        ) : Number(registro.cantidad_vencida) > 0 ? (
+                          <Link
+                            to="/stock/vencidos"
+                            className="font-semibold text-red-600 hover:underline"
+                            title="Ver lotes vencidos"
+                          >
+                            {Number(registro.cantidad_vencida).toLocaleString("es-BO")} unid.
+                          </Link>
+                        ) : (
+                          "0 unid."
+                        )}
                       </td>
                       <td className="py-2 text-right font-semibold">
                         <div

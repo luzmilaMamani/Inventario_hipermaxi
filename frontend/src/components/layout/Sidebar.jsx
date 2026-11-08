@@ -16,6 +16,7 @@ const links = [
   { to: "/ubicaciones", label: "Ubicaciones", icon: "📍", roles: ROLES_SIN_EMPLEADO },
   { to: "/stock", label: "Consulta de stock", icon: "📈", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/stock/proximos-vencer", label: "Próximos vencimientos", icon: "📅", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/stock/vencidos", label: "Productos vencidos", icon: "🚫", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/stock/parametros-vencimiento", label: "Parámetros de vencimiento", icon: "⚙️", roles: ROLES_SIN_EMPLEADO },
   { to: "/alertas-vencimiento", label: "Alertas de vencimiento", icon: "⏰", roles: ROLES_LECTURA_Y_OPERACION, indicador: IndicadorAlertasVencimiento },
   { to: "/alertas-stock", label: "Alertas de stock", icon: "🔔", roles: ROLES_LECTURA_Y_OPERACION },

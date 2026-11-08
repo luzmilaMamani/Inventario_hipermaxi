@@ -18,6 +18,7 @@ import ImprimirEtiquetas from "./pages/barcode/ImprimirEtiquetas";
 import ConsultaStock from "./pages/stock/ConsultaStock";
 import HistorialStock from "./pages/stock/HistorialStock";
 import ProximosVencimientos from "./pages/stock/ProximosVencimientos";
+import LotesVencidos from "./pages/stock/LotesVencidos";
 import ParametrosVencimiento from "./pages/stock/ParametrosVencimiento";
 import ListaRecepciones from "./pages/stock/ListaRecepciones";
 import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
@@ -102,6 +103,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ProximosVencimientos />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF43: lotes vencidos separados del stock disponible */}
+          <Route
+            path="/stock/vencidos"
+            element={
+              <ProtectedRoute>
+                <LotesVencidos />
               </ProtectedRoute>
             }
           />
