@@ -82,10 +82,13 @@ const obtenerTransferencia = asyncHandler(async (req, res) => {
        tr.fecha_envio AS fecha_envio_trazabilidad,
        tr.fecha_recepcion AS fecha_recepcion_trazabilidad,
        tr.motivo_cancelacion,
-       uc.nombre_completo AS usuario_cancela
+       uc.nombre_completo AS usuario_cancela,
+       tr.observaciones_recepcion,
+       ur.nombre_completo AS usuario_recibe
      FROM vw_transferencias vt
      INNER JOIN transferencias tr ON tr.id_transferencia = vt.id_transferencia
      LEFT JOIN usuarios uc ON uc.id_usuario = tr.id_usuario_cancela
+     LEFT JOIN usuarios ur ON ur.id_usuario = tr.id_usuario_recibe
      WHERE vt.id_transferencia = $1`,
     [id]
   );
@@ -96,11 +99,107 @@ const obtenerTransferencia = asyncHandler(async (req, res) => {
     `SELECT dt.*, p.nombre AS producto, p.codigo, p.codigo AS producto_codigo
      FROM detalle_transferencias dt
      INNER JOIN productos p ON p.id_producto = dt.id_producto
-     WHERE dt.id_transferencia = $1`,
+     WHERE dt.id_transferencia = $1
+     ORDER BY dt.id_detalle_transferencia`,
     [id]
   );
 
   res.json({ ok: true, data: { ...result.rows[0], detalles: detalles.rows } });
+});
+
+/**
+ * RF58: GET /api/transferencias/diferencias
+ * Líneas recibidas con faltante o sobrante, para que el almacén de origen
+ * (o el de destino) consulte las diferencias.
+ */
+const listarDiferenciasTransferencias = asyncHandler(async (req, res) => {
+  const condiciones = ["t.estado = 'RECIBIDA_CON_DIFERENCIAS'", "dt.diferencia <> 0"];
+  const valores = [];
+
+  for (const [parametro, columna] of [
+    ["id_almacen_origen", "t.almacen_origen"],
+    ["id_almacen_destino", "t.almacen_destino"],
+  ]) {
+    if (req.query[parametro] === undefined || req.query[parametro] === "") continue;
+    const idAlmacen = Number(req.query[parametro]);
+    if (!Number.isSafeInteger(idAlmacen) || idAlmacen <= 0) {
+      throw new ApiError(400, "El almacén no es válido");
+    }
+    valores.push(idAlmacen);
+    condiciones.push(`${columna} = $${valores.length}`);
+  }
+
+  for (const [parametro, operador] of [
+    ["fecha_desde", ">="],
+    ["fecha_hasta", "<"],
+  ]) {
+    const fecha = req.query[parametro];
+    if (!fecha) continue;
+    if (typeof fecha !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      throw new ApiError(400, `La fecha ${parametro} no es válida`);
+    }
+    valores.push(fecha);
+    condiciones.push(
+      operador === "<"
+        ? `t.fecha_recepcion < $${valores.length}::date + 1`
+        : `t.fecha_recepcion >= $${valores.length}::date`,
+    );
+  }
+
+  if (req.query.tipo === "FALTANTE") condiciones.push("dt.diferencia < 0");
+  if (req.query.tipo === "SOBRANTE") condiciones.push("dt.diferencia > 0");
+
+  const result = await db.query(
+    `SELECT
+       dt.id_detalle_transferencia,
+       t.id_transferencia,
+       t.numero_transferencia,
+       t.fecha_envio,
+       t.fecha_recepcion,
+       t.almacen_origen AS id_almacen_origen,
+       ao.nombre AS almacen_origen,
+       t.almacen_destino AS id_almacen_destino,
+       ad.nombre AS almacen_destino,
+       ur.nombre_completo AS usuario_recibe,
+       p.codigo AS producto_codigo,
+       p.nombre AS producto,
+       dt.cantidad_enviada,
+       dt.cantidad_recibida,
+       dt.diferencia,
+       dt.observaciones AS observacion
+     FROM detalle_transferencias dt
+     INNER JOIN transferencias t ON t.id_transferencia = dt.id_transferencia
+     INNER JOIN almacenes ao ON ao.id_almacen = t.almacen_origen
+     INNER JOIN almacenes ad ON ad.id_almacen = t.almacen_destino
+     INNER JOIN productos p ON p.id_producto = dt.id_producto
+     LEFT JOIN usuarios ur ON ur.id_usuario = t.id_usuario_recibe
+     WHERE ${condiciones.join(" AND ")}
+     ORDER BY t.fecha_recepcion DESC, t.id_transferencia DESC, dt.id_detalle_transferencia
+     LIMIT 500`,
+    valores,
+  );
+
+  const resumen = result.rows.reduce(
+    (total, linea) => {
+      const diferencia = Number(linea.diferencia);
+      if (diferencia < 0) total.faltante += -diferencia;
+      else total.sobrante += diferencia;
+      total.transferencias.add(linea.id_transferencia);
+      return total;
+    },
+    { faltante: 0, sobrante: 0, transferencias: new Set() },
+  );
+
+  res.json({
+    ok: true,
+    data: result.rows,
+    resumen: {
+      total_faltante: resumen.faltante,
+      total_sobrante: resumen.sobrante,
+      transferencias: resumen.transferencias.size,
+      lineas: result.rows.length,
+    },
+  });
 });
 
 const crearTransferencia = asyncHandler(async (req, res) => {
@@ -256,8 +355,8 @@ const cambiarEstado = asyncHandler(async (req, res) => {
         estado === "APROBADA" ? "fecha_aprobacion" : "fecha_rechazo";
       await client.query(
         `UPDATE transferencias
-         SET estado = $1,
-             id_usuario_aprueba = CASE WHEN $1 = 'APROBADA' THEN $2 ELSE id_usuario_aprueba END,
+         SET estado = $1::varchar,
+             id_usuario_aprueba = CASE WHEN $1::varchar = 'APROBADA' THEN $2 ELSE id_usuario_aprueba END,
              ${columnaFecha} = CURRENT_TIMESTAMP
          WHERE id_transferencia = $3`,
         [estado, req.user.id_usuario, id],
@@ -358,7 +457,15 @@ const cambiarEstado = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Debe informar la cantidad recibida para cada producto");
       }
 
-      const cantidadesRecibidas = new Map();
+      const observacionesRecepcion =
+        typeof req.body.observaciones_recepcion === "string"
+          ? req.body.observaciones_recepcion.trim()
+          : "";
+      if (observacionesRecepcion.length > 500) {
+        throw new ApiError(400, "La observación de la recepción no puede superar los 500 caracteres");
+      }
+
+      const recepciones = new Map();
       for (const [index, detalle] of detalles_recibidos.entries()) {
         const idDetalle = Number(detalle?.id_detalle_transferencia);
         const cantidadRecibida = Number(detalle?.cantidad_recibida);
@@ -368,27 +475,45 @@ const cambiarEstado = asyncHandler(async (req, res) => {
           !Number.isSafeInteger(idDetalle) ||
           !Number.isSafeInteger(cantidadRecibida) ||
           cantidadRecibida < 0 ||
-          cantidadesRecibidas.has(idDetalle)
+          recepciones.has(idDetalle)
         ) {
           throw new ApiError(400, `La cantidad recibida de la línea ${index + 1} no es válida`);
         }
-        cantidadesRecibidas.set(idDetalle, cantidadRecibida);
+        const observacion =
+          typeof detalle?.observacion === "string" ? detalle.observacion.trim() : "";
+        if (observacion.length > 300) {
+          throw new ApiError(400, `La observación de la línea ${index + 1} no puede superar los 300 caracteres`);
+        }
+        recepciones.set(idDetalle, { cantidadRecibida, observacion });
       }
 
+      // RF58: se calcula la diferencia por producto contra lo enviado.
+      // Negativa = faltante, positiva = sobrante. Toda diferencia debe explicarse.
+      let lineasConDiferencia = 0;
       for (const d of detalles.rows) {
-        const cantidadRecibida = cantidadesRecibidas.get(
-          d.id_detalle_transferencia,
-        );
-        if (cantidadRecibida === undefined) {
+        const recepcion = recepciones.get(d.id_detalle_transferencia);
+        if (!recepcion) {
           throw new ApiError(400, "Falta la cantidad recibida para un producto");
         }
-        if (cantidadRecibida > Number(d.cantidad_enviada)) {
-          throw new ApiError(
-            400,
-            `No se puede recibir más de lo enviado para el producto ${d.id_producto}`,
-          );
+        recepcion.diferencia = recepcion.cantidadRecibida - Number(d.cantidad_enviada);
+        if (recepcion.diferencia !== 0) {
+          lineasConDiferencia += 1;
+          if (recepcion.observacion.length < 5) {
+            throw new ApiError(
+              400,
+              `El producto ${d.id_producto} tiene un ${recepcion.diferencia < 0 ? "faltante" : "sobrante"} de ${Math.abs(recepcion.diferencia)}: indique una observación (mínimo 5 caracteres)`,
+            );
+          }
         }
+      }
+      const estadoRecepcion = lineasConDiferencia > 0 ? "RECIBIDA_CON_DIFERENCIAS" : "RECIBIDA";
 
+      for (const d of detalles.rows) {
+        const { cantidadRecibida, observacion, diferencia } = recepciones.get(
+          d.id_detalle_transferencia,
+        );
+
+        // Solo se suma al stock del destino lo realmente recibido.
         if (cantidadRecibida > 0) {
           const stockRes = await client.query(
             `INSERT INTO stock (id_producto, id_almacen, cantidad, cantidad_reservada)
@@ -401,8 +526,8 @@ const cambiarEstado = asyncHandler(async (req, res) => {
 
           await client.query(
             `INSERT INTO movimientos_inventario
-              (id_producto, id_almacen, id_usuario, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, referencia)
-             VALUES ($1, $2, $3, 'TRANSFERENCIA', $4, $5, $6, $7)`,
+              (id_producto, id_almacen, id_usuario, tipo_movimiento, cantidad, stock_anterior, stock_nuevo, referencia, observaciones)
+             VALUES ($1, $2, $3, 'TRANSFERENCIA', $4, $5, $6, $7, $8)`,
             [
               d.id_producto,
               transferencia.almacen_destino,
@@ -411,22 +536,42 @@ const cambiarEstado = asyncHandler(async (req, res) => {
               stockRes.rows[0].stock_anterior,
               stockRes.rows[0].cantidad,
               transferencia.numero_transferencia,
+              diferencia === 0
+                ? null
+                : `Recepción con ${diferencia < 0 ? "faltante" : "sobrante"} de ${Math.abs(diferencia)} (enviado ${Number(d.cantidad_enviada)}): ${observacion}`,
             ]
           );
         }
 
         await client.query(
           `UPDATE detalle_transferencias
-           SET cantidad_recibida = $1
-           WHERE id_detalle_transferencia = $2`,
-          [cantidadRecibida, d.id_detalle_transferencia],
+           SET cantidad_recibida = $1,
+               diferencia = $2,
+               observaciones = $3
+           WHERE id_detalle_transferencia = $4`,
+          [cantidadRecibida, diferencia, observacion || null, d.id_detalle_transferencia],
         );
       }
 
       await client.query(
-        `UPDATE transferencias SET estado = 'RECIBIDA', fecha_recepcion = CURRENT_TIMESTAMP WHERE id_transferencia = $1`,
-        [id]
+        `UPDATE transferencias
+         SET estado = $1,
+             fecha_recepcion = CURRENT_TIMESTAMP,
+             id_usuario_recibe = $2,
+             observaciones_recepcion = $3
+         WHERE id_transferencia = $4`,
+        [estadoRecepcion, req.user.id_usuario, observacionesRecepcion || null, id]
       );
+
+      await client.query("COMMIT");
+      return res.json({
+        ok: true,
+        message:
+          estadoRecepcion === "RECIBIDA"
+            ? "Transferencia recibida sin diferencias"
+            : `Transferencia recibida con diferencias en ${lineasConDiferencia} producto(s). Solo se sumó al stock lo realmente recibido.`,
+        data: { estado: estadoRecepcion, lineas_con_diferencia: lineasConDiferencia },
+      });
     }
 
     await client.query("COMMIT");
@@ -502,6 +647,7 @@ const cancelarTransferencia = asyncHandler(async (req, res) => {
 module.exports = {
   listarTransferencias,
   obtenerTransferencia,
+  listarDiferenciasTransferencias,
   crearTransferencia,
   cambiarEstado,
   cancelarTransferencia,

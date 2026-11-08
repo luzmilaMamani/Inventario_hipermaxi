@@ -25,7 +25,9 @@ const links = [
   { to: "/recepciones", label: "Recepciones", icon: "📥", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/salidas", label: "Salidas", icon: "📤", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/devoluciones", label: "Devoluciones", icon: "↩️", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/devoluciones-proveedor", label: "Devoluciones a proveedor", icon: "🚚", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/transferencias", label: "Transferencias", icon: "🔄", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/transferencias/diferencias", label: "Diferencias de transferencias", icon: "⚖️", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/inventarios", label: "Inventarios Físicos", icon: "📋", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/ajustes", label: "Ajustes", icon: "📝", roles: ROLES_LECTURA_Y_OPERACION },
   {
@@ -60,7 +62,7 @@ export default function Sidebar() {
           <NavLink
             key={link.to}
             to={link.to}
-            end={["/", "/ajustes"].includes(link.to)}
+            end={["/", "/ajustes", "/transferencias"].includes(link.to)}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                 isActive

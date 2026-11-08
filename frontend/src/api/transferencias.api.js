@@ -6,6 +6,10 @@ export const listarTransferencias = (params) =>
 export const obtenerTransferencia = (id) =>
   api.get(`/transferencias/${id}`).then((r) => r.data);
 
+// RF58: líneas recibidas con faltante o sobrante.
+export const listarDiferenciasTransferencias = (params) =>
+  api.get("/transferencias/diferencias", { params }).then((r) => r.data);
+
 export const crearTransferencia = (data) =>
   api.post("/transferencias", data).then((r) => r.data);
 

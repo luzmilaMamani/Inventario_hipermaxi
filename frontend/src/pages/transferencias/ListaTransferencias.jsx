@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Modal from "../../components/ui/Modal";
 import Select from "../../components/ui/Select";
@@ -23,6 +24,9 @@ export default function ListaTransferencias() {
   // Estados para los modales de RF31 y RF32
   const [envioPendiente, setEnvioPendiente] = useState(null);
   const [recepcionPendiente, setRecepcionPendiente] = useState(null);
+  const [errorRecepcion, setErrorRecepcion] = useState("");
+  const [guardandoRecepcion, setGuardandoRecepcion] = useState(false);
+  const [mensaje, setMensaje] = useState("");
 
   const puedeDecidir = ["ENCARGADO_ALMACEN", "ADMINISTRADOR"].includes(user?.rol);
 
@@ -64,31 +68,74 @@ export default function ListaTransferencias() {
     if (exito) setEnvioPendiente(null);
   };
 
+  // RF58: diferencia por línea (negativa = faltante, positiva = sobrante).
+  const diferenciaLinea = (detalle) =>
+    detalle.cantidad_recibida === ""
+      ? null
+      : Number(detalle.cantidad_recibida) - detalle.cantidad_enviada;
+
   const confirmarRecepcion = async (e) => {
     e.preventDefault();
-    const exito = await handleCambiarEstado(
-      recepcionPendiente.id,
-      "RECIBIDA",
-      {
+    setErrorRecepcion("");
+    for (const detalle of recepcionPendiente.detalles) {
+      const cantidad = Number(detalle.cantidad_recibida);
+      if (detalle.cantidad_recibida === "" || !Number.isInteger(cantidad) || cantidad < 0) {
+        return setErrorRecepcion(`La cantidad recibida de ${detalle.producto} debe ser un número entero mayor o igual a 0`);
+      }
+      if (diferenciaLinea(detalle) !== 0 && detalle.observacion.trim().length < 5) {
+        return setErrorRecepcion(`Explica la diferencia de ${detalle.producto} en la observación (mínimo 5 caracteres)`);
+      }
+    }
+    const lineasConDiferencia = recepcionPendiente.detalles.filter((d) => diferenciaLinea(d) !== 0).length;
+    const pregunta = lineasConDiferencia
+      ? `Hay diferencias en ${lineasConDiferencia} producto(s). La transferencia quedará RECIBIDA CON DIFERENCIAS y solo ingresará al stock lo recibido. ¿Confirmas?`
+      : "¿Confirmas registrar la entrada al almacén?";
+    if (!window.confirm(pregunta)) return;
+
+    setGuardandoRecepcion(true);
+    try {
+      const respuesta = await cambiarEstadoTransferencia(recepcionPendiente.id, "RECIBIDA", {
+        observaciones_recepcion: recepcionPendiente.observaciones.trim() || null,
         detalles_recibidos: recepcionPendiente.detalles.map((detalle) => ({
           id_detalle_transferencia: detalle.id_detalle_transferencia,
           cantidad_recibida: Number(detalle.cantidad_recibida),
+          observacion: detalle.observacion.trim() || null,
         })),
-      },
-    );
-    if (exito) setRecepcionPendiente(null);
+      });
+      setRecepcionPendiente(null);
+      setMensaje(respuesta.message || "Recepción registrada");
+      cargar();
+    } catch (err) {
+      setErrorRecepcion(err.response?.data?.message || "Error al registrar la recepción");
+    } finally {
+      setGuardandoRecepcion(false);
+    }
   };
+
+  const actualizarLineaRecepcion = (indice, cambios) =>
+    setRecepcionPendiente((actual) => ({
+      ...actual,
+      detalles: actual.detalles.map((linea, posicion) =>
+        posicion === indice ? { ...linea, ...cambios } : linea,
+      ),
+    }));
 
   const abrirRecepcion = async (id) => {
     try {
       const respuesta = await obtenerTransferencia(id);
+      setErrorRecepcion("");
       setRecepcionPendiente({
         id,
+        numero: respuesta.data.numero_transferencia,
+        origen: respuesta.data.almacen_origen,
+        observaciones: "",
         detalles: respuesta.data.detalles.map((detalle) => ({
           id_detalle_transferencia: detalle.id_detalle_transferencia,
           producto: detalle.producto,
+          producto_codigo: detalle.producto_codigo,
           cantidad_enviada: Number(detalle.cantidad_enviada),
-          cantidad_recibida: String(detalle.cantidad_enviada),
+          cantidad_recibida: String(Number(detalle.cantidad_enviada)),
+          observacion: "",
         })),
       });
     } catch (err) {
@@ -103,6 +150,7 @@ export default function ListaTransferencias() {
       case "RECHAZADA": return "bg-red-100 text-red-700";
       case "ENVIADA": return "bg-amber-100 text-amber-700";
       case "RECIBIDA": return "bg-purple-100 text-purple-700";
+      case "RECIBIDA_CON_DIFERENCIAS": return "bg-orange-100 text-orange-700";
       case "CANCELADA": return "bg-gray-200 text-gray-600";
       default: return "bg-gray-100 text-gray-700";
     }
@@ -114,12 +162,26 @@ export default function ListaTransferencias() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">Transferencias</h1>
-            <p className="text-sm text-gray-500">Solicitudes y envíos entre almacenes (RF29, RF31, RF32)</p>
+            <p className="text-sm text-gray-500">Solicitudes y envíos entre almacenes (RF29, RF31, RF32, RF58)</p>
           </div>
-          <button className="btn-primary" onClick={() => setFormOpen(true)}>
-            + Nueva transferencia
-          </button>
+          <div className="flex gap-2">
+            <Link to="/transferencias/diferencias" className="btn-secondary">
+              Diferencias en recepción
+            </Link>
+            <button className="btn-primary" onClick={() => setFormOpen(true)}>
+              + Nueva transferencia
+            </button>
+          </div>
         </div>
+
+        {mensaje && (
+          <div className="flex items-start justify-between gap-3 rounded bg-green-50 p-3 text-sm text-green-700">
+            <span>{mensaje}</span>
+            <button type="button" className="font-semibold" onClick={() => setMensaje("")}>
+              ×
+            </button>
+          </div>
+        )}
 
         <div className="card">
           <div className="mb-4 flex gap-3">
@@ -132,6 +194,7 @@ export default function ListaTransferencias() {
                 { value: "APROBADA", label: "Aprobada" },
                 { value: "ENVIADA", label: "Enviada (En Tránsito)" },
                 { value: "RECIBIDA", label: "Recibida" },
+                { value: "RECIBIDA_CON_DIFERENCIAS", label: "Recibida con diferencias" },
                 { value: "RECHAZADA", label: "Rechazada" },
                 { value: "CANCELADA", label: "Cancelada" },
               ]}
@@ -164,7 +227,7 @@ export default function ListaTransferencias() {
                       <td className="py-2">{t.almacen_origen}</td>
                       <td className="py-2">{t.almacen_destino}</td>
                       <td className="py-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getBadgeColor(t.estado)}`}>{t.estado}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getBadgeColor(t.estado)}`}>{t.estado.replaceAll("_", " ")}</span>
                       </td>
                       <td className="py-2">
                         {t.fecha_llegada_estimada ? new Date(`${t.fecha_llegada_estimada}T00:00:00`).toLocaleDateString("es-BO") : "-"}
@@ -226,56 +289,92 @@ export default function ListaTransferencias() {
 
       {/* Modal RF32 */}
       {recepcionPendiente && (
-        <Modal open onClose={() => setRecepcionPendiente(null)} title="Registrar Recepción (Ingresa al Almacén)">
-          <form onSubmit={confirmarRecepcion} className="space-y-4">
-            <p className="text-sm text-gray-600">Registra lo recibido. Solo esas cantidades ingresarán al stock del almacén de destino.</p>
+        <Modal open onClose={() => setRecepcionPendiente(null)} title={`Registrar Recepción ${recepcionPendiente.numero || ""}`}>
+          <form onSubmit={confirmarRecepcion} className="max-h-[75vh] space-y-4 overflow-y-auto">
+            <p className="text-sm text-gray-600">
+              Registra lo realmente recibido de {recepcionPendiente.origen}. Solo esas cantidades ingresarán al stock del
+              almacén de destino. Si hay faltante o sobrante, explica la diferencia: el almacén de origen podrá consultarla.
+            </p>
             <div className="space-y-3">
-              {recepcionPendiente.detalles.map((detalle, indice) => (
-                <div
-                  key={detalle.id_detalle_transferencia}
-                  className="grid grid-cols-[1fr_110px_120px] items-end gap-3"
-                >
-                  <div className="text-sm">
-                    <p className="font-medium">{detalle.producto}</p>
-                    <p className="text-xs text-gray-500">
-                      Enviado: {detalle.cantidad_enviada}
-                    </p>
+              {recepcionPendiente.detalles.map((detalle, indice) => {
+                const diferencia = diferenciaLinea(detalle);
+                const conDiferencia = diferencia !== null && diferencia !== 0;
+                return (
+                  <div
+                    key={detalle.id_detalle_transferencia}
+                    className={`space-y-2 rounded border p-3 ${conDiferencia ? "border-orange-300 bg-orange-50" : "border-gray-200"}`}
+                  >
+                    <div className="grid grid-cols-[1fr_110px_130px] items-end gap-3">
+                      <div className="text-sm">
+                        <p className="font-medium">{detalle.producto}</p>
+                        <p className="text-xs text-gray-500">
+                          <span className="font-mono">{detalle.producto_codigo}</span> · Enviado: {detalle.cantidad_enviada}
+                        </p>
+                      </div>
+                      <label className="text-sm">
+                        Recibido
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          required
+                          className="input-field mt-1"
+                          value={detalle.cantidad_recibida}
+                          onChange={(e) => actualizarLineaRecepcion(indice, { cantidad_recibida: e.target.value })}
+                        />
+                      </label>
+                      <span
+                        className={`pb-2 text-xs font-semibold ${
+                          diferencia === null || diferencia === 0
+                            ? "text-gray-500"
+                            : diferencia < 0
+                              ? "text-red-600"
+                              : "text-blue-700"
+                        }`}
+                      >
+                        {diferencia === null
+                          ? "Diferencia: -"
+                          : diferencia === 0
+                            ? "Sin diferencia"
+                            : diferencia < 0
+                              ? `Faltante: ${-diferencia}`
+                              : `Sobrante: +${diferencia}`}
+                      </span>
+                    </div>
+                    {conDiferencia && (
+                      <input
+                        className="input-field"
+                        maxLength="300"
+                        value={detalle.observacion}
+                        onChange={(e) => actualizarLineaRecepcion(indice, { observacion: e.target.value })}
+                        placeholder="Observación obligatoria: ej. caja dañada en el viaje, llegó una unidad de más"
+                        aria-label={`Observación de ${detalle.producto}`}
+                      />
+                    )}
                   </div>
-                  <label className="text-sm">
-                    Recibido
-                    <input
-                      type="number"
-                      min="0"
-                      max={detalle.cantidad_enviada}
-                      step="1"
-                      required
-                      className="input-field mt-1"
-                      value={detalle.cantidad_recibida}
-                      onChange={(e) =>
-                        setRecepcionPendiente((actual) => ({
-                          ...actual,
-                          detalles: actual.detalles.map((linea, posicion) =>
-                            posicion === indice
-                              ? { ...linea, cantidad_recibida: e.target.value }
-                              : linea,
-                          ),
-                        }))
-                      }
-                    />
-                  </label>
-                  <span className="pb-2 text-xs text-gray-500">
-                    Diferencia:{" "}
-                    {detalle.cantidad_recibida === ""
-                      ? "-"
-                      : Number(detalle.cantidad_recibida) -
-                        detalle.cantidad_enviada}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium" htmlFor="observaciones-recepcion">
+                Observación general
+              </label>
+              <textarea
+                id="observaciones-recepcion"
+                className="input-field"
+                rows="2"
+                maxLength="500"
+                value={recepcionPendiente.observaciones}
+                onChange={(e) => setRecepcionPendiente({ ...recepcionPendiente, observaciones: e.target.value })}
+                placeholder="Opcional"
+              />
+            </div>
+            {errorRecepcion && <p className="rounded bg-red-50 p-2 text-sm text-red-600">{errorRecepcion}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" className="btn-secondary" onClick={() => setRecepcionPendiente(null)}>Cancelar</button>
-              <button type="submit" className="btn-primary">Confirmar Recepción</button>
+              <button type="submit" className="btn-primary" disabled={guardandoRecepcion}>
+                {guardandoRecepcion ? "Registrando..." : "Confirmar Recepción"}
+              </button>
             </div>
           </form>
         </Modal>

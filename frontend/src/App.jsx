@@ -25,6 +25,8 @@ import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
 import DetalleRecepcion from "./pages/stock/DetalleRecepcion";
 import ListaDevoluciones from "./pages/devoluciones/ListaDevoluciones";
 import RegistrarDevolucion from "./pages/devoluciones/RegistrarDevolucion";
+import ListaDevolucionesProveedor from "./pages/devolucionesProveedor/ListaDevolucionesProveedor";
+import RegistrarDevolucionProveedor from "./pages/devolucionesProveedor/RegistrarDevolucionProveedor";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 
 // Reportes
@@ -39,6 +41,7 @@ import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
 
 // Transferencias (RF29)
 import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
+import DiferenciasTransferencias from "./pages/transferencias/DiferenciasTransferencias";
 import ListaAjustes from "./pages/ajustes/ListaAjustes";
 import BandejaAprobacionAjustes from "./pages/ajustes/BandejaAprobacionAjustes";
 import PanelAlertasStock from "./pages/alertas/PanelAlertasStock";
@@ -197,6 +200,23 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          {/* RF56: Devoluciones a proveedor */}
+          <Route
+            path="/devoluciones-proveedor"
+            element={
+              <ProtectedRoute>
+                <ListaDevolucionesProveedor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/devoluciones-proveedor/nueva"
+            element={
+              <ProtectedRoute>
+                <RegistrarDevolucionProveedor />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/reportes/perdidas"
@@ -288,6 +308,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ListaTransferencias />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF58: Diferencias en la recepción de transferencias */}
+          <Route
+            path="/transferencias/diferencias"
+            element={
+              <ProtectedRoute>
+                <DiferenciasTransferencias />
               </ProtectedRoute>
             }
           />
