@@ -127,12 +127,29 @@ export default function DetalleTransferencia({
         completada: Boolean(transferencia?.fecha_envio_trazabilidad),
       },
       {
-        nombre: "Recibida en destino",
+        nombre:
+          estado === "RECIBIDA_CON_DIFERENCIAS"
+            ? "Recibida en destino con diferencias"
+            : "Recibida en destino",
         fecha: transferencia?.fecha_recepcion_trazabilidad,
         completada: Boolean(transferencia?.fecha_recepcion_trazabilidad),
+        tono: estado === "RECIBIDA_CON_DIFERENCIAS" ? "naranja" : undefined,
+        detalle: [
+          transferencia?.usuario_recibe && `Por ${transferencia.usuario_recibe}`,
+          transferencia?.observaciones_recepcion &&
+            `Observación: ${transferencia.observaciones_recepcion}`,
+        ].filter(Boolean),
       },
     );
   }
+
+  // RF58: diferencia por producto entre lo enviado y lo recibido.
+  const recibida = ["RECIBIDA", "RECIBIDA_CON_DIFERENCIAS"].includes(estado);
+  const lineasConDiferencia = recibida
+    ? (transferencia?.detalles || []).filter(
+        (detalle) => Number(detalle.diferencia ?? 0) !== 0,
+      ).length
+    : 0;
 
   return (
     <Modal
@@ -149,7 +166,7 @@ export default function DetalleTransferencia({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-gray-500">Estado actual</p>
-              <p className="font-semibold">{transferencia.estado}</p>
+              <p className="font-semibold">{transferencia.estado.replaceAll("_", " ")}</p>
             </div>
             <div>
               <p className="text-gray-500">Solicitante</p>
@@ -180,7 +197,9 @@ export default function DetalleTransferencia({
                     className={`absolute -left-[21px] top-1 h-3 w-3 rounded-full ${
                       etapa.tono === "rojo"
                         ? "bg-red-500"
-                        : etapa.completada
+                        : etapa.tono === "naranja" && etapa.completada
+                          ? "bg-orange-500"
+                          : etapa.completada
                           ? "bg-green-500"
                           : "bg-gray-300"
                     }`}
@@ -215,6 +234,12 @@ export default function DetalleTransferencia({
 
           <section>
             <h4 className="mb-2 font-semibold">Mercadería</h4>
+            {lineasConDiferencia > 0 && (
+              <p className="mb-2 rounded bg-orange-50 p-2 text-orange-800">
+                Se registraron diferencias en {lineasConDiferencia} producto(s). Al stock del destino solo ingresó lo
+                realmente recibido.
+              </p>
+            )}
             <div className="overflow-x-auto rounded border">
               <table className="w-full text-left">
                 <thead className="bg-gray-50 text-gray-600">
@@ -223,6 +248,7 @@ export default function DetalleTransferencia({
                     <th className="p-2 text-right">Solicitada</th>
                     <th className="p-2 text-right">Enviada</th>
                     <th className="p-2 text-right">Recibida</th>
+                    {recibida && <th className="p-2 text-right">Diferencia</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -236,6 +262,11 @@ export default function DetalleTransferencia({
                         <p className="font-mono text-xs text-gray-500">
                           {detalle.producto_codigo}
                         </p>
+                        {recibida && detalle.observaciones && (
+                          <p className="text-xs text-orange-700">
+                            {detalle.observaciones}
+                          </p>
+                        )}
                       </td>
                       <td className="p-2 text-right">
                         {Number(detalle.cantidad_solicitada).toLocaleString(
@@ -252,6 +283,20 @@ export default function DetalleTransferencia({
                           "es-BO",
                         )}
                       </td>
+                      {recibida && (
+                        <td
+                          className={`p-2 text-right font-semibold ${
+                            Number(detalle.diferencia ?? 0) < 0
+                              ? "text-red-600"
+                              : Number(detalle.diferencia ?? 0) > 0
+                                ? "text-blue-700"
+                                : "text-gray-500"
+                          }`}
+                        >
+                          {Number(detalle.diferencia ?? 0) > 0 ? "+" : ""}
+                          {Number(detalle.diferencia ?? 0).toLocaleString("es-BO")}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

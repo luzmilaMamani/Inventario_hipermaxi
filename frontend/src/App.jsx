@@ -39,6 +39,7 @@ import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
 
 // Transferencias (RF29)
 import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
+import DiferenciasTransferencias from "./pages/transferencias/DiferenciasTransferencias";
 import ListaAjustes from "./pages/ajustes/ListaAjustes";
 import BandejaAprobacionAjustes from "./pages/ajustes/BandejaAprobacionAjustes";
 import PanelAlertasStock from "./pages/alertas/PanelAlertasStock";
@@ -288,6 +289,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ListaTransferencias />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF58: Diferencias en la recepción de transferencias */}
+          <Route
+            path="/transferencias/diferencias"
+            element={
+              <ProtectedRoute>
+                <DiferenciasTransferencias />
               </ProtectedRoute>
             }
           />
