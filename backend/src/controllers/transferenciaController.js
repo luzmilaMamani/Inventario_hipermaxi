@@ -256,8 +256,8 @@ const cambiarEstado = asyncHandler(async (req, res) => {
         estado === "APROBADA" ? "fecha_aprobacion" : "fecha_rechazo";
       await client.query(
         `UPDATE transferencias
-         SET estado = $1,
-             id_usuario_aprueba = CASE WHEN $1 = 'APROBADA' THEN $2 ELSE id_usuario_aprueba END,
+         SET estado = $1::varchar,
+             id_usuario_aprueba = CASE WHEN $1::varchar = 'APROBADA' THEN $2 ELSE id_usuario_aprueba END,
              ${columnaFecha} = CURRENT_TIMESTAMP
          WHERE id_transferencia = $3`,
         [estado, req.user.id_usuario, id],
