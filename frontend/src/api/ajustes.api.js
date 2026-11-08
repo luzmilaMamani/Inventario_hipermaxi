@@ -85,3 +85,61 @@ export const crearAjuste = (data) => {
   }
   return api.post("/ajustes-inventario", data).then((r) => r.data);
 };
+
+// RF53: estados del ajuste y aprobación de los que superan el límite.
+export const ESTADOS_AJUSTE = [
+  { value: "APLICADO", label: "Aplicado" },
+  { value: "PENDIENTE", label: "Pendiente de aprobación" },
+  { value: "APROBADO", label: "Aprobado" },
+  { value: "RECHAZADO", label: "Rechazado" },
+];
+
+export const ESTILO_ESTADO_AJUSTE = {
+  APLICADO: "bg-green-100 text-green-700",
+  PENDIENTE: "bg-amber-100 text-amber-800",
+  APROBADO: "bg-blue-100 text-blue-700",
+  RECHAZADO: "bg-red-100 text-red-700",
+};
+
+export const etiquetaEstadoAjuste = (estado) =>
+  ESTADOS_AJUSTE.find((item) => item.value === estado)?.label || estado || "-";
+
+export const EVENTO_AJUSTES_PENDIENTES = "ajustes-pendientes-cambio";
+
+export const notificarCambioAjustesPendientes = () =>
+  window.dispatchEvent(new Event(EVENTO_AJUSTES_PENDIENTES));
+
+const LIMITES_PREVIEW = { limite_cantidad: 50, limite_monto: 1000 };
+
+export const aprobarAjuste = (id) => {
+  if (esVistaPrevia) {
+    return Promise.resolve({ ok: true, message: "Ajuste aprobado y stock actualizado" });
+  }
+  return api.post(`/ajustes-inventario/${id}/aprobar`).then((r) => r.data);
+};
+
+export const rechazarAjuste = (id, motivo_rechazo) => {
+  if (esVistaPrevia) {
+    return Promise.resolve({ ok: true, message: "Ajuste rechazado. El stock no se modificó." });
+  }
+  return api
+    .post(`/ajustes-inventario/${id}/rechazar`, { motivo_rechazo })
+    .then((r) => r.data);
+};
+
+export const resumenAjustesPendientes = () => {
+  if (esVistaPrevia) return Promise.resolve({ ok: true, data: { pendientes: 0 } });
+  return api.get("/ajustes-inventario/pendientes/resumen").then((r) => r.data);
+};
+
+export const obtenerLimitesAprobacion = () => {
+  if (esVistaPrevia) return Promise.resolve({ ok: true, data: LIMITES_PREVIEW });
+  return api.get("/ajustes-inventario/limites").then((r) => r.data);
+};
+
+export const actualizarLimitesAprobacion = (data) => {
+  if (esVistaPrevia) {
+    return Promise.resolve({ ok: true, message: "Límites de aprobación actualizados", data });
+  }
+  return api.put("/ajustes-inventario/limites", data).then((r) => r.data);
+};

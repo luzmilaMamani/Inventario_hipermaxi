@@ -9,9 +9,13 @@ import { listarAlmacenes } from "../../api/almacenes.api";
 import { listarProductos } from "../../api/productos.api";
 import { listarUsuarios } from "../../api/usuarios.api";
 import {
+  ESTADOS_AJUSTE,
+  ESTILO_ESTADO_AJUSTE,
   MOTIVOS_AJUSTE,
+  etiquetaEstadoAjuste,
   etiquetaMotivo,
   listarAjustes,
+  notificarCambioAjustesPendientes,
   obtenerAjuste,
 } from "../../api/ajustes.api";
 import FormAjuste from "./FormAjuste";
@@ -19,6 +23,7 @@ import FormAjuste from "./FormAjuste";
 const FILTROS_INICIALES = {
   search: "",
   motivo: "",
+  estado: "",
   id_almacen: "",
   id_producto: "",
   id_usuario: "",
@@ -53,6 +58,18 @@ function responsableDe(ajuste) {
   return ajuste.usuario || ajuste.usuario_aprueba || "-";
 }
 
+function EstadoAjuste({ estado }) {
+  return (
+    <span
+      className={`whitespace-nowrap rounded-full px-2 py-1 text-xs font-semibold ${
+        ESTILO_ESTADO_AJUSTE[estado] || "bg-gray-100 text-gray-600"
+      }`}
+    >
+      {etiquetaEstadoAjuste(estado)}
+    </span>
+  );
+}
+
 export default function ListaAjustes() {
   const [ajustes, setAjustes] = useState([]);
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
@@ -62,6 +79,7 @@ export default function ListaAjustes() {
   const [formularioAbierto, setFormularioAbierto] = useState(false);
   const [detalle, setDetalle] = useState(null);
   const [errorDetalle, setErrorDetalle] = useState("");
+  const [mensaje, setMensaje] = useState("");
   const [almacenes, setAlmacenes] = useState([]);
   const [productos, setProductos] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
@@ -73,6 +91,7 @@ export default function ListaAjustes() {
       const params = { page, limit: pagination.limit };
       if (filtros.search.trim()) params.search = filtros.search.trim();
       if (filtros.motivo) params.motivo = filtros.motivo;
+      if (filtros.estado) params.estado = filtros.estado;
       if (filtros.id_almacen) params.id_almacen = filtros.id_almacen;
       if (filtros.id_producto) params.id_producto = filtros.id_producto;
       if (filtros.id_usuario) params.id_usuario = filtros.id_usuario;
@@ -202,6 +221,13 @@ export default function ListaAjustes() {
               options={MOTIVOS_AJUSTE}
               placeholder="Todos los motivos"
             />
+            <Select
+              label="Estado"
+              value={filtros.estado}
+              onChange={(event) => setFiltros({ ...filtros, estado: event.target.value })}
+              options={ESTADOS_AJUSTE}
+              placeholder="Todos los estados"
+            />
             <div>
               <label className="mb-1 block text-sm font-medium" htmlFor="buscar-ajuste">
                 Buscar
@@ -225,6 +251,7 @@ export default function ListaAjustes() {
             </div>
           </div>
 
+          {mensaje && <p className="rounded bg-green-50 p-3 text-sm text-green-700">{mensaje}</p>}
           {error && <p className="rounded bg-red-50 p-3 text-sm text-red-600">{error}</p>}
           {errorDetalle && <p className="rounded bg-red-50 p-3 text-sm text-red-600">{errorDetalle}</p>}
 
@@ -240,6 +267,7 @@ export default function ListaAjustes() {
                   <th className="py-2 pr-3 text-right">Nueva</th>
                   <th className="py-2 pr-3 text-right">Diferencia</th>
                   <th className="py-2 pr-3">Motivo</th>
+                  <th className="py-2 pr-3">Estado</th>
                   <th className="py-2 pr-3">Responsable</th>
                   <th className="py-2">Detalle</th>
                 </tr>
@@ -247,13 +275,13 @@ export default function ListaAjustes() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="10" className="py-6 text-center text-gray-500">
+                    <td colSpan="11" className="py-6 text-center text-gray-500">
                       Cargando ajustes...
                     </td>
                   </tr>
                 ) : ajustes.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="py-6 text-center text-gray-500">
+                    <td colSpan="11" className="py-6 text-center text-gray-500">
                       No hay ajustes para esos filtros.
                     </td>
                   </tr>
@@ -271,6 +299,9 @@ export default function ListaAjustes() {
                       <td className="py-2 pr-3 text-right">{formatearCantidad(ajuste.cantidad_nueva)}</td>
                       <td className="py-2 pr-3 text-right font-medium">{formatearDiferencia(ajuste)}</td>
                       <td className="py-2 pr-3">{etiquetaMotivo(ajuste.motivo)}</td>
+                      <td className="py-2 pr-3">
+                        <EstadoAjuste estado={ajuste.estado} />
+                      </td>
                       <td className="py-2 pr-3">{responsableDe(ajuste)}</td>
                       <td className="py-2">
                         <button
@@ -299,8 +330,10 @@ export default function ListaAjustes() {
       {formularioAbierto && (
         <FormAjuste
           onClose={() => setFormularioAbierto(false)}
-          onSaved={() => {
+          onSaved={(texto) => {
             setFormularioAbierto(false);
+            setMensaje(texto || "");
+            notificarCambioAjustesPendientes();
             cargar(1);
           }}
         />
@@ -310,7 +343,9 @@ export default function ListaAjustes() {
         <Modal open onClose={() => setDetalle(null)} title={`Ajuste ${detalle.numero_ajuste}`}>
           <div className="space-y-3 text-sm">
             <p className="rounded bg-amber-50 p-3 text-amber-800">
-              Esta justificación quedó registrada y no se puede editar ni eliminar.
+              {detalle.estado === "PENDIENTE"
+                ? "Este ajuste supera el límite y espera la aprobación de un supervisor. El stock todavía no cambió."
+                : "Esta justificación quedó registrada y no se puede editar ni eliminar."}
             </p>
             <dl className="grid grid-cols-2 gap-3">
               <div>
@@ -343,6 +378,42 @@ export default function ListaAjustes() {
                 <dt className="text-gray-500">Diferencia</dt>
                 <dd className="font-medium">{formatearDiferencia(detalle)}</dd>
               </div>
+              <div>
+                <dt className="text-gray-500">Estado</dt>
+                <dd>
+                  <EstadoAjuste estado={detalle.estado} />
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">Monto del ajuste</dt>
+                <dd className="font-medium">
+                  Bs {Number(detalle.valor_ajuste ?? 0).toLocaleString("es-BO", { minimumFractionDigits: 2 })}
+                </dd>
+              </div>
+              {detalle.requiere_aprobacion && (
+                <>
+                  <div>
+                    <dt className="text-gray-500">
+                      {detalle.estado === "RECHAZADO" ? "Rechazado por" : "Aprobado por"}
+                    </dt>
+                    <dd className="font-medium">
+                      {detalle.estado === "PENDIENTE" ? "Pendiente" : detalle.usuario_aprueba || "-"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Fecha de decisión</dt>
+                    <dd className="font-medium">{formatearFecha(detalle.fecha_aprobacion)}</dd>
+                  </div>
+                </>
+              )}
+              {detalle.estado === "RECHAZADO" && (
+                <div className="col-span-2">
+                  <dt className="text-gray-500">Motivo del rechazo</dt>
+                  <dd className="whitespace-pre-wrap rounded bg-red-50 p-3 text-red-700">
+                    {detalle.motivo_rechazo}
+                  </dd>
+                </div>
+              )}
               <div className="col-span-2">
                 <dt className="text-gray-500">Motivo</dt>
                 <dd className="font-medium">{etiquetaMotivo(detalle.motivo)}</dd>

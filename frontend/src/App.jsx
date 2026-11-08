@@ -40,6 +40,7 @@ import DiferenciasInventario from "./pages/inventarios/DiferenciasInventario";
 // Transferencias (RF29)
 import ListaTransferencias from "./pages/transferencias/ListaTransferencias";
 import ListaAjustes from "./pages/ajustes/ListaAjustes";
+import BandejaAprobacionAjustes from "./pages/ajustes/BandejaAprobacionAjustes";
 import PanelAlertasStock from "./pages/alertas/PanelAlertasStock";
 import PanelAlertasVencimiento from "./pages/alertas/PanelAlertasVencimiento";
 
@@ -252,6 +253,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ListaAjustes />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF53: aprobación de ajustes que superan el límite */}
+          <Route
+            path="/ajustes/aprobacion"
+            element={
+              <ProtectedRoute>
+                <BandejaAprobacionAjustes />
               </ProtectedRoute>
             }
           />

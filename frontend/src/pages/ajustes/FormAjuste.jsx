@@ -4,7 +4,11 @@ import Select from "../../components/ui/Select";
 import { listarAlmacenes } from "../../api/almacenes.api";
 import { listarProductos } from "../../api/productos.api";
 import { consultarStock } from "../../api/stock.api";
-import { MOTIVOS_AJUSTE, crearAjuste } from "../../api/ajustes.api";
+import {
+  MOTIVOS_AJUSTE,
+  crearAjuste,
+  obtenerLimitesAprobacion,
+} from "../../api/ajustes.api";
 
 const FORM_INICIAL = {
   id_almacen: "",
@@ -22,6 +26,7 @@ export default function FormAjuste({ onClose, onSaved }) {
   const [reservado, setReservado] = useState(0);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [limites, setLimites] = useState(null);
 
   useEffect(() => {
     listarAlmacenes({ limit: 200, activo: true, orderBy: "nombre", order: "ASC" })
@@ -30,7 +35,26 @@ export default function FormAjuste({ onClose, onSaved }) {
     listarProductos({ limit: 200, estado: "ACTIVO", orderBy: "nombre", order: "ASC" })
       .then((respuesta) => setProductos(respuesta.data || []))
       .catch(() => setProductos([]));
+    obtenerLimitesAprobacion()
+      .then((respuesta) => setLimites(respuesta.data || null))
+      .catch(() => setLimites(null));
   }, []);
+
+  // RF53: anticipa si el ajuste quedará pendiente de aprobación.
+  const productoElegido = productos.find(
+    (producto) => String(producto.id_producto) === String(form.id_producto),
+  );
+  const diferencia =
+    stockActual !== null && form.cantidad_nueva !== ""
+      ? Math.abs(Number(form.cantidad_nueva) - stockActual)
+      : null;
+  const montoEstimado =
+    diferencia !== null ? diferencia * Number(productoElegido?.precio || 0) : null;
+  const requiereAprobacion =
+    limites &&
+    diferencia !== null &&
+    (diferencia > Number(limites.limite_cantidad) ||
+      montoEstimado > Number(limites.limite_monto));
 
   useEffect(() => {
     if (!form.id_almacen || !form.id_producto) {
@@ -77,14 +101,14 @@ export default function FormAjuste({ onClose, onSaved }) {
 
     setGuardando(true);
     try {
-      await crearAjuste({
+      const respuesta = await crearAjuste({
         id_almacen: Number(form.id_almacen),
         id_producto: Number(form.id_producto),
         cantidad_nueva: cantidadNueva,
         motivo: form.motivo,
         comentario: form.comentario.trim(),
       });
-      onSaved();
+      onSaved(respuesta?.message);
     } catch (err) {
       setError(err.response?.data?.message || "No se pudo aplicar el ajuste");
     } finally {
@@ -159,6 +183,17 @@ export default function FormAjuste({ onClose, onSaved }) {
             placeholder="Explica por qué se modifica el stock (mínimo 5 caracteres)"
           />
         </div>
+        {limites && (
+          <p
+            className={`rounded p-2 text-xs ${
+              requiereAprobacion ? "bg-amber-50 text-amber-800" : "text-gray-500"
+            }`}
+          >
+            {requiereAprobacion
+              ? `Este ajuste (${diferencia.toLocaleString("es-BO")} unid., Bs ${montoEstimado.toFixed(2)}) supera el límite y quedará pendiente de aprobación del supervisor. El stock no cambiará hasta entonces.`
+              : `Los ajustes de más de ${Number(limites.limite_cantidad).toLocaleString("es-BO")} unidades o Bs ${Number(limites.limite_monto).toFixed(2)} requieren aprobación del supervisor.`}
+          </p>
+        )}
         <p className="text-xs text-gray-500">
           Al guardar, la justificación queda asociada a tu usuario y a la fecha. No se podrá editar ni eliminar.
         </p>
@@ -168,7 +203,11 @@ export default function FormAjuste({ onClose, onSaved }) {
             Cancelar
           </button>
           <button type="submit" className="btn-primary" disabled={guardando}>
-            {guardando ? "Aplicando..." : "Aplicar ajuste"}
+            {guardando
+              ? "Guardando..."
+              : requiereAprobacion
+                ? "Enviar a aprobación"
+                : "Aplicar ajuste"}
           </button>
         </div>
       </form>

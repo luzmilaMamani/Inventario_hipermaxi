@@ -22,6 +22,9 @@ export const ROLES_SIN_EMPLEADO = [
   "AUDITOR",
 ];
 
+// RF53: solo el supervisor aprueba o rechaza ajustes que superan el límite.
+export const ROLES_APROBACION_AJUSTES = ["SUPERVISOR"];
+
 export function tieneRol(rol, roles) {
   return roles.includes(rol);
 }

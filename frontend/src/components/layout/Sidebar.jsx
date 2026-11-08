@@ -1,7 +1,9 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import IndicadorAlertasVencimiento from "../ui/IndicadorAlertasVencimiento";
+import IndicadorAjustesPendientes from "../ui/IndicadorAjustesPendientes";
 import {
+  ROLES_APROBACION_AJUSTES,
   ROLES_GESTION,
   ROLES_LECTURA_Y_OPERACION,
   ROLES_SIN_EMPLEADO,
@@ -26,6 +28,13 @@ const links = [
   { to: "/transferencias", label: "Transferencias", icon: "🔄", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/inventarios", label: "Inventarios Físicos", icon: "📋", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/ajustes", label: "Ajustes", icon: "📝", roles: ROLES_LECTURA_Y_OPERACION },
+  {
+    to: "/ajustes/aprobacion",
+    label: "Aprobación de ajustes",
+    icon: "✅",
+    roles: [...ROLES_APROBACION_AJUSTES, "ADMINISTRADOR"],
+    indicador: IndicadorAjustesPendientes,
+  },
   { to: "/reportes/perdidas", label: "Reporte pérdidas", icon: "🚨" },
   { to: "/reportes/danos", label: "Reporte daños", icon: "⚠️" },
   { to: "/reportes/vencimientos", label: "Reporte vencimientos", icon: "⏳" },
@@ -51,7 +60,7 @@ export default function Sidebar() {
           <NavLink
             key={link.to}
             to={link.to}
-            end={link.to === "/"}
+            end={["/", "/ajustes"].includes(link.to)}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                 isActive
