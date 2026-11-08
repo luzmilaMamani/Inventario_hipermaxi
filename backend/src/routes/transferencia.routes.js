@@ -4,6 +4,7 @@ const transferenciaController = require("../controllers/transferenciaController"
 const router = express.Router();
 
 router.get("/", transferenciaController.listarTransferencias);
+router.get("/diferencias", transferenciaController.listarDiferenciasTransferencias);
 router.get("/:id", transferenciaController.obtenerTransferencia);
 router.post("/", transferenciaController.crearTransferencia);
 router.put("/:id/estado", transferenciaController.cambiarEstado);
