@@ -12,6 +12,10 @@ const MOTIVOS = [
   "OTRO",
 ];
 
+// RF53: estados del ajuste y roles que pueden decidir los pendientes.
+const ESTADOS = ["APLICADO", "PENDIENTE", "APROBADO", "RECHAZADO"];
+const ROLES_APROBADORES = ["SUPERVISOR"];
+
 const CONSULTA_AJUSTE = `
   SELECT
     a.id_ajuste,
@@ -21,12 +25,17 @@ const CONSULTA_AJUSTE = `
     a.id_producto,
     a.id_lote,
     a.id_usuario,
+    a.id_usuario_aprueba,
     a.cantidad_anterior,
     a.cantidad_nueva,
     (a.cantidad_nueva - a.cantidad_anterior) AS diferencia,
     a.motivo,
     a.comentario,
     a.estado,
+    a.requiere_aprobacion,
+    a.valor_ajuste,
+    a.fecha_aprobacion,
+    a.motivo_rechazo,
     al.codigo AS almacen_codigo,
     al.nombre AS almacen,
     p.codigo AS producto_codigo,
@@ -46,6 +55,22 @@ function leerEnteroPositivo(valor, mensaje) {
     throw new ApiError(400, mensaje);
   }
   return numero;
+}
+
+function leerNumeroPositivo(valor, mensaje) {
+  const numero = Number(valor);
+  if (
+    valor === undefined ||
+    valor === null ||
+    valor === "" ||
+    typeof valor === "boolean" ||
+    !Number.isFinite(numero) ||
+    numero <= 0 ||
+    numero > 1e10
+  ) {
+    throw new ApiError(400, mensaje);
+  }
+  return Math.round(numero * 100) / 100;
 }
 
 function esFechaValida(fecha) {
@@ -69,6 +94,97 @@ function leerJustificacion(body) {
   return { motivo, comentario };
 }
 
+function exigirAprobador(req) {
+  if (!ROLES_APROBADORES.includes(req.user?.rol)) {
+    throw new ApiError(403, "Solo un supervisor de inventario puede aprobar o rechazar ajustes");
+  }
+}
+
+async function obtenerParametrosAprobacion(cliente) {
+  const result = await cliente.query(
+    `SELECT pa.limite_cantidad, pa.limite_monto, pa.fecha_actualizacion,
+            u.nombre_completo AS usuario_actualiza
+     FROM parametros_aprobacion_ajuste pa
+     LEFT JOIN usuarios u ON u.id_usuario = pa.id_usuario_actualiza
+     WHERE pa.id_parametro = 1`,
+  );
+  const fila = result.rows[0] || { limite_cantidad: 50, limite_monto: 1000 };
+  return {
+    limite_cantidad: Number(fila.limite_cantidad),
+    limite_monto: Number(fila.limite_monto),
+    fecha_actualizacion: fila.fecha_actualizacion || null,
+    usuario_actualiza: fila.usuario_actualiza || null,
+  };
+}
+
+// RF53: el ajuste requiere aprobación si la diferencia en unidades o su valor
+// (diferencia x precio) supera el límite configurado.
+function evaluarLimite({ diferencia, precio }, limites) {
+  const valor = Math.round(diferencia * precio * 100) / 100;
+  const superaCantidad = diferencia > limites.limite_cantidad;
+  const superaMonto = valor > limites.limite_monto;
+  return { valor, superaCantidad, superaMonto, requiereAprobacion: superaCantidad || superaMonto };
+}
+
+// Aplica la cantidad nueva al stock y registra el movimiento AJUSTE.
+async function aplicarEnStock(cliente, { idProducto, idAlmacen, idStock, cantidadAnterior, cantidadNueva, idUsuario, numeroAjuste, comentario }) {
+  if (idStock) {
+    await cliente.query(
+      `UPDATE stock
+       SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP
+       WHERE id_stock = $2`,
+      [cantidadNueva, idStock],
+    );
+  } else {
+    await cliente.query(
+      `INSERT INTO stock (id_producto, id_almacen, cantidad, cantidad_reservada)
+       VALUES ($1, $2, $3, 0)`,
+      [idProducto, idAlmacen, cantidadNueva],
+    );
+  }
+
+  await cliente.query(
+    `INSERT INTO movimientos_inventario
+      (id_producto, id_almacen, id_usuario, tipo_movimiento, cantidad,
+       stock_anterior, stock_nuevo, referencia, observaciones)
+     VALUES ($1, $2, $3, 'AJUSTE', $4, $5, $6, $7, $8)`,
+    [
+      idProducto,
+      idAlmacen,
+      idUsuario,
+      Math.abs(cantidadNueva - cantidadAnterior),
+      cantidadAnterior,
+      cantidadNueva,
+      numeroAjuste,
+      comentario,
+    ],
+  );
+}
+
+async function bloquearStock(cliente, idProducto, idAlmacen) {
+  const stockResult = await cliente.query(
+    `SELECT id_stock, cantidad, cantidad_reservada
+     FROM stock
+     WHERE id_producto = $1 AND id_almacen = $2
+     FOR UPDATE`,
+    [idProducto, idAlmacen],
+  );
+  const fila = stockResult.rows[0];
+  return {
+    idStock: fila ? fila.id_stock : null,
+    cantidad: fila ? Number(fila.cantidad) : 0,
+    reservada: fila ? Number(fila.cantidad_reservada || 0) : 0,
+  };
+}
+
+async function revertir(cliente, contexto) {
+  try {
+    await cliente.query("ROLLBACK");
+  } catch (rollbackError) {
+    console.error(`Error al revertir ${contexto}:`, rollbackError);
+  }
+}
+
 const listarAjustes = asyncHandler(async (req, res) => {
   const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 100);
   const page = Math.max(Number(req.query.page || 1), 1);
@@ -82,6 +198,13 @@ const listarAjustes = asyncHandler(async (req, res) => {
     }
     valores.push(req.query.motivo);
     condiciones.push(`a.motivo = $${valores.length}`);
+  }
+  if (req.query.estado) {
+    if (!ESTADOS.includes(req.query.estado)) {
+      throw new ApiError(400, "El estado no es válido");
+    }
+    valores.push(req.query.estado);
+    condiciones.push(`a.estado = $${valores.length}`);
   }
   if (req.query.id_almacen) {
     const idAlmacen = leerEnteroPositivo(req.query.id_almacen, "El almacén no es válido");
@@ -132,11 +255,16 @@ const listarAjustes = asyncHandler(async (req, res) => {
   }
 
   const whereSql = condiciones.length ? `WHERE ${condiciones.join(" AND ")}` : "";
+  // Los pendientes se atienden en orden de llegada; el historial, del más reciente.
+  const orden =
+    req.query.estado === "PENDIENTE"
+      ? "a.fecha_ajuste ASC, a.id_ajuste ASC"
+      : "a.fecha_ajuste DESC, a.id_ajuste DESC";
   const [dataResult, countResult] = await Promise.all([
     db.query(
       `${CONSULTA_AJUSTE}
        ${whereSql}
-       ORDER BY a.fecha_ajuste DESC, a.id_ajuste DESC
+       ORDER BY ${orden}
        LIMIT $${valores.length + 1} OFFSET $${valores.length + 2}`,
       [...valores, limit, offset],
     ),
@@ -192,80 +320,83 @@ const crearAjuste = asyncHandler(async (req, res) => {
     if (!almacen.rowCount) throw new ApiError(400, "El almacén no existe o está inactivo");
 
     const producto = await cliente.query(
-      "SELECT id_producto FROM productos WHERE id_producto = $1 AND estado = 'ACTIVO'",
+      "SELECT id_producto, COALESCE(precio, 0) AS precio FROM productos WHERE id_producto = $1 AND estado = 'ACTIVO'",
       [idProducto],
     );
     if (!producto.rowCount) throw new ApiError(400, "El producto no existe o está inactivo");
 
-    const stockResult = await cliente.query(
-      `SELECT id_stock, cantidad, cantidad_reservada
-       FROM stock
-       WHERE id_producto = $1 AND id_almacen = $2
-       FOR UPDATE`,
-      [idProducto, idAlmacen],
-    );
-
-    const cantidadAnterior = stockResult.rowCount ? Number(stockResult.rows[0].cantidad) : 0;
-    const reservada = stockResult.rowCount ? Number(stockResult.rows[0].cantidad_reservada || 0) : 0;
+    const stock = await bloquearStock(cliente, idProducto, idAlmacen);
+    const cantidadAnterior = stock.cantidad;
     if (cantidadNueva === cantidadAnterior) {
       throw new ApiError(400, "La cantidad nueva es igual al stock actual; no hay un ajuste que registrar");
     }
-    if (cantidadNueva < reservada) {
+    if (cantidadNueva < stock.reservada) {
       throw new ApiError(
         400,
-        `La cantidad nueva no puede ser menor que la cantidad reservada (${reservada})`,
+        `La cantidad nueva no puede ser menor que la cantidad reservada (${stock.reservada})`,
       );
     }
 
-    if (stockResult.rowCount) {
-      await cliente.query(
-        `UPDATE stock
-         SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP
-         WHERE id_stock = $2`,
-        [cantidadNueva, stockResult.rows[0].id_stock],
-      );
-    } else {
-      await cliente.query(
-        `INSERT INTO stock (id_producto, id_almacen, cantidad, cantidad_reservada)
-         VALUES ($1, $2, $3, 0)`,
-        [idProducto, idAlmacen, cantidadNueva],
+    // Un solo ajuste pendiente por producto y almacén: el siguiente se calcularía
+    // sobre un stock que todavía puede cambiar al decidir el primero.
+    const pendiente = await cliente.query(
+      `SELECT numero_ajuste FROM ajustes_inventario
+       WHERE id_producto = $1 AND id_almacen = $2 AND estado = 'PENDIENTE'
+       LIMIT 1`,
+      [idProducto, idAlmacen],
+    );
+    if (pendiente.rowCount) {
+      throw new ApiError(
+        409,
+        `Ya existe un ajuste pendiente de aprobación (${pendiente.rows[0].numero_ajuste}) para este producto en este almacén`,
       );
     }
 
+    const limites = await obtenerParametrosAprobacion(cliente);
+    const evaluacion = evaluarLimite(
+      {
+        diferencia: Math.abs(cantidadNueva - cantidadAnterior),
+        precio: Number(producto.rows[0].precio),
+      },
+      limites,
+    );
+    const estado = evaluacion.requiereAprobacion ? "PENDIENTE" : "APLICADO";
     const numeroAjuste = `AJU-${Date.now()}-${randomBytes(3).toString("hex")}`;
-    const diferencia = Math.abs(cantidadNueva - cantidadAnterior);
-    await cliente.query(
-      `INSERT INTO movimientos_inventario
-        (id_producto, id_almacen, id_usuario, tipo_movimiento, cantidad,
-         stock_anterior, stock_nuevo, referencia, observaciones)
-       VALUES ($1, $2, $3, 'AJUSTE', $4, $5, $6, $7, $8)`,
-      [
+
+    // Bajo el límite se aplica de inmediato; sobre el límite el stock no cambia.
+    if (estado === "APLICADO") {
+      await aplicarEnStock(cliente, {
         idProducto,
         idAlmacen,
-        req.user.id_usuario,
-        diferencia,
+        idStock: stock.idStock,
         cantidadAnterior,
         cantidadNueva,
+        idUsuario: req.user.id_usuario,
         numeroAjuste,
         comentario,
-      ],
-    );
+      });
+    }
 
     const ajuste = await cliente.query(
       `INSERT INTO ajustes_inventario
         (numero_ajuste, id_almacen, id_producto, id_usuario, id_usuario_aprueba,
-         cantidad_anterior, cantidad_nueva, motivo, comentario, estado, fecha_ajuste)
-       VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, 'APLICADO', CURRENT_TIMESTAMP)
+         cantidad_anterior, cantidad_nueva, motivo, comentario, estado,
+         requiere_aprobacion, valor_ajuste, fecha_ajuste)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
        RETURNING id_ajuste`,
       [
         numeroAjuste,
         idAlmacen,
         idProducto,
         req.user.id_usuario,
+        estado === "APLICADO" ? req.user.id_usuario : null,
         cantidadAnterior,
         cantidadNueva,
         motivo,
         comentario,
+        estado,
+        evaluacion.requiereAprobacion,
+        evaluacion.valor,
       ],
     );
 
@@ -273,21 +404,195 @@ const crearAjuste = asyncHandler(async (req, res) => {
     const detalle = await db.query(`${CONSULTA_AJUSTE} WHERE a.id_ajuste = $1`, [
       ajuste.rows[0].id_ajuste,
     ]);
-    res.status(201).json({
-      ok: true,
-      message: "Ajuste aplicado. La justificación quedó registrada y no se puede modificar.",
-      data: detalle.rows[0],
-    });
-  } catch (error) {
-    try {
-      await cliente.query("ROLLBACK");
-    } catch (rollbackError) {
-      console.error("Error al revertir el ajuste de inventario:", rollbackError);
+
+    let message = "Ajuste aplicado. La justificación quedó registrada y no se puede modificar.";
+    if (estado === "PENDIENTE") {
+      const razones = [];
+      if (evaluacion.superaCantidad) {
+        razones.push(`la diferencia supera ${limites.limite_cantidad} unidades`);
+      }
+      if (evaluacion.superaMonto) {
+        razones.push(`el monto supera Bs ${limites.limite_monto.toFixed(2)}`);
+      }
+      message = `El ajuste quedó pendiente de aprobación porque ${razones.join(" y ")}. El stock no cambiará hasta que un supervisor lo apruebe.`;
     }
+
+    res.status(201).json({ ok: true, message, data: detalle.rows[0] });
+  } catch (error) {
+    await revertir(cliente, "el ajuste de inventario");
     throw error;
   } finally {
     cliente.release();
   }
+});
+
+async function bloquearPendiente(cliente, idAjuste) {
+  const result = await cliente.query(
+    `SELECT id_ajuste, numero_ajuste, id_almacen, id_producto, id_usuario,
+            cantidad_anterior, cantidad_nueva, comentario, estado
+     FROM ajustes_inventario
+     WHERE id_ajuste = $1
+     FOR UPDATE`,
+    [idAjuste],
+  );
+  if (!result.rowCount) throw new ApiError(404, "Ajuste no encontrado");
+  const ajuste = result.rows[0];
+  if (ajuste.estado !== "PENDIENTE") {
+    throw new ApiError(409, `El ajuste ya fue decidido (estado ${ajuste.estado})`);
+  }
+  return ajuste;
+}
+
+// RF53: al aprobar se aplica el stock. Si el stock cambió desde que se registró
+// el ajuste, no se aprueba a ciegas: debe rechazarse y registrarse otro.
+const aprobarAjuste = asyncHandler(async (req, res) => {
+  exigirAprobador(req);
+  const idAjuste = leerEnteroPositivo(req.params.id, "El ajuste no es válido");
+
+  const cliente = await db.pool.connect();
+  try {
+    await cliente.query("BEGIN");
+    const ajuste = await bloquearPendiente(cliente, idAjuste);
+    if (Number(ajuste.id_usuario) === Number(req.user.id_usuario)) {
+      throw new ApiError(403, "No puedes aprobar un ajuste que registraste tú mismo");
+    }
+
+    const idProducto = Number(ajuste.id_producto);
+    const idAlmacen = Number(ajuste.id_almacen);
+    const cantidadAnterior = Number(ajuste.cantidad_anterior);
+    const cantidadNueva = Number(ajuste.cantidad_nueva);
+    const stock = await bloquearStock(cliente, idProducto, idAlmacen);
+
+    if (stock.cantidad !== cantidadAnterior) {
+      throw new ApiError(
+        409,
+        `El stock cambió desde que se registró el ajuste (antes ${cantidadAnterior}, ahora ${stock.cantidad}). Rechácelo y registre un ajuste nuevo.`,
+      );
+    }
+    if (cantidadNueva < stock.reservada) {
+      throw new ApiError(
+        409,
+        `La cantidad nueva (${cantidadNueva}) es menor que la cantidad reservada actual (${stock.reservada})`,
+      );
+    }
+
+    await aplicarEnStock(cliente, {
+      idProducto,
+      idAlmacen,
+      idStock: stock.idStock,
+      cantidadAnterior,
+      cantidadNueva,
+      idUsuario: req.user.id_usuario,
+      numeroAjuste: ajuste.numero_ajuste,
+      comentario: `${ajuste.comentario} | Aprobado por supervisor`,
+    });
+
+    await cliente.query(
+      `UPDATE ajustes_inventario
+       SET estado = 'APROBADO', id_usuario_aprueba = $1
+       WHERE id_ajuste = $2`,
+      [req.user.id_usuario, idAjuste],
+    );
+
+    await cliente.query("COMMIT");
+    const detalle = await db.query(`${CONSULTA_AJUSTE} WHERE a.id_ajuste = $1`, [idAjuste]);
+    res.json({
+      ok: true,
+      message: `Ajuste ${ajuste.numero_ajuste} aprobado y stock actualizado`,
+      data: detalle.rows[0],
+    });
+  } catch (error) {
+    await revertir(cliente, "la aprobación del ajuste");
+    throw error;
+  } finally {
+    cliente.release();
+  }
+});
+
+const rechazarAjuste = asyncHandler(async (req, res) => {
+  exigirAprobador(req);
+  const idAjuste = leerEnteroPositivo(req.params.id, "El ajuste no es válido");
+  const motivoRechazo = String(req.body?.motivo_rechazo || "").trim();
+  if (motivoRechazo.length < 5) {
+    throw new ApiError(400, "Indica el motivo del rechazo (mínimo 5 caracteres)");
+  }
+  if (motivoRechazo.length > 500) {
+    throw new ApiError(400, "El motivo del rechazo no puede superar 500 caracteres");
+  }
+
+  const cliente = await db.pool.connect();
+  try {
+    await cliente.query("BEGIN");
+    const ajuste = await bloquearPendiente(cliente, idAjuste);
+    if (Number(ajuste.id_usuario) === Number(req.user.id_usuario)) {
+      throw new ApiError(403, "No puedes rechazar un ajuste que registraste tú mismo");
+    }
+
+    await cliente.query(
+      `UPDATE ajustes_inventario
+       SET estado = 'RECHAZADO', id_usuario_aprueba = $1, motivo_rechazo = $2
+       WHERE id_ajuste = $3`,
+      [req.user.id_usuario, motivoRechazo, idAjuste],
+    );
+
+    await cliente.query("COMMIT");
+    const detalle = await db.query(`${CONSULTA_AJUSTE} WHERE a.id_ajuste = $1`, [idAjuste]);
+    res.json({
+      ok: true,
+      message: `Ajuste ${ajuste.numero_ajuste} rechazado. El stock no se modificó.`,
+      data: detalle.rows[0],
+    });
+  } catch (error) {
+    await revertir(cliente, "el rechazo del ajuste");
+    throw error;
+  } finally {
+    cliente.release();
+  }
+});
+
+const resumenPendientes = asyncHandler(async (_req, res) => {
+  const result = await db.query(
+    "SELECT COUNT(*)::int AS pendientes FROM ajustes_inventario WHERE estado = 'PENDIENTE'",
+  );
+  res.json({ ok: true, data: { pendientes: result.rows[0].pendientes } });
+});
+
+const obtenerLimites = asyncHandler(async (_req, res) => {
+  res.json({ ok: true, data: await obtenerParametrosAprobacion(db) });
+});
+
+// Solo el administrador configura los límites (el middleware de roles bloquea
+// a los demás roles en métodos de escritura sobre esta ruta).
+const actualizarLimites = asyncHandler(async (req, res) => {
+  if (req.user?.rol !== "ADMINISTRADOR") {
+    throw new ApiError(403, "Solo un administrador puede configurar los límites de aprobación");
+  }
+  const limiteCantidad = leerNumeroPositivo(
+    req.body?.limite_cantidad,
+    "El límite de cantidad debe ser un número mayor a 0",
+  );
+  const limiteMonto = leerNumeroPositivo(
+    req.body?.limite_monto,
+    "El límite de monto debe ser un número mayor a 0",
+  );
+
+  await db.query(
+    `INSERT INTO parametros_aprobacion_ajuste
+       (id_parametro, limite_cantidad, limite_monto, fecha_actualizacion, id_usuario_actualiza)
+     VALUES (1, $1, $2, CURRENT_TIMESTAMP, $3)
+     ON CONFLICT (id_parametro) DO UPDATE
+       SET limite_cantidad = EXCLUDED.limite_cantidad,
+           limite_monto = EXCLUDED.limite_monto,
+           fecha_actualizacion = CURRENT_TIMESTAMP,
+           id_usuario_actualiza = EXCLUDED.id_usuario_actualiza`,
+    [limiteCantidad, limiteMonto, req.user.id_usuario],
+  );
+
+  res.json({
+    ok: true,
+    message: "Límites de aprobación actualizados",
+    data: await obtenerParametrosAprobacion(db),
+  });
 });
 
 const rechazarCambio = asyncHandler(async (_req, _res) => {
@@ -296,8 +601,15 @@ const rechazarCambio = asyncHandler(async (_req, _res) => {
 
 module.exports = {
   MOTIVOS,
+  ESTADOS,
+  ROLES_APROBADORES,
   listarAjustes,
   obtenerAjuste,
   crearAjuste,
+  aprobarAjuste,
+  rechazarAjuste,
+  resumenPendientes,
+  obtenerLimites,
+  actualizarLimites,
   rechazarCambio,
 };

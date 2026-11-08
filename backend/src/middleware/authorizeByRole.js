@@ -39,6 +39,8 @@ const OPERACIONES_EMPLEADO = [
   "/diferencias",
 ];
 
+const RUTA_DECISION_AJUSTE = /^\/ajustes-inventario\/\d+\/(aprobar|rechazar)$/;
+
 function coincideRuta(path, ruta) {
   return path === ruta || path.startsWith(`${ruta}/`);
 }
@@ -52,6 +54,15 @@ function autorizarPorRol(req, _res, next) {
     return next();
   }
 
+  // RF53: el supervisor, aunque solo consulta, decide los ajustes pendientes.
+  if (
+    rol === "SUPERVISOR" &&
+    metodo === "POST" &&
+    RUTA_DECISION_AJUSTE.test(path)
+  ) {
+    return next();
+  }
+
   if (SOLO_LECTURA.has(rol)) {
     return next(
       new ApiError(403, "Tu rol solo tiene permiso para consultar información"),
@@ -59,6 +70,9 @@ function autorizarPorRol(req, _res, next) {
   }
 
   if (rol === "ENCARGADO_ALMACEN") {
+    if (RUTA_DECISION_AJUSTE.test(path)) {
+      return next(new ApiError(403, "Solo un supervisor de inventario puede aprobar o rechazar ajustes"));
+    }
     const puedeOperar =
       OPERACIONES_ENCARGADO.some(
         (operacion) =>
