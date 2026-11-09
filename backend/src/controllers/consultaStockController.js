@@ -70,13 +70,23 @@ const CTE_EXISTENCIAS = `
       NULL::numeric AS cantidad_reservada,
       NULL::numeric AS cantidad_vencida,
       NULL::numeric AS cantidad_cuarentena,
-      su.cantidad AS cantidad_disponible,
+      -- Las ubicaciones no guardan lotes: no pueden mostrar más que lo disponible
+      -- en todo el almacén.
+      LEAST(
+        su.cantidad,
+        GREATEST(
+          COALESCE(sg.cantidad, 0) - COALESCE(sg.cantidad_reservada, 0)
+            - fn_cantidad_no_disponible(su.id_producto, u.id_almacen),
+          0
+        )
+      ) AS cantidad_disponible,
       su.fecha_actualizacion
     FROM stock_ubicaciones su
     INNER JOIN productos p ON p.id_producto = su.id_producto
     INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
     INNER JOIN ubicaciones u ON u.id_ubicacion = su.id_ubicacion
     INNER JOIN almacenes a ON a.id_almacen = u.id_almacen
+    LEFT JOIN stock sg ON sg.id_producto = su.id_producto AND sg.id_almacen = u.id_almacen
   )`;
 
 const consultarStock = asyncHandler(async (req, res) => {

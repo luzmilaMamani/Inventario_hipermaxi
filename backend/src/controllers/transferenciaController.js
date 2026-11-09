@@ -65,7 +65,7 @@ const listarTransferencias = asyncHandler(async (req, res) => {
   const result = await db.query(
     `SELECT
        vt.*,
-       tr.fecha_llegada_estimada,
+       TO_CHAR(tr.fecha_llegada_estimada, 'YYYY-MM-DD') AS fecha_llegada_estimada,
        tr.fecha_envio AS fecha_envio_trazabilidad,
        tr.fecha_recepcion AS fecha_recepcion_trazabilidad
      FROM vw_transferencias vt
@@ -80,7 +80,7 @@ const listarTransferencias = asyncHandler(async (req, res) => {
 const obtenerTransferencia = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const result = await db.query(
-    `SELECT vt.*, tr.fecha_llegada_estimada, tr.observaciones,
+    `SELECT vt.*, TO_CHAR(tr.fecha_llegada_estimada, 'YYYY-MM-DD') AS fecha_llegada_estimada, tr.observaciones,
        tr.fecha_aprobacion AS fecha_aprobacion_trazabilidad,
        tr.fecha_rechazo AS fecha_rechazo_trazabilidad,
        tr.fecha_cancelacion AS fecha_cancelacion_trazabilidad,
