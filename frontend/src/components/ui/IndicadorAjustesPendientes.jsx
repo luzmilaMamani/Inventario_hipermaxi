@@ -29,17 +29,3 @@ export function useAjustesPendientes() {
 
   return pendientes;
 }
-
-export default function IndicadorAjustesPendientes() {
-  const pendientes = useAjustesPendientes();
-  if (!pendientes) return null;
-
-  return (
-    <span
-      title={`${pendientes} ajuste(s) pendiente(s) de aprobación`}
-      className="ml-auto rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white"
-    >
-      {pendientes > 99 ? "99+" : pendientes}
-    </span>
-  );
-}

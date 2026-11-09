@@ -29,3 +29,20 @@ body {
 .card {
   @apply bg-brand-panel rounded-lg shadow-sm border border-blue-100 p-6;
 }
+
+.animar-entrada {
+  animation: entrada 120ms ease-out;
+}
+
+@keyframes entrada {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animar-entrada {
+    animation: none;
+  }
+}

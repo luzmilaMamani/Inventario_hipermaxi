@@ -30,20 +30,3 @@ export function useResumenAlertasVencimiento() {
 
   return resumen;
 }
-
-// Contador para el menú: rojo si hay vencidos, ámbar si solo hay por vencer.
-export default function IndicadorAlertasVencimiento() {
-  const { pendientes, vencidas } = useResumenAlertasVencimiento();
-  if (!pendientes) return null;
-
-  return (
-    <span
-      title={`${pendientes} alerta(s) de vencimiento pendiente(s)`}
-      className={`ml-auto rounded-full px-2 py-0.5 text-xs font-bold text-white ${
-        vencidas > 0 ? "bg-red-600" : "bg-amber-500"
-      }`}
-    >
-      {pendientes > 99 ? "99+" : pendientes}
-    </span>
-  );
-}
