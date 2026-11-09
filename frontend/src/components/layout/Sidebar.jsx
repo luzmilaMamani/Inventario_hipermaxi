@@ -26,6 +26,7 @@ const links = [
   { to: "/salidas", label: "Salidas", icon: "📤", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/devoluciones", label: "Devoluciones", icon: "↩️", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/devoluciones-proveedor", label: "Devoluciones a proveedor", icon: "🚚", roles: ROLES_LECTURA_Y_OPERACION },
+  { to: "/solicitudes-materiales", label: "Solicitudes de materiales", icon: "🏭", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/transferencias", label: "Transferencias", icon: "🔄", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/transferencias/diferencias", label: "Diferencias de transferencias", icon: "⚖️", roles: ROLES_LECTURA_Y_OPERACION },
   { to: "/inventarios", label: "Inventarios Físicos", icon: "📋", roles: ROLES_LECTURA_Y_OPERACION },
