@@ -1,0 +1,40 @@
+name: inventario-hipermaxi
+
+services:
+  backend:
+    build: ./backend
+    image: inventario-hipermaxi-backend
+    container_name: hipermaxi-backend
+    env_file: ./backend/.env
+    environment:
+      # PostgreSQL corre en la máquina anfitriona, fuera de los contenedores.
+      DB_HOST: host.docker.internal
+      PORT: "3000"
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/gcp-credenciales.json
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${GCP_CREDENTIALS_FILE:-../credenciales_gcp/credenciales.json}:/run/secrets/gcp-credenciales.json:ro
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+    image: inventario-hipermaxi-frontend
+    container_name: hipermaxi-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8088:80"
+    restart: unless-stopped

@@ -1,0 +1,7 @@
+node_modules
+npm-debug.log*
+.env
+*.json.bak
+credenciales*.json
+Dockerfile
+.dockerignore
