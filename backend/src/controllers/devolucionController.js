@@ -230,9 +230,9 @@ const crearDevolucion = asyncHandler(async (req, res) => {
       const numero_salida = await generarNumeroSalida(client, "DANO");
       const salidaResult = await client.query(
         `INSERT INTO salidas_inventario
-          (numero_salida, id_almacen, id_usuario, motivo, tipo_salida,
+          (numero_salida, id_almacen, id_usuario, motivo,
            referencia_externa, observaciones, estado)
-         VALUES ($1, $2, $3, 'DANO', 'DEVOLUCION', $4, $5, 'CONFIRMADA')
+         VALUES ($1, $2, $3, 'DANO', $4, $5, 'CONFIRMADA')
          RETURNING *`,
         [
           numero_salida,
@@ -283,7 +283,7 @@ const crearDevolucion = asyncHandler(async (req, res) => {
 
         const loteResult = await client.query(
           `SELECT id_lote, numero_lote, cantidad_actual, estado, fecha_vencimiento,
-                  (fecha_vencimiento IS NOT NULL AND fecha_vencimiento < CURRENT_DATE) AS vencido
+                  (fecha_vencimiento IS NOT NULL AND fecha_vencimiento <= CURRENT_DATE) AS vencido
            FROM lotes_productos
            WHERE id_lote = $1
            FOR UPDATE`,
