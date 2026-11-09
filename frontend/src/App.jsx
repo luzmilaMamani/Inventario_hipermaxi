@@ -27,6 +27,7 @@ import ListaDevoluciones from "./pages/devoluciones/ListaDevoluciones";
 import RegistrarDevolucion from "./pages/devoluciones/RegistrarDevolucion";
 import ListaDevolucionesProveedor from "./pages/devolucionesProveedor/ListaDevolucionesProveedor";
 import RegistrarDevolucionProveedor from "./pages/devolucionesProveedor/RegistrarDevolucionProveedor";
+import ListaSolicitudesMateriales from "./pages/solicitudesMateriales/ListaSolicitudesMateriales";
 import ListaSalidas from "./pages/salidas/ListaSalidas";
 
 // Reportes
@@ -214,6 +215,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <RegistrarDevolucionProveedor />
+              </ProtectedRoute>
+            }
+          />
+          {/* HIP-259 / HIP-260: Producción y Logística */}
+          <Route
+            path="/solicitudes-materiales"
+            element={
+              <ProtectedRoute>
+                <ListaSolicitudesMateriales />
               </ProtectedRoute>
             }
           />

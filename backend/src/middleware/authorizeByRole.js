@@ -32,6 +32,8 @@ const OPERACIONES_ENCARGADO = [
   // RF56: devolución a proveedor y cierre de su reposición.
   { method: "POST", path: "/devoluciones-proveedor" },
   { method: "PUT", path: "/devoluciones-proveedor" },
+  // HIP-259: despacho de materiales solicitados por Producción.
+  { method: "POST", path: "/solicitudes-materiales" },
   { method: "PUT", path: "/stock-ubicaciones" },
   { method: "DELETE", path: "/stock-ubicaciones" },
 ];

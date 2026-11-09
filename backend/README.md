@@ -212,6 +212,70 @@ SELECT id_evento, estado, intentos, message_id, ultimo_error
 FROM eventos_stock_bajo ORDER BY id_evento DESC;
 ```
 
+#### Integración con Producción y Logística (HIP-259 / HIP-260)
+
+El sistema de Producción y Logística se simula con `scripts/simular-logistica.js`,
+por lo que el formato de sus mensajes es una definición propia de este proyecto.
+
+Todos los mensajes usan el único tópico asignado al grupo (`PUBSUB_TOPIC`) y se
+distinguen por el atributo `tipo_evento`:
+
+| Dirección | `tipo_evento` |
+|---|---|
+| Logística → Inventario | `SOLICITUD_MATERIALES` |
+| Producción → Inventario | `PRODUCTOS_TERMINADOS` |
+| Inventario → Logística | `SOLICITUD_PROCESADA`, `MATERIALES_DESPACHADOS`, `STOCK_ACTUALIZADO` |
+
+Mensaje de entrada (mismo formato para ambos; `numero_lote` y `fecha_vencimiento`
+solo aplican a productos terminados, y la fecha es obligatoria si el producto
+controla vencimiento):
+
+```json
+{
+  "id_mensaje": "b7e1a4f0-...",
+  "orden_produccion": "OP-2026-015",
+  "id_almacen": 1,
+  "productos": [
+    { "id_producto": 12, "cantidad": 100, "numero_lote": "L-1", "fecha_vencimiento": "2027-05-01" }
+  ]
+}
+```
+
+Flujo:
+
+1. Al recibir una solicitud se reserva lo disponible en lotes vigentes y se publica
+   `SOLICITUD_PROCESADA` con estado `RESERVADA`, `PARCIAL` o `RECHAZADA`.
+2. `POST /api/solicitudes-materiales/:id/despachar` descuenta lo reservado aplicando
+   FEFO y publica `MATERIALES_DESPACHADOS`. Consulta con
+   `GET /api/solicitudes-materiales` y `GET /api/solicitudes-materiales/:id`.
+3. Los productos terminados crean o acumulan su lote, suben el stock y publican
+   `STOCK_ACTUALIZADO` (`motivo: "PRODUCTO_TERMINADO"`).
+4. El trigger `trg_stock_disponible` publica `STOCK_ACTUALIZADO`
+   (`motivo: "DISPONIBILIDAD_RECUPERADA"`) cuando un producto pasa de no tener
+   disponible a tenerlo.
+
+`id_mensaje` evita procesar dos veces un mensaje (tabla `mensajes_integracion`). Un
+mensaje inválido queda con estado `INVALIDO`; si era una solicitud, también se
+publica como `RECHAZADA`. Si falla la base de datos, el mensaje vuelve a entregarse.
+Los eventos salientes y su estado de envío quedan en `eventos_integracion`, y los
+fallidos se reintentan cada minuto (hasta 10 intentos).
+
+Sin Google Cloud, la pantalla **Solicitudes de materiales** (fuera de producción)
+simula esos mensajes con `POST /api/solicitudes-materiales/simular/solicitud` y
+`/simular/terminados`, que usan el mismo procesamiento que la suscripción, y
+muestra los eventos generados (`GET /api/solicitudes-materiales/eventos`). Mientras
+`PUBSUB_TOPIC` esté vacío, esos eventos quedan `PENDIENTE`.
+
+Para recibir mensajes por Pub/Sub, configura en `PUBSUB_SUBSCRIPTION` una suscripción
+exclusiva de Inventario sobre ese tópico (confirma cada mensaje que lee, incluso los
+que ignora, así que no debe compartirse con otro sistema). Los mensajes de prueba se
+publican con:
+
+```bash
+node scripts/simular-logistica.js solicitud 1 12:100 15:5
+node scripts/simular-logistica.js terminado 1 12:50:2027-05-01
+```
+
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 En cada línea de recepción, `cantidad_solicitada` es la cantidad esperada y
 `cantidad_recibida` la cantidad física recibida. El backend calcula la

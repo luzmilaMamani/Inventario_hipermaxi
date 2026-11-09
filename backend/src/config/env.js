@@ -18,6 +18,7 @@ module.exports = {
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   pubsubTopic: process.env.PUBSUB_TOPIC || '',
+  pubsubSubscription: process.env.PUBSUB_SUBSCRIPTION || '',
   // RF42: cada cuántos minutos se revisan los lotes (0 desactiva la revisión).
   alertasVencimientoIntervaloMin: Number(process.env.ALERTAS_VENCIMIENTO_INTERVALO_MIN ?? 60),
   db: {
