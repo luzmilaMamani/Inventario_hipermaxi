@@ -217,11 +217,14 @@ FROM eventos_stock_bajo ORDER BY id_evento DESC;
 El sistema de Producción y Logística se simula con `scripts/simular-logistica.js`,
 por lo que el formato de sus mensajes es una definición propia de este proyecto.
 
-| Dirección | Tópico | Mensajes |
-|---|---|---|
-| Logística → Inventario | `produccion.solicitud-materiales` | `SOLICITUD_MATERIALES` |
-| Producción → Inventario | `produccion.productos-terminados` | `PRODUCTOS_TERMINADOS` |
-| Inventario → Logística | `inventario.eventos-produccion` | `SOLICITUD_PROCESADA`, `MATERIALES_DESPACHADOS`, `STOCK_ACTUALIZADO` |
+Todos los mensajes usan el único tópico asignado al grupo (`PUBSUB_TOPIC`) y se
+distinguen por el atributo `tipo_evento`:
+
+| Dirección | `tipo_evento` |
+|---|---|
+| Logística → Inventario | `SOLICITUD_MATERIALES` |
+| Producción → Inventario | `PRODUCTOS_TERMINADOS` |
+| Inventario → Logística | `SOLICITUD_PROCESADA`, `MATERIALES_DESPACHADOS`, `STOCK_ACTUALIZADO` |
 
 Mensaje de entrada (mismo formato para ambos; `numero_lote` y `fecha_vencimiento`
 solo aplican a productos terminados, y la fecha es obligatoria si el producto
@@ -261,15 +264,14 @@ Sin Google Cloud, la pantalla **Solicitudes de materiales** (fuera de producció
 simula esos mensajes con `POST /api/solicitudes-materiales/simular/solicitud` y
 `/simular/terminados`, que usan el mismo procesamiento que la suscripción, y
 muestra los eventos generados (`GET /api/solicitudes-materiales/eventos`). Mientras
-`PUBSUB_TOPIC_EVENTOS_PRODUCCION` esté vacío, esos eventos quedan `PENDIENTE`.
+`PUBSUB_TOPIC` esté vacío, esos eventos quedan `PENDIENTE`.
 
-Para probarlo con Pub/Sub real, configura las variables `PUBSUB_TOPIC_EVENTOS_PRODUCCION`,
-`PUBSUB_SUB_SOLICITUD_MATERIALES` y `PUBSUB_SUB_PRODUCTOS_TERMINADOS`, inicia el
-backend y usa:
+Para recibir mensajes por Pub/Sub, configura en `PUBSUB_SUBSCRIPTION` una suscripción
+exclusiva de Inventario sobre ese tópico (confirma cada mensaje que lee, incluso los
+que ignora, así que no debe compartirse con otro sistema). Los mensajes de prueba se
+publican con:
 
 ```bash
-node scripts/simular-logistica.js preparar     # crea tópicos y suscripciones
-node scripts/simular-logistica.js escuchar     # muestra lo que recibe Logística
 node scripts/simular-logistica.js solicitud 1 12:100 15:5
 node scripts/simular-logistica.js terminado 1 12:50:2027-05-01
 ```

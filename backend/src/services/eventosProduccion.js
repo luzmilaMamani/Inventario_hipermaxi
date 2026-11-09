@@ -10,7 +10,7 @@ let topic = null;
 const getTopic = () => {
   if (!topic) {
     const { PubSub } = require("@google-cloud/pubsub");
-    topic = new PubSub().topic(env.pubsubProduccion.topicoEventos.trim());
+    topic = new PubSub().topic(env.pubsubTopic.trim());
   }
   return topic;
 };
@@ -110,8 +110,8 @@ const procesarPendientes = async () => {
 };
 
 const iniciarPublicadorEventos = () => {
-  if (!env.pubsubProduccion.topicoEventos.trim()) {
-    console.warn("Pub/Sub: PUBSUB_TOPIC_EVENTOS_PRODUCCION no configurado, los eventos quedan pendientes");
+  if (!env.pubsubTopic.trim()) {
+    console.warn("Pub/Sub: PUBSUB_TOPIC no configurado, los eventos de producción quedan pendientes");
     return;
   }
   procesarPendientes();

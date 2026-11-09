@@ -442,12 +442,25 @@ const leerMensaje = (message) => {
   return { contenido_invalido: texto };
 };
 
-const suscribir = (pubsub, nombre, procesar) => {
+const PROCESADORES = {
+  [MENSAJE_SOLICITUD]: procesarSolicitud,
+  [MENSAJE_TERMINADOS]: procesarTerminados,
+};
+
+const suscribir = (pubsub, nombre) => {
   const subscription = pubsub.subscription(nombre, { flowControl: { maxMessages: 5 } });
 
   subscription.on("message", async (message) => {
+    // El tópico es compartido: aquí también llegan los eventos que publica Inventario.
+    const data = leerMensaje(message);
+    const procesar = PROCESADORES[message.attributes?.tipo_evento || data.tipo_evento];
+    if (!procesar) {
+      message.ack();
+      return;
+    }
+
     try {
-      await procesar(leerMensaje(message), message.id);
+      await procesar(data, message.id);
       message.ack();
     } catch (error) {
       console.error(`Pub/Sub: error procesando mensaje de ${nombre}, se reintentará:`, error.message);
@@ -459,26 +472,21 @@ const suscribir = (pubsub, nombre, procesar) => {
     console.error(`Pub/Sub: se perdió la suscripción ${nombre}:`, error.message);
     subscription.removeAllListeners();
     subscription.close().catch(() => {});
-    setTimeout(() => suscribir(pubsub, nombre, procesar), SEGUNDOS_RECONEXION * 1000).unref();
+    setTimeout(() => suscribir(pubsub, nombre), SEGUNDOS_RECONEXION * 1000).unref();
   });
 
   console.log(`Pub/Sub: escuchando suscripción ${nombre}`);
 };
 
 const iniciarSuscripcionesProduccion = () => {
-  const suscripciones = [
-    [env.pubsubProduccion.suscripcionSolicitudes.trim(), procesarSolicitud],
-    [env.pubsubProduccion.suscripcionTerminados.trim(), procesarTerminados],
-  ].filter(([nombre]) => nombre);
-
-  if (suscripciones.length === 0) {
-    console.warn("Pub/Sub: suscripciones de Producción y Logística no configuradas");
+  const nombre = env.pubsubSubscription.trim();
+  if (!nombre) {
+    console.warn("Pub/Sub: PUBSUB_SUBSCRIPTION no configurada, no se reciben mensajes de Producción y Logística");
     return;
   }
 
   const { PubSub } = require("@google-cloud/pubsub");
-  const pubsub = new PubSub();
-  for (const [nombre, procesar] of suscripciones) suscribir(pubsub, nombre, procesar);
+  suscribir(new PubSub(), nombre);
 };
 
 module.exports = {
