@@ -13,6 +13,7 @@ export const ROLES_LECTURA_Y_OPERACION = [
   "SUPERVISOR",
   "GERENTE",
   "AUDITOR",
+  "JEFE_SUCURSAL",
 ];
 export const ROLES_SIN_EMPLEADO = [
   "ADMINISTRADOR",
@@ -20,10 +21,18 @@ export const ROLES_SIN_EMPLEADO = [
   "SUPERVISOR",
   "GERENTE",
   "AUDITOR",
+  "JEFE_SUCURSAL",
 ];
 
 // RF53: solo el supervisor aprueba o rechaza ajustes que superan el límite.
 export const ROLES_APROBACION_AJUSTES = ["SUPERVISOR"];
+
+// RF57: quienes pueden cancelar una solicitud de transferencia no enviada.
+export const ROLES_CANCELAN_TRANSFERENCIA = [
+  "ENCARGADO_ALMACEN",
+  "ADMINISTRADOR",
+  "JEFE_SUCURSAL",
+];
 
 // RF61: quienes pueden poner un lote en cuarentena o liberarlo.
 export const ROLES_CUARENTENA = ["SUPERVISOR", "ADMINISTRADOR"];

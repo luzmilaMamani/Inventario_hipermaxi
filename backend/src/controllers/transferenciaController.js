@@ -6,6 +6,8 @@ const {
   recibirLotesTransferencia,
 } = require("../services/lotesMovimientos");
 
+const ROLES_CANCELAN_TRANSFERENCIA = ["ENCARGADO_ALMACEN", "ADMINISTRADOR", "JEFE_SUCURSAL"];
+
 const generarNumeroTransferencia = async (client) => {
   const year = new Date().getFullYear();
   await client.query(
@@ -612,8 +614,8 @@ const cancelarTransferencia = asyncHandler(async (req, res) => {
   if (!Number.isSafeInteger(idTransferencia) || idTransferencia <= 0) {
     throw new ApiError(400, "El ID de la transferencia no es válido");
   }
-  if (!["ENCARGADO_ALMACEN", "ADMINISTRADOR"].includes(req.user.rol)) {
-    throw new ApiError(403, "Solo un encargado o administrador puede cancelar transferencias");
+  if (!ROLES_CANCELAN_TRANSFERENCIA.includes(req.user.rol)) {
+    throw new ApiError(403, "Solo un jefe de sucursal, encargado o administrador puede cancelar transferencias");
   }
 
   const motivo = typeof req.body?.motivo === "string" ? req.body.motivo.trim() : "";

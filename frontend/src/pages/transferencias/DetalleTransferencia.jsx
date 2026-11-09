@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Modal from "../../components/ui/Modal";
 import { useAuth } from "../../context/AuthContext";
+import { ROLES_CANCELAN_TRANSFERENCIA } from "../../utils/permissions";
 import {
   cancelarTransferencia,
   obtenerTransferencia,
@@ -30,7 +31,7 @@ export default function DetalleTransferencia({
   const [guardando, setGuardando] = useState(false);
 
   const puedeCancelar =
-    ["ENCARGADO_ALMACEN", "ADMINISTRADOR"].includes(user?.rol) &&
+    ROLES_CANCELAN_TRANSFERENCIA.includes(user?.rol) &&
     ESTADOS_CANCELABLES.includes(transferencia?.estado);
 
   const confirmarCancelacion = async (e) => {

@@ -4,6 +4,7 @@ import Layout from "../../components/layout/Layout";
 import Modal from "../../components/ui/Modal";
 import Select from "../../components/ui/Select";
 import { useAuth } from "../../context/AuthContext";
+import { ROLES_CANCELAN_TRANSFERENCIA } from "../../utils/permissions";
 import DetalleTransferencia from "./DetalleTransferencia";
 import FormTransferencia from "./FormTransferencia";
 import {
@@ -29,6 +30,7 @@ export default function ListaTransferencias() {
   const [mensaje, setMensaje] = useState("");
 
   const puedeDecidir = ["ENCARGADO_ALMACEN", "ADMINISTRADOR"].includes(user?.rol);
+  const puedeCancelar = ROLES_CANCELAN_TRANSFERENCIA.includes(user?.rol);
 
   const cargar = async () => {
     setLoading(true);
@@ -249,7 +251,7 @@ export default function ListaTransferencias() {
                         )}
 
                         {/* RF57: Cancelar solicitud no enviada (motivo en el detalle) */}
-                        {["SOLICITADA", "APROBADA"].includes(t.estado) && puedeDecidir && (
+                        {["SOLICITADA", "APROBADA"].includes(t.estado) && puedeCancelar && (
                           <button onClick={() => setTransferenciaDetalleId(t.id_transferencia)} className="text-gray-600 hover:underline font-medium">Cancelar</button>
                         )}
 

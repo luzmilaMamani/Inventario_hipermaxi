@@ -46,6 +46,7 @@ const OPERACIONES_EMPLEADO = [
 
 const RUTA_DECISION_AJUSTE = /^\/ajustes-inventario\/\d+\/(aprobar|rechazar)$/;
 const RUTA_CUARENTENA_LOTE = /^\/lotes\/\d+\/(cuarentena|liberar)$/;
+const RUTA_CANCELAR_TRANSFERENCIA = /^\/transferencias\/\d+\/cancelar$/;
 
 function coincideRuta(path, ruta) {
   return path === ruta || path.startsWith(`${ruta}/`);
@@ -68,6 +69,14 @@ function autorizarPorRol(req, _res, next) {
     (RUTA_DECISION_AJUSTE.test(path) || RUTA_CUARENTENA_LOTE.test(path))
   ) {
     return next();
+  }
+
+  // RF57: el jefe de sucursal consulta, solicita y cancela transferencias.
+  if (rol === "JEFE_SUCURSAL") {
+    if (metodo === "POST" && (path === "/transferencias" || RUTA_CANCELAR_TRANSFERENCIA.test(path))) {
+      return next();
+    }
+    return next(new ApiError(403, "Tu rol solo puede consultar, solicitar y cancelar transferencias"));
   }
 
   if (SOLO_LECTURA.has(rol)) {
