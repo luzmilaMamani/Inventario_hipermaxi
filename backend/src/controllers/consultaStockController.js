@@ -252,7 +252,9 @@ const consultarProximosVencer = asyncHandler(async (req, res) => {
   const condiciones = [
     "lp.fecha_vencimiento IS NOT NULL",
     "lp.cantidad_actual > 0",
-    "lp.fecha_vencimiento >= CURRENT_DATE",
+    // Lo que vence hoy ya está vencido (RF43) y la cuarentena no se vende (RF61).
+    "lp.fecha_vencimiento > CURRENT_DATE",
+    "lp.estado IN ('DISPONIBLE', 'PROXIMO_A_VENCER')",
   ];
   if (usarParametro) {
     condiciones.push(

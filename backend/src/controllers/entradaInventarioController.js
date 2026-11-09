@@ -158,11 +158,11 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
         `La fecha de vencimiento de la línea ${indice + 1} no es válida`,
       );
     }
-    // RF40: no se aceptan productos que ya llegan vencidos
-    if (fechaVencimiento && fechaVencimiento < hoy) {
+    // RF40/RF43: un lote que vence hoy ya se considera vencido.
+    if (fechaVencimiento && fechaVencimiento <= hoy) {
       throw new ApiError(
         400,
-        `La fecha de vencimiento de la línea ${indice + 1} ya pasó; no se puede recibir un producto vencido`,
+        `La fecha de vencimiento de la línea ${indice + 1} debe ser posterior a hoy; no se puede recibir un producto vencido`,
       );
     }
     const numeroLote = String(detalle.numero_lote || "").trim() || null;
@@ -295,7 +295,7 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
               `El lote de la línea ${indice + 1} no tiene fecha de vencimiento registrada`,
             );
           }
-          if (vencimientoLote < hoy) {
+          if (vencimientoLote <= hoy) {
             throw new ApiError(
               400,
               `El lote de la línea ${indice + 1} ya está vencido; no se puede recibir más cantidad en él`,

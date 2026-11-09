@@ -14,6 +14,15 @@ const fechaLocalHoy = () => {
   return `${anio}-${mes}-${dia}`;
 };
 
+const fechaLocalManana = () => {
+  const fecha = new Date();
+  fecha.setDate(fecha.getDate() + 1);
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dia = String(fecha.getDate()).padStart(2, "0");
+  return `${anio}-${mes}-${dia}`;
+};
+
 const crearDetalleVacio = () => ({
   id_producto: "",
   cantidad_solicitada: "",
@@ -189,11 +198,11 @@ export default function RegistrarRecepcion() {
     }
     const vencido = detalles.findIndex(
       (detalle) =>
-        controlaVencimiento(detalle.id_producto) && detalle.fecha_vencimiento < hoy,
+        controlaVencimiento(detalle.id_producto) && detalle.fecha_vencimiento <= hoy,
     );
     if (vencido !== -1) {
       return setError(
-        `La fecha de vencimiento de la línea ${vencido + 1} ya pasó; no se puede recibir un producto vencido.`,
+        `La fecha de vencimiento de la línea ${vencido + 1} debe ser posterior a hoy; no se puede recibir un producto vencido.`,
       );
     }
 
@@ -437,7 +446,7 @@ export default function RegistrarRecepcion() {
                             className="input-field"
                             type="date"
                             required
-                            min={fechaLocalHoy()}
+                            min={fechaLocalManana()}
                             value={detalle.fecha_vencimiento}
                             onChange={(event) =>
                               actualizarDetalle(indice, "fecha_vencimiento", event.target.value)
