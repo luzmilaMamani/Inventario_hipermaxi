@@ -19,6 +19,7 @@ import ConsultaStock from "./pages/stock/ConsultaStock";
 import HistorialStock from "./pages/stock/HistorialStock";
 import ProximosVencimientos from "./pages/stock/ProximosVencimientos";
 import LotesVencidos from "./pages/stock/LotesVencidos";
+import LotesCuarentena from "./pages/stock/LotesCuarentena";
 import ParametrosVencimiento from "./pages/stock/ParametrosVencimiento";
 import ListaRecepciones from "./pages/stock/ListaRecepciones";
 import RegistrarRecepcion from "./pages/stock/RegistrarRecepcion";
@@ -117,6 +118,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <LotesVencidos />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF61: lotes y cuarentena */}
+          <Route
+            path="/stock/lotes"
+            element={
+              <ProtectedRoute>
+                <LotesCuarentena />
               </ProtectedRoute>
             }
           />

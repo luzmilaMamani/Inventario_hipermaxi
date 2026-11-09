@@ -25,6 +25,9 @@ export const ROLES_SIN_EMPLEADO = [
 // RF53: solo el supervisor aprueba o rechaza ajustes que superan el límite.
 export const ROLES_APROBACION_AJUSTES = ["SUPERVISOR"];
 
+// RF61: quienes pueden poner un lote en cuarentena o liberarlo.
+export const ROLES_CUARENTENA = ["SUPERVISOR", "ADMINISTRADOR"];
+
 export function tieneRol(rol, roles) {
   return roles.includes(rol);
 }

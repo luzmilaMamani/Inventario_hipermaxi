@@ -133,6 +133,9 @@ export default function ConsultaStock() {
                   <th className="py-2 text-right" title="Lotes vencidos: no cuentan como disponibles (RF43)">
                     Vencido
                   </th>
+                  <th className="py-2 text-right" title="Lotes en revisión: no cuentan como disponibles (RF61)">
+                    Cuarentena
+                  </th>
                   <th className="py-2 text-right">Disponible</th>
                   <th className="py-2 text-right">Stock mínimo</th>
                   <th className="py-2 text-right">Stock máximo</th>
@@ -143,13 +146,13 @@ export default function ConsultaStock() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="11" className="py-6 text-center text-gray-500">
+                    <td colSpan="12" className="py-6 text-center text-gray-500">
                       Consultando stock...
                     </td>
                   </tr>
                 ) : registros.length === 0 ? (
                   <tr>
-                    <td colSpan="11" className="py-6 text-center text-gray-500">
+                    <td colSpan="12" className="py-6 text-center text-gray-500">
                       No hay registros de stock para esos filtros.
                     </td>
                   </tr>
@@ -196,6 +199,21 @@ export default function ConsultaStock() {
                             title="Ver lotes vencidos"
                           >
                             {Number(registro.cantidad_vencida).toLocaleString("es-BO")} unid.
+                          </Link>
+                        ) : (
+                          "0 unid."
+                        )}
+                      </td>
+                      <td className="py-2 text-right">
+                        {registro.cantidad_cuarentena === null || registro.cantidad_cuarentena === undefined ? (
+                          "-"
+                        ) : Number(registro.cantidad_cuarentena) > 0 ? (
+                          <Link
+                            to="/stock/lotes"
+                            className="font-semibold text-amber-700 hover:underline"
+                            title="Ver lotes en cuarentena"
+                          >
+                            {Number(registro.cantidad_cuarentena).toLocaleString("es-BO")} unid.
                           </Link>
                         ) : (
                           "0 unid."

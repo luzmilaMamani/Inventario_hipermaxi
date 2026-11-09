@@ -18,10 +18,10 @@ async function marcarLotesVencidos(client) {
   return Number(rows[0]?.marcados || 0);
 }
 
-// Cantidad vencida pendiente de baja para un producto en un almacén.
-async function obtenerCantidadVencida(client, id_producto, id_almacen) {
+// Unidades vencidas o en cuarentena de un producto en un almacén (RF43, RF61).
+async function obtenerCantidadNoDisponible(client, id_producto, id_almacen) {
   const { rows } = await client.query(
-    "SELECT fn_cantidad_vencida($1, $2) AS cantidad",
+    "SELECT fn_cantidad_no_disponible($1, $2) AS cantidad",
     [id_producto, id_almacen],
   );
   return Number(rows[0]?.cantidad || 0);
@@ -89,7 +89,7 @@ async function asignarLotesVencidos(client, { id_producto, id_almacen, cantidad,
 module.exports = {
   CONDICION_LOTE_VENCIDO,
   marcarLotesVencidos,
-  obtenerCantidadVencida,
+  obtenerCantidadNoDisponible,
   obtenerLotesVencidos,
   asignarLotesVencidos,
 };

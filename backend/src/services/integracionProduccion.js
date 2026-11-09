@@ -2,7 +2,7 @@ const db = require("../config/db");
 const env = require("../config/env");
 const ApiError = require("../utils/apiError");
 const { obtenerLotesVigentes, asignarLotes } = require("./lotesFefo");
-const { obtenerCantidadVencida } = require("./lotesVencidos");
+const { obtenerCantidadNoDisponible } = require("./lotesVencidos");
 const { registrarEvento } = require("./eventosProduccion");
 
 const MENSAJE_SOLICITUD = "SOLICITUD_MATERIALES";
@@ -115,10 +115,10 @@ const calcularReservable = async (client, idProducto, idAlmacen, cantidad) => {
   if (!rows[0]) return 0;
 
   const reservada = Number(rows[0].reservada);
-  const vencida = await obtenerCantidadVencida(client, idProducto, idAlmacen);
+  const noDisponible = await obtenerCantidadNoDisponible(client, idProducto, idAlmacen);
   const lotes = await obtenerLotesVigentes(client, { id_producto: idProducto, id_almacen: idAlmacen });
   const enLotesVigentes = lotes.reduce((suma, lote) => suma + Number(lote.cantidad_actual), 0);
-  const disponible = Math.min(Number(rows[0].cantidad) - reservada - vencida, enLotesVigentes - reservada);
+  const disponible = Math.min(Number(rows[0].cantidad) - reservada - noDisponible, enLotesVigentes - reservada);
 
   return Math.max(Math.min(disponible, cantidad), 0);
 };
@@ -258,11 +258,11 @@ const ingresarTerminados = async (client, data) => {
       ],
     );
 
-    const vencida = await obtenerCantidadVencida(client, idProducto, data.id_almacen);
+    const noDisponible = await obtenerCantidadNoDisponible(client, idProducto, data.id_almacen);
     productos.push({
       id_producto: idProducto,
       cantidad_ingresada: cantidad,
-      cantidad_disponible: Math.max(stockNuevo - Number(stock.rows[0].reservada) - vencida, 0),
+      cantidad_disponible: Math.max(stockNuevo - Number(stock.rows[0].reservada) - noDisponible, 0),
     });
   }
 

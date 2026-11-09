@@ -32,14 +32,17 @@ const CTE_EXISTENCIAS = `
       NULL::text AS ubicacion,
       s.cantidad,
       COALESCE(s.cantidad_reservada, 0) AS cantidad_reservada,
-      -- RF43: lo vencido se muestra aparte y no cuenta como disponible.
+      -- RF43/RF61: lo vencido y lo que está en cuarentena se muestra aparte y no
+      -- cuenta como disponible.
       vd.cantidad_vencida,
-      GREATEST(s.cantidad - COALESCE(s.cantidad_reservada, 0) - vd.cantidad_vencida, 0)
-        AS cantidad_disponible,
+      vd.cantidad_cuarentena,
+      GREATEST(s.cantidad - COALESCE(s.cantidad_reservada, 0)
+        - vd.cantidad_vencida - vd.cantidad_cuarentena, 0) AS cantidad_disponible,
       s.fecha_actualizacion
     FROM stock s
     CROSS JOIN LATERAL (
-      SELECT fn_cantidad_vencida(s.id_producto, s.id_almacen) AS cantidad_vencida
+      SELECT fn_cantidad_vencida(s.id_producto, s.id_almacen) AS cantidad_vencida,
+             fn_cantidad_cuarentena(s.id_producto, s.id_almacen) AS cantidad_cuarentena
     ) vd
     INNER JOIN productos p ON p.id_producto = s.id_producto
     INNER JOIN unidades_medida um ON um.id_unidad = p.id_unidad
@@ -66,6 +69,7 @@ const CTE_EXISTENCIAS = `
       su.cantidad,
       NULL::numeric AS cantidad_reservada,
       NULL::numeric AS cantidad_vencida,
+      NULL::numeric AS cantidad_cuarentena,
       su.cantidad AS cantidad_disponible,
       su.fecha_actualizacion
     FROM stock_ubicaciones su

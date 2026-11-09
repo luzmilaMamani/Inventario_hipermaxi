@@ -2,7 +2,7 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 const { obtenerLotesVigentes, planificarFefo, asignarLotes } = require("../services/lotesFefo");
-const { asignarLotesVencidos, obtenerCantidadVencida } = require("../services/lotesVencidos");
+const { asignarLotesVencidos, obtenerCantidadNoDisponible } = require("../services/lotesVencidos");
 
 async function generarNumeroSalida(client, motivo) {
   let prefijo = "SAL";
@@ -141,7 +141,7 @@ const crearSalida = asyncHandler(async (req, res) => {
           ? Number(stockActual.cantidad) - reservada
           : Number(stockActual.cantidad) -
             reservada -
-            (await obtenerCantidadVencida(client, id_producto, id_almacen));
+            (await obtenerCantidadNoDisponible(client, id_producto, id_almacen));
 
       if (cantidad > disponible) {
         throw new ApiError(

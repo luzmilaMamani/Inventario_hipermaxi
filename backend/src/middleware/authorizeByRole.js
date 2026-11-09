@@ -45,6 +45,7 @@ const OPERACIONES_EMPLEADO = [
 ];
 
 const RUTA_DECISION_AJUSTE = /^\/ajustes-inventario\/\d+\/(aprobar|rechazar)$/;
+const RUTA_CUARENTENA_LOTE = /^\/lotes\/\d+\/(cuarentena|liberar)$/;
 
 function coincideRuta(path, ruta) {
   return path === ruta || path.startsWith(`${ruta}/`);
@@ -59,11 +60,12 @@ function autorizarPorRol(req, _res, next) {
     return next();
   }
 
-  // RF53: el supervisor, aunque solo consulta, decide los ajustes pendientes.
+  // RF53 y RF61: el supervisor, aunque solo consulta, decide los ajustes
+  // pendientes y bloquea o libera lotes en cuarentena.
   if (
     rol === "SUPERVISOR" &&
     metodo === "POST" &&
-    RUTA_DECISION_AJUSTE.test(path)
+    (RUTA_DECISION_AJUSTE.test(path) || RUTA_CUARENTENA_LOTE.test(path))
   ) {
     return next();
   }

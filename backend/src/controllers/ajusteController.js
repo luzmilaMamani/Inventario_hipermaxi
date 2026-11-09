@@ -2,6 +2,11 @@ const { randomBytes } = require("node:crypto");
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
+const {
+  bloquearLotes,
+  validarAjusteEnLotes,
+  aplicarAjusteEnLotes,
+} = require("../services/lotesMovimientos");
 
 const MOTIVOS = [
   "CONTEO_FISICO",
@@ -127,7 +132,15 @@ function evaluarLimite({ diferencia, precio }, limites) {
 }
 
 // Aplica la cantidad nueva al stock y registra el movimiento AJUSTE.
-async function aplicarEnStock(cliente, { idProducto, idAlmacen, idStock, cantidadAnterior, cantidadNueva, idUsuario, numeroAjuste, comentario }) {
+async function aplicarEnStock(cliente, { idProducto, idAlmacen, idStock, cantidadAnterior, cantidadNueva, idUsuario, numeroAjuste, comentario, fechaVencimiento }) {
+  await aplicarAjusteEnLotes(cliente, {
+    idProducto,
+    idAlmacen,
+    diferencia: cantidadNueva - cantidadAnterior,
+    numeroAjuste,
+    fechaVencimiento,
+  });
+
   if (idStock) {
     await cliente.query(
       `UPDATE stock
@@ -308,6 +321,10 @@ const crearAjuste = asyncHandler(async (req, res) => {
     throw new ApiError(400, "La cantidad nueva debe ser un número entero igual o mayor a 0");
   }
   const { motivo, comentario } = leerJustificacion(req.body);
+  const fechaRecibida = String(req.body.fecha_vencimiento || "").trim() || null;
+  if (fechaRecibida && !esFechaValida(fechaRecibida)) {
+    throw new ApiError(400, "La fecha de vencimiento no es válida");
+  }
 
   const cliente = await db.pool.connect();
   try {
@@ -320,11 +337,19 @@ const crearAjuste = asyncHandler(async (req, res) => {
     if (!almacen.rowCount) throw new ApiError(400, "El almacén no existe o está inactivo");
 
     const producto = await cliente.query(
-      "SELECT id_producto, COALESCE(precio, 0) AS precio FROM productos WHERE id_producto = $1 AND estado = 'ACTIVO'",
-      [idProducto],
+      `SELECT id_producto, COALESCE(precio, 0) AS precio, controla_vencimiento,
+              ($2::date IS NULL OR $2::date > CURRENT_DATE) AS fecha_vigente
+       FROM productos WHERE id_producto = $1 AND estado = 'ACTIVO'`,
+      [idProducto, fechaRecibida],
     );
     if (!producto.rowCount) throw new ApiError(400, "El producto no existe o está inactivo");
+    const controlaVencimiento = producto.rows[0].controla_vencimiento === true;
+    if (controlaVencimiento && !producto.rows[0].fecha_vigente) {
+      throw new ApiError(400, "La fecha de vencimiento debe ser posterior a hoy");
+    }
+    const fechaVencimiento = controlaVencimiento ? fechaRecibida : null;
 
+    await bloquearLotes(cliente, idProducto, idAlmacen);
     const stock = await bloquearStock(cliente, idProducto, idAlmacen);
     const cantidadAnterior = stock.cantidad;
     if (cantidadNueva === cantidadAnterior) {
@@ -352,6 +377,14 @@ const crearAjuste = asyncHandler(async (req, res) => {
       );
     }
 
+    await validarAjusteEnLotes(cliente, {
+      idProducto,
+      idAlmacen,
+      diferencia: cantidadNueva - cantidadAnterior,
+      controlaVencimiento,
+      fechaVencimiento,
+    });
+
     const limites = await obtenerParametrosAprobacion(cliente);
     const evaluacion = evaluarLimite(
       {
@@ -374,6 +407,7 @@ const crearAjuste = asyncHandler(async (req, res) => {
         idUsuario: req.user.id_usuario,
         numeroAjuste,
         comentario,
+        fechaVencimiento,
       });
     }
 
@@ -381,8 +415,8 @@ const crearAjuste = asyncHandler(async (req, res) => {
       `INSERT INTO ajustes_inventario
         (numero_ajuste, id_almacen, id_producto, id_usuario, id_usuario_aprueba,
          cantidad_anterior, cantidad_nueva, motivo, comentario, estado,
-         requiere_aprobacion, valor_ajuste, fecha_ajuste)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
+         requiere_aprobacion, valor_ajuste, fecha_vencimiento_lote, fecha_ajuste)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP)
        RETURNING id_ajuste`,
       [
         numeroAjuste,
@@ -397,6 +431,7 @@ const crearAjuste = asyncHandler(async (req, res) => {
         estado,
         evaluacion.requiereAprobacion,
         evaluacion.valor,
+        fechaVencimiento,
       ],
     );
 
@@ -429,7 +464,8 @@ const crearAjuste = asyncHandler(async (req, res) => {
 async function bloquearPendiente(cliente, idAjuste) {
   const result = await cliente.query(
     `SELECT id_ajuste, numero_ajuste, id_almacen, id_producto, id_usuario,
-            cantidad_anterior, cantidad_nueva, comentario, estado
+            cantidad_anterior, cantidad_nueva, comentario, estado,
+            TO_CHAR(fecha_vencimiento_lote, 'YYYY-MM-DD') AS fecha_vencimiento_lote
      FROM ajustes_inventario
      WHERE id_ajuste = $1
      FOR UPDATE`,
@@ -461,6 +497,7 @@ const aprobarAjuste = asyncHandler(async (req, res) => {
     const idAlmacen = Number(ajuste.id_almacen);
     const cantidadAnterior = Number(ajuste.cantidad_anterior);
     const cantidadNueva = Number(ajuste.cantidad_nueva);
+    await bloquearLotes(cliente, idProducto, idAlmacen);
     const stock = await bloquearStock(cliente, idProducto, idAlmacen);
 
     if (stock.cantidad !== cantidadAnterior) {
@@ -476,6 +513,19 @@ const aprobarAjuste = asyncHandler(async (req, res) => {
       );
     }
 
+    // Los lotes vigentes pudieron agotarse mientras el ajuste esperaba aprobación.
+    const producto = await cliente.query(
+      "SELECT controla_vencimiento FROM productos WHERE id_producto = $1",
+      [idProducto],
+    );
+    await validarAjusteEnLotes(cliente, {
+      idProducto,
+      idAlmacen,
+      diferencia: cantidadNueva - cantidadAnterior,
+      controlaVencimiento: producto.rows[0].controla_vencimiento === true,
+      fechaVencimiento: ajuste.fecha_vencimiento_lote,
+    });
+
     await aplicarEnStock(cliente, {
       idProducto,
       idAlmacen,
@@ -485,6 +535,7 @@ const aprobarAjuste = asyncHandler(async (req, res) => {
       idUsuario: req.user.id_usuario,
       numeroAjuste: ajuste.numero_ajuste,
       comentario: `${ajuste.comentario} | Aprobado por supervisor`,
+      fechaVencimiento: ajuste.fecha_vencimiento_lote,
     });
 
     await cliente.query(

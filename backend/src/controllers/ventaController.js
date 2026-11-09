@@ -2,7 +2,7 @@ const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 const { asignarLotes } = require("../services/lotesFefo");
-const { obtenerCantidadVencida } = require("../services/lotesVencidos");
+const { obtenerCantidadNoDisponible } = require("../services/lotesVencidos");
 
 /**
  * POST /api/ventas/descontar
@@ -63,11 +63,11 @@ const registrarVenta = asyncHandler(async (req, res) => {
       }
 
       const stockActual = stockResult.rows[0];
-      // RF43: las unidades de lotes vencidos no se pueden vender.
+      // RF43/RF61: las unidades vencidas o en cuarentena no se pueden vender.
       const disponible =
         Number(stockActual.cantidad) -
         Number(stockActual.cantidad_reservada || 0) -
-        (await obtenerCantidadVencida(client, id_producto, id_almacen));
+        (await obtenerCantidadNoDisponible(client, id_producto, id_almacen));
 
       if (cantidad > disponible) {
         throw new ApiError(400, `Stock insuficiente para el producto ${id_producto}. Disponible: ${disponible}`);

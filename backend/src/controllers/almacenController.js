@@ -154,7 +154,7 @@ const obtenerStockAlmacen = asyncHandler(async (req, res) => {
        s.cantidad,
        s.cantidad_reservada,
        fn_cantidad_vencida(s.id_producto, s.id_almacen) AS cantidad_vencida,
-       GREATEST(s.cantidad - s.cantidad_reservada - fn_cantidad_vencida(s.id_producto, s.id_almacen), 0) AS cantidad_disponible,
+       GREATEST(s.cantidad - s.cantidad_reservada - fn_cantidad_no_disponible(s.id_producto, s.id_almacen), 0) AS cantidad_disponible,
        s.fecha_actualizacion,
        p.id_producto, p.codigo AS producto_codigo, p.nombre AS producto,
        p.stock_minimo, p.stock_maximo, p.punto_reposicion,

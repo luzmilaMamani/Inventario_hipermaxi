@@ -16,6 +16,7 @@ const FORM_INICIAL = {
   cantidad_nueva: "",
   motivo: "",
   comentario: "",
+  fecha_vencimiento: "",
 };
 
 export default function FormAjuste({ onClose, onSaved }) {
@@ -55,6 +56,11 @@ export default function FormAjuste({ onClose, onSaved }) {
     diferencia !== null &&
     (diferencia > Number(limites.limite_cantidad) ||
       montoEstimado > Number(limites.limite_monto));
+  const agregaConVencimiento =
+    productoElegido?.controla_vencimiento === true &&
+    stockActual !== null &&
+    form.cantidad_nueva !== "" &&
+    Number(form.cantidad_nueva) > stockActual;
 
   useEffect(() => {
     if (!form.id_almacen || !form.id_producto) {
@@ -107,6 +113,7 @@ export default function FormAjuste({ onClose, onSaved }) {
         cantidad_nueva: cantidadNueva,
         motivo: form.motivo,
         comentario: form.comentario.trim(),
+        fecha_vencimiento: agregaConVencimiento && form.fecha_vencimiento ? form.fecha_vencimiento : null,
       });
       onSaved(respuesta?.message);
     } catch (err) {
@@ -161,6 +168,24 @@ export default function FormAjuste({ onClose, onSaved }) {
             onChange={(event) => setForm({ ...form, cantidad_nueva: event.target.value })}
           />
         </div>
+        {agregaConVencimiento && (
+          <div>
+            <label className="mb-1 block text-sm font-medium" htmlFor="vencimiento-ajuste">
+              Fecha de vencimiento
+            </label>
+            <input
+              id="vencimiento-ajuste"
+              className="input-field"
+              type="date"
+              value={form.fecha_vencimiento}
+              onChange={(event) => setForm({ ...form, fecha_vencimiento: event.target.value })}
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Solo es obligatoria si el producto no tiene lotes vigentes en este almacén. Si los
+              tiene, las unidades se suman al lote que vence más tarde.
+            </p>
+          </div>
+        )}
         <Select
           label="Motivo *"
           value={form.motivo}

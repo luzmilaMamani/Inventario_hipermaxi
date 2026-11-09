@@ -8,6 +8,7 @@ const {
   evaluarLineaRecepcion,
   resultadoVerificacion,
 } = require("../utils/verificacionRecepcion");
+const { sumarALote } = require("../services/lotesMovimientos");
 
 let columnasVerificacionListas = false;
 
@@ -303,29 +304,22 @@ const registrarRecepcion = asyncHandler(async (req, res) => {
         }
         linea.id_lote = lote.id_lote;
         linea.fecha_vencimiento = vencimientoLote;
-        await cliente.query(
-          `UPDATE lotes_productos
-           SET cantidad_inicial = cantidad_inicial + $1,
-               cantidad_actual = cantidad_actual + $1,
-               estado = CASE WHEN estado = 'AGOTADO' THEN 'DISPONIBLE' ELSE estado END
-           WHERE id_lote = $2`,
-          [linea.cantidad_recibida, lote.id_lote],
-        );
       } else {
+        // El lote nace vacío: sus unidades se suman al confirmar la recepción,
+        // junto con el stock.
         const numeroLote =
           linea.numero_lote || `${entrada.numero_entrada}-${indice + 1}`;
         const loteResult = await cliente.query(
           `INSERT INTO lotes_productos
              (id_producto, id_almacen, numero_lote, fecha_ingreso,
               fecha_vencimiento, cantidad_inicial, cantidad_actual)
-           VALUES ($1, $2, $3, CURRENT_DATE, $4, $5, $5)
+           VALUES ($1, $2, $3, CURRENT_DATE, $4, 0, 0)
            RETURNING id_lote, numero_lote, fecha_vencimiento`,
           [
             linea.id_producto,
             idAlmacen,
             numeroLote,
             linea.fecha_vencimiento,
-            linea.cantidad_recibida,
           ],
         );
         lote = loteResult.rows[0];
@@ -416,6 +410,10 @@ const confirmarRecepcion = asyncHandler(async (req, res) => {
     for (const linea of detallesResult.rows) {
       const cantidadRecibida = Number(linea.cantidad_recibida);
       if (!Number.isFinite(cantidadRecibida) || cantidadRecibida <= 0) continue;
+
+      if (linea.id_lote) {
+        await sumarALote(cliente, linea.id_lote, cantidadRecibida, { sumarInicial: true });
+      }
 
       const stockResult = await cliente.query(
         `INSERT INTO stock (id_producto, id_almacen, cantidad, cantidad_reservada)

@@ -1,7 +1,10 @@
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
-const { obtenerCantidadVencida } = require("../services/lotesVencidos");
+const {
+  enviarLotesTransferencia,
+  recibirLotesTransferencia,
+} = require("../services/lotesMovimientos");
 
 const generarNumeroTransferencia = async (client) => {
   const year = new Date().getFullYear();
@@ -281,7 +284,7 @@ const crearTransferencia = asyncHandler(async (req, res) => {
     const transferencia = result.rows[0];
 
     // RF57: la solicitud reserva el stock en origen hasta enviarse o cancelarse.
-    // RF43: las unidades de lotes vencidos no se pueden transferir.
+    // RF43/RF61: las unidades vencidas o en cuarentena no se pueden transferir.
     for (const d of detalles) {
       const cantidad = Number(d.cantidad);
       const reserva = await client.query(
@@ -290,14 +293,14 @@ const crearTransferencia = asyncHandler(async (req, res) => {
              fecha_actualizacion = CURRENT_TIMESTAMP
          WHERE id_producto = $2 AND id_almacen = $3
            AND cantidad - COALESCE(cantidad_reservada, 0)
-               - fn_cantidad_vencida(id_producto, id_almacen) >= $1::numeric
+               - fn_cantidad_no_disponible(id_producto, id_almacen) >= $1::numeric
          RETURNING id_stock`,
         [cantidad, d.id_producto, idAlmacenOrigen],
       );
       if (!reserva.rowCount) {
         throw new ApiError(
           400,
-          `Stock disponible insuficiente en el origen para el producto ${d.id_producto} (no se cuentan lo reservado ni los lotes vencidos)`,
+          `Stock disponible insuficiente en el origen para el producto ${d.id_producto} (no se cuentan lo reservado ni los lotes vencidos o en cuarentena)`,
         );
       }
 
@@ -385,22 +388,31 @@ const cambiarEstado = asyncHandler(async (req, res) => {
       );
 
       for (const d of detalles.rows) {
+        // Los lotes salen por FEFO: nunca vencidos ni en cuarentena.
+        await enviarLotesTransferencia(client, {
+          idDetalle: d.id_detalle_transferencia,
+          idProducto: d.id_producto,
+          idAlmacen: transferencia.almacen_origen,
+          cantidad: Number(d.cantidad_solicitada),
+        });
+
         const stockRes = await client.query(
           `SELECT id_stock, cantidad, cantidad_reservada
            FROM stock WHERE id_producto = $1 AND id_almacen = $2 FOR UPDATE`,
           [d.id_producto, transferencia.almacen_origen]
         );
         // Lo reservado por esta misma transferencia cuenta como disponible para enviarla.
-        // RF43: lo que venció desde la solicitud ya no puede enviarse.
         const reservadoLinea = Number(d.cantidad_reservada || 0);
-        const disponible = stockRes.rowCount
-          ? Number(stockRes.rows[0].cantidad) -
-            Number(stockRes.rows[0].cantidad_reservada || 0) +
-            reservadoLinea -
-            (await obtenerCantidadVencida(client, d.id_producto, transferencia.almacen_origen))
-          : 0;
-        if (!stockRes.rowCount || disponible < Number(d.cantidad_solicitada)) {
-          throw new ApiError(400, `Stock insuficiente en el origen para el producto ${d.id_producto} (no se cuentan los lotes vencidos)`);
+        if (!stockRes.rowCount) {
+          throw new ApiError(400, `Stock insuficiente en el origen para el producto ${d.id_producto}`);
+        }
+        // Los lotes ya se descontaron, por eso no se resta de nuevo lo que no está disponible.
+        const disponible =
+          Number(stockRes.rows[0].cantidad) -
+          Number(stockRes.rows[0].cantidad_reservada || 0) +
+          reservadoLinea;
+        if (disponible < Number(d.cantidad_solicitada)) {
+          throw new ApiError(400, `Stock insuficiente en el origen para el producto ${d.id_producto} (no se cuenta lo reservado por otras operaciones)`);
         }
 
         const nuevoStock = Number(stockRes.rows[0].cantidad) - Number(d.cantidad_solicitada);
@@ -512,6 +524,14 @@ const cambiarEstado = asyncHandler(async (req, res) => {
         const { cantidadRecibida, observacion, diferencia } = recepciones.get(
           d.id_detalle_transferencia,
         );
+
+        await recibirLotesTransferencia(client, {
+          idDetalle: d.id_detalle_transferencia,
+          idProducto: d.id_producto,
+          idAlmacenDestino: transferencia.almacen_destino,
+          numeroTransferencia: transferencia.numero_transferencia,
+          cantidadRecibida,
+        });
 
         // Solo se suma al stock del destino lo realmente recibido.
         if (cantidadRecibida > 0) {
