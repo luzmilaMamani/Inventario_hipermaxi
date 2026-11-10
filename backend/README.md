@@ -224,7 +224,7 @@ distinguen por el atributo `tipo_evento`:
 |---|---|
 | Logística → Inventario | `SOLICITUD_MATERIALES` |
 | Producción → Inventario | `PRODUCTOS_TERMINADOS` |
-| Inventario → Logística | `SOLICITUD_PROCESADA`, `MATERIALES_DESPACHADOS`, `STOCK_ACTUALIZADO` |
+| Inventario → Logística | `SOLICITUD_PROCESADA`, `MATERIALES_DESPACHADOS`, `STOCK_ACTUALIZADO`, `PRODUCTOS_PROXIMOS_VENCER` |
 
 Mensaje de entrada (mismo formato para ambos; `numero_lote` y `fecha_vencimiento`
 solo aplican a productos terminados, y la fecha es obligatoria si el producto
@@ -253,6 +253,26 @@ Flujo:
 4. El trigger `trg_stock_disponible` publica `STOCK_ACTUALIZADO`
    (`motivo: "DISPONIBILIDAD_RECUPERADA"`) cuando un producto pasa de no tener
    disponible a tenerlo.
+5. La revisión programada de vencimientos (`ALERTAS_VENCIMIENTO_INTERVALO_MIN`) y
+   `POST /api/alertas-vencimiento/generar` publican `PRODUCTOS_PROXIMOS_VENCER` con
+   los lotes con stock que vencen en menos de dos meses (sin vencidos ni lotes en
+   cuarentena). Cada lote se informa una sola vez, al entrar en esa ventana
+   (tabla `lotes_vencimiento_informados`):
+
+   ```json
+   {
+     "tipo_evento": "PRODUCTOS_PROXIMOS_VENCER",
+     "ventana": "2 meses",
+     "productos": [
+       {
+         "id_producto": 3, "producto_codigo": "BEB-001", "producto": "Coca Cola 2L",
+         "id_almacen": 1, "almacen_codigo": "ALM-01", "almacen": "Almacén Central",
+         "id_lote": 21, "numero_lote": "L-2026-12", "fecha_vencimiento": "2026-12-20",
+         "dias_restantes": 40, "cantidad": 120
+       }
+     ]
+   }
+   ```
 
 `id_mensaje` evita procesar dos veces un mensaje (tabla `mensajes_integracion`). Un
 mensaje inválido queda con estado `INVALIDO`; si era una solicitud, también se
