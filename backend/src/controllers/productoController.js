@@ -71,6 +71,19 @@ async function validarUnidadPieza(id_unidad) {
   }
 }
 
+function preciosDistintos(anterior, nuevo) {
+  return Number(anterior).toFixed(2) !== Number(nuevo).toFixed(2);
+}
+
+async function registrarHistorialPrecio(client, { idProducto, precioAnterior, precioNuevo, idUsuario }) {
+  await client.query(
+    `INSERT INTO historial_precios
+       (id_producto, precio_anterior, precio_nuevo, id_usuario)
+     VALUES ($1, $2, $3, $4)`,
+    [idProducto, precioAnterior, precioNuevo, idUsuario || null],
+  );
+}
+
 const crearProducto = asyncHandler(async (req, res) => {
   const {
     codigo,
@@ -98,38 +111,56 @@ const crearProducto = asyncHandler(async (req, res) => {
   await validarSubcategoria(id_categoria, id_subcategoria);
   await validarCodigoBarrasUnico(codigo_barras);
 
-  const result = await db.query(
-    `INSERT INTO productos
-      (codigo, codigo_barras, nombre, descripcion, id_categoria, id_subcategoria,
-       id_marca, id_unidad, controla_vencimiento, perecible, requiere_refrigeracion,
-       stock_minimo, stock_maximo, punto_reposicion, unidades_por_pale, precio, estado)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'ACTIVO')
-     RETURNING *`,
-    [
-      codigo,
-      codigo_barras || null,
-      nombre,
-      descripcion || null,
-      id_categoria,
-      id_subcategoria || null,
-      id_marca || null,
-      id_unidad,
-      controla_vencimiento,
-      esPerecible,
-      requiereFrio,
-      stock_minimo,
-      stock_maximo,
-      punto_reposicion,
-      unidades_por_pale,
-      precio ?? 0,
-    ],
-  );
+  const precioInicial = precio ?? 0;
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(
+      `INSERT INTO productos
+        (codigo, codigo_barras, nombre, descripcion, id_categoria, id_subcategoria,
+         id_marca, id_unidad, controla_vencimiento, perecible, requiere_refrigeracion,
+         stock_minimo, stock_maximo, punto_reposicion, unidades_por_pale, precio, estado)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'ACTIVO')
+       RETURNING *`,
+      [
+        codigo,
+        codigo_barras || null,
+        nombre,
+        descripcion || null,
+        id_categoria,
+        id_subcategoria || null,
+        id_marca || null,
+        id_unidad,
+        controla_vencimiento,
+        esPerecible,
+        requiereFrio,
+        stock_minimo,
+        stock_maximo,
+        punto_reposicion,
+        unidades_por_pale,
+        precioInicial,
+      ],
+    );
 
-  res.status(201).json({
-    ok: true,
-    message: "Producto registrado exitosamente",
-    data: result.rows[0],
-  });
+    await registrarHistorialPrecio(client, {
+      idProducto: result.rows[0].id_producto,
+      precioAnterior: null,
+      precioNuevo: precioInicial,
+      idUsuario: req.user?.id_usuario,
+    });
+    await client.query("COMMIT");
+
+    res.status(201).json({
+      ok: true,
+      message: "Producto registrado exitosamente",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 const actualizarProducto = asyncHandler(async (req, res) => {
@@ -185,56 +216,79 @@ const actualizarProducto = asyncHandler(async (req, res) => {
     throw new ApiError(400, "El stock máximo debe ser >= stock mínimo");
   }
 
-  const result = await db.query(
-    `UPDATE productos SET
-      codigo = COALESCE($1, codigo),
-      codigo_barras = COALESCE($2, codigo_barras),
-      nombre = COALESCE($3, nombre),
-      descripcion = COALESCE($4, descripcion),
-      id_categoria = COALESCE($5, id_categoria),
-      id_subcategoria = COALESCE($6, id_subcategoria),
-      id_marca = COALESCE($7, id_marca),
-      id_unidad = COALESCE($8, id_unidad),
-      controla_vencimiento = COALESCE($9, controla_vencimiento),
-      perecible = COALESCE($10, perecible),
-      requiere_refrigeracion = COALESCE($11, requiere_refrigeracion),
-      stock_minimo = COALESCE($12, stock_minimo),
-      stock_maximo = COALESCE($13, stock_maximo),
-      punto_reposicion = COALESCE($14, punto_reposicion),
-      unidades_por_pale = $15,
-      precio = COALESCE($16, precio),
-      estado = COALESCE($17, estado)
-     WHERE id_producto = $18
-     RETURNING *`,
-    [
-      codigo ?? null,
-      codigo_barras ?? null,
-      nombre ?? null,
-      descripcion ?? null,
-      id_categoria ?? null,
-      id_subcategoria ?? null,
-      id_marca ?? null,
-      id_unidad ?? null,
-      controla_vencimiento ?? null,
-      esPerecible ?? null,
-      requiereFrio ?? null,
-      stock_minimo ?? null,
-      stock_maximo ?? null,
-      punto_reposicion ?? null,
-      unidades_por_pale === undefined
-        ? actual.unidades_por_pale
-        : unidades_por_pale,
-      precio ?? null,
-      estado ?? null,
-      id,
-    ],
-  );
+  const precioCambio =
+    precio !== undefined && preciosDistintos(actual.precio, precio);
+  const client = await db.pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(
+      `UPDATE productos SET
+        codigo = COALESCE($1, codigo),
+        codigo_barras = COALESCE($2, codigo_barras),
+        nombre = COALESCE($3, nombre),
+        descripcion = COALESCE($4, descripcion),
+        id_categoria = COALESCE($5, id_categoria),
+        id_subcategoria = COALESCE($6, id_subcategoria),
+        id_marca = COALESCE($7, id_marca),
+        id_unidad = COALESCE($8, id_unidad),
+        controla_vencimiento = COALESCE($9, controla_vencimiento),
+        perecible = COALESCE($10, perecible),
+        requiere_refrigeracion = COALESCE($11, requiere_refrigeracion),
+        stock_minimo = COALESCE($12, stock_minimo),
+        stock_maximo = COALESCE($13, stock_maximo),
+        punto_reposicion = COALESCE($14, punto_reposicion),
+        unidades_por_pale = $15,
+        precio = COALESCE($16, precio),
+        estado = COALESCE($17, estado)
+       WHERE id_producto = $18
+       RETURNING *`,
+      [
+        codigo ?? null,
+        codigo_barras ?? null,
+        nombre ?? null,
+        descripcion ?? null,
+        id_categoria ?? null,
+        id_subcategoria ?? null,
+        id_marca ?? null,
+        id_unidad ?? null,
+        controla_vencimiento ?? null,
+        esPerecible ?? null,
+        requiereFrio ?? null,
+        stock_minimo ?? null,
+        stock_maximo ?? null,
+        punto_reposicion ?? null,
+        unidades_por_pale === undefined
+          ? actual.unidades_por_pale
+          : unidades_por_pale,
+        precio ?? null,
+        estado ?? null,
+        id,
+      ],
+    );
 
-  res.json({
-    ok: true,
-    message: "Producto actualizado correctamente",
-    data: result.rows[0],
-  });
+    if (precioCambio) {
+      await registrarHistorialPrecio(client, {
+        idProducto: id,
+        precioAnterior: actual.precio,
+        precioNuevo: precio,
+        idUsuario: req.user?.id_usuario,
+      });
+    }
+    await client.query("COMMIT");
+
+    res.json({
+      ok: true,
+      message: precioCambio
+        ? "Producto actualizado. El cambio de precio quedó en el historial."
+        : "Producto actualizado correctamente",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 });
 
 const listarProductos = asyncHandler(async (req, res) => {
@@ -320,6 +374,14 @@ const listarProductos = asyncHandler(async (req, res) => {
       `SELECT
          p.id_producto, p.codigo, p.codigo_barras, p.nombre, p.descripcion,
          p.precio, p.estado, p.controla_vencimiento, p.perecible, p.requiere_refrigeracion,
+         (
+           SELECT h.precio_anterior
+           FROM historial_precios h
+           WHERE h.id_producto = p.id_producto
+             AND h.precio_anterior IS NOT NULL
+           ORDER BY h.fecha DESC, h.id_historial DESC
+           LIMIT 1
+         ) AS precio_anterior,
          p.stock_minimo, p.stock_maximo,
          p.punto_reposicion, p.unidades_por_pale, p.fecha_creacion,
          COALESCE((
@@ -421,7 +483,25 @@ const obtenerProducto = asyncHandler(async (req, res) => {
   );
 
   if (!result.rowCount) throw new ApiError(404, "Producto no encontrado");
-  res.json({ ok: true, data: result.rows[0] });
+
+  const historial = await db.query(
+    `SELECT
+       h.id_historial,
+       h.precio_anterior,
+       h.precio_nuevo,
+       h.fecha,
+       u.nombre_completo AS usuario
+     FROM historial_precios h
+     LEFT JOIN usuarios u ON u.id_usuario = h.id_usuario
+     WHERE h.id_producto = $1
+     ORDER BY h.fecha DESC, h.id_historial DESC`,
+    [id],
+  );
+
+  res.json({
+    ok: true,
+    data: { ...result.rows[0], historial_precios: historial.rows },
+  });
 });
 
 function direccionUbicacion(fila) {

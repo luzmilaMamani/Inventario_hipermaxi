@@ -124,6 +124,36 @@ export default function DetalleProducto({ productoId, onClose }) {
             </div>
           </div>
 
+          <div className="border-t pt-3">
+            <p className="font-semibold">Historial de precios</p>
+            <p className="mb-2 text-xs text-gray-500">
+              Cada cambio queda con el precio anterior, el nuevo y quién lo guardó.
+            </p>
+            {(producto.historial_precios || []).length === 0 ? (
+              <p className="text-gray-500">Este producto todavía no tiene precios registrados.</p>
+            ) : (
+              <ol className="space-y-2">
+                {producto.historial_precios.map((movimiento) => (
+                  <li
+                    key={movimiento.id_historial}
+                    className="rounded-lg bg-slate-50 px-3 py-2"
+                  >
+                    <p className="font-medium">
+                      {movimiento.precio_anterior == null
+                        ? `Precio inicial: Bs ${Number(movimiento.precio_nuevo).toFixed(2)}`
+                        : `Bs ${Number(movimiento.precio_anterior).toFixed(2)} → Bs ${Number(movimiento.precio_nuevo).toFixed(2)}`}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {movimiento.usuario || "Sistema"}
+                      {" · "}
+                      {new Date(movimiento.fecha).toLocaleString("es-BO")}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 text-xs">
             <span className="text-gray-500">Controla vencimiento:</span>
             <span className="font-semibold">

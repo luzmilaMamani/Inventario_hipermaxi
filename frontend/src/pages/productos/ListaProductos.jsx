@@ -391,7 +391,12 @@ export default function ListaProductos() {
                       <td className="py-2">{p.subcategoria || "-"}</td>
                       <td className="py-2">{p.marca || "-"}</td>
                       <td className="py-2 text-right">
-                        Bs {Number(p.precio || 0).toFixed(2)} / unidad
+                        <div>Bs {Number(p.precio || 0).toFixed(2)} / unidad</div>
+                        {p.precio_anterior != null && (
+                          <div className="text-xs font-medium text-amber-700">
+                            Antes Bs {Number(p.precio_anterior).toFixed(2)}
+                          </div>
+                        )}
                       </td>
                       <td className="py-2 text-right">
                         {p.unidades_por_pale
