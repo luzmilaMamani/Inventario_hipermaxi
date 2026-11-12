@@ -16,6 +16,8 @@ const FORM_INICIAL = {
   direccion: "",
   ciudad: "",
   superficie_m2: 7280,
+  telefono: "",
+  responsable: "",
   activo: true,
 };
 
@@ -35,6 +37,8 @@ export default function FormAlmacen({ almacen, onClose, onSaved }) {
         direccion: almacen.direccion || "",
         ciudad: almacen.ciudad || "",
         superficie_m2: almacen.superficie_m2 ?? 7280,
+        telefono: almacen.telefono || "",
+        responsable: almacen.responsable || "",
         activo: almacen.activo ?? true,
       });
     } else {
@@ -137,6 +141,35 @@ export default function FormAlmacen({ almacen, onClose, onSaved }) {
             placeholder="Av. Principal #100"
           />
         </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Teléfono</label>
+            <input
+              className="input-field"
+              type="tel"
+              name="telefono"
+              value={form.telefono}
+              onChange={handleChange}
+              placeholder="70000000"
+              maxLength={30}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Responsable</label>
+            <input
+              className="input-field"
+              name="responsable"
+              value={form.responsable}
+              onChange={handleChange}
+              placeholder="Nombre de contacto"
+              maxLength={150}
+            />
+          </div>
+        </div>
+        <p className="-mt-2 text-xs text-gray-500">
+          Opcional. Indica a quién llamar cuando hay una diferencia.
+        </p>
 
         <div className="grid grid-cols-2 gap-3">
           <div>

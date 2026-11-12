@@ -12,8 +12,26 @@ function superficieInvalida(superficie) {
   );
 }
 
+function contactoInvalido(telefono, responsable) {
+  if (
+    telefono !== undefined &&
+    telefono !== null &&
+    String(telefono).trim().length > 30
+  ) {
+    return "El teléfono no puede superar 30 caracteres";
+  }
+  if (
+    responsable !== undefined &&
+    responsable !== null &&
+    String(responsable).trim().length > 150
+  ) {
+    return "El responsable no puede superar 150 caracteres";
+  }
+  return "";
+}
+
 function validarCrearAlmacen(req, _res, next) {
-  const { codigo, nombre, tipo, superficie_m2 } = req.body;
+  const { codigo, nombre, tipo, superficie_m2, telefono, responsable } = req.body;
 
   if (!codigo || !String(codigo).trim()) {
     return next(new ApiError(400, "El código del almacén es obligatorio"));
@@ -32,11 +50,13 @@ function validarCrearAlmacen(req, _res, next) {
   if (superficieInvalida(superficie_m2)) {
     return next(new ApiError(400, "La superficie debe ser un número mayor a 0 m²"));
   }
+  const errorContacto = contactoInvalido(telefono, responsable);
+  if (errorContacto) return next(new ApiError(400, errorContacto));
   return next();
 }
 
 function validarActualizarAlmacen(req, _res, next) {
-  const { tipo, superficie_m2 } = req.body;
+  const { tipo, superficie_m2, telefono, responsable } = req.body;
 
   if (tipo && !TIPOS_VALIDOS.includes(tipo)) {
     return next(
@@ -49,6 +69,8 @@ function validarActualizarAlmacen(req, _res, next) {
   if (superficieInvalida(superficie_m2)) {
     return next(new ApiError(400, "La superficie debe ser un número mayor a 0 m²"));
   }
+  const errorContacto = contactoInvalido(telefono, responsable);
+  if (errorContacto) return next(new ApiError(400, errorContacto));
   return next();
 }
 

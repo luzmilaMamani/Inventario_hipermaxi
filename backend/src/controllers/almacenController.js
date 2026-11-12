@@ -5,6 +5,12 @@ const ApiError = require("../utils/apiError");
 /**
  * Valida que el código no exista (o no exista en otro registro).
  */
+function textoContacto(valor, actual = null) {
+  if (valor === undefined) return actual ?? null;
+  const limpio = String(valor).trim();
+  return limpio || null;
+}
+
 async function validarCodigoUnico(codigo, idExcluir = null) {
   const sql = idExcluir
     ? "SELECT id_almacen FROM almacenes WHERE codigo = $1 AND id_almacen <> $2"
@@ -74,6 +80,7 @@ const listarAlmacenes = asyncHandler(async (req, res) => {
     db.query(
       `SELECT
          id_almacen, codigo, nombre, tipo, direccion, ciudad,
+         telefono, responsable,
         capacidad,
         (SELECT COALESCE(SUM(s.cantidad), 0)
          FROM stock s
@@ -124,7 +131,7 @@ const obtenerAlmacen = asyncHandler(async (req, res) => {
 
   const result = await db.query(
     `SELECT id_almacen, codigo, nombre, tipo, direccion, ciudad,
-            superficie_m2, activo, fecha_creacion
+            superficie_m2, telefono, responsable, activo, fecha_creacion
      FROM almacenes
      WHERE id_almacen = $1`,
     [id],
@@ -185,6 +192,8 @@ const crearAlmacen = asyncHandler(async (req, res) => {
     direccion,
     ciudad,
     superficie_m2 = 7280,
+    telefono,
+    responsable,
     activo = true,
   } = req.body;
 
@@ -192,10 +201,10 @@ const crearAlmacen = asyncHandler(async (req, res) => {
 
   const result = await db.query(
     `INSERT INTO almacenes
-      (codigo, nombre, tipo, direccion, ciudad, superficie_m2, activo)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+      (codigo, nombre, tipo, direccion, ciudad, superficie_m2, telefono, responsable, activo)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING id_almacen, codigo, nombre, tipo, direccion, ciudad,
-               superficie_m2, activo, fecha_creacion`,
+               superficie_m2, telefono, responsable, activo, fecha_creacion`,
     [
       codigo,
       nombre,
@@ -203,6 +212,8 @@ const crearAlmacen = asyncHandler(async (req, res) => {
       direccion || null,
       ciudad || null,
       superficie_m2,
+      textoContacto(telefono),
+      textoContacto(responsable),
       activo,
     ],
   );
@@ -234,6 +245,8 @@ const actualizarAlmacen = asyncHandler(async (req, res) => {
     direccion,
     ciudad,
     superficie_m2,
+    telefono,
+    responsable,
     activo,
   } = req.body;
 
@@ -249,10 +262,12 @@ const actualizarAlmacen = asyncHandler(async (req, res) => {
       direccion = COALESCE($4, direccion),
       ciudad = COALESCE($5, ciudad),
       superficie_m2 = COALESCE($6, superficie_m2),
-      activo = COALESCE($7, activo)
-     WHERE id_almacen = $8
+      activo = COALESCE($7, activo),
+      telefono = $8,
+      responsable = $9
+     WHERE id_almacen = $10
      RETURNING id_almacen, codigo, nombre, tipo, direccion, ciudad,
-               superficie_m2, activo, fecha_creacion`,
+               superficie_m2, telefono, responsable, activo, fecha_creacion`,
     [
       codigo ?? null,
       nombre ?? null,
@@ -261,6 +276,8 @@ const actualizarAlmacen = asyncHandler(async (req, res) => {
       ciudad ?? null,
       superficie_m2 ?? null,
       activo ?? null,
+      textoContacto(telefono, actual.telefono),
+      textoContacto(responsable, actual.responsable),
       id,
     ],
   );

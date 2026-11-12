@@ -68,6 +68,12 @@ export default function DetalleAlmacen({ almacen, onClose }) {
                 <strong>Ciudad:</strong> {almacen.ciudad}
               </p>
             )}
+            <p>
+              <strong>Teléfono:</strong> {almacen.telefono || "Sin registrar"}
+            </p>
+            <p>
+              <strong>Responsable:</strong> {almacen.responsable || "Sin registrar"}
+            </p>
           </div>
 
           <hr />
