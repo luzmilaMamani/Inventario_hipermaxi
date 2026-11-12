@@ -8,6 +8,7 @@ import FormAlmacen from "./FormAlmacen";
 import DetalleAlmacen from "./DetalleAlmacen";
 import {
   listarAlmacenes,
+  listarCiudades,
   eliminarAlmacen,
   actualizarAlmacen,
 } from "../../api/almacenes.api";
@@ -29,6 +30,7 @@ const FILTROS_INICIALES = {
 
 export default function ListaAlmacenes() {
   const [almacenes, setAlmacenes] = useState([]);
+  const [ciudades, setCiudades] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -66,6 +68,16 @@ export default function ListaAlmacenes() {
       setLoading(false);
     }
   };
+
+  const cargarCiudades = () => {
+    listarCiudades()
+      .then((res) => setCiudades(res.data || []))
+      .catch(() => setCiudades([]));
+  };
+
+  useEffect(() => {
+    cargarCiudades();
+  }, []);
 
   useEffect(() => {
     cargar(1);
@@ -123,7 +135,7 @@ export default function ListaAlmacenes() {
 
         <div className="card">
           {/* Filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium mb-1">Buscar</label>
               <input
@@ -135,6 +147,18 @@ export default function ListaAlmacenes() {
                 }
               />
             </div>
+            <Select
+              label="Ciudad"
+              value={filtros.ciudad}
+              onChange={(e) =>
+                setFiltros({ ...filtros, ciudad: e.target.value })
+              }
+              options={ciudades.map((ciudad) => ({
+                value: ciudad,
+                label: ciudad,
+              }))}
+              placeholder="Todas las ciudades"
+            />
             <Select
               label="Tipo"
               value={filtros.tipo}
@@ -201,7 +225,11 @@ export default function ListaAlmacenes() {
                 ) : almacenes.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="py-6 text-center text-gray-500">
-                      No hay almacenes registrados
+                      {filtros.ciudad
+                        ? `No hay resultados en ${filtros.ciudad}.`
+                        : filtros.search || filtros.tipo || filtros.activo
+                          ? "No hay resultados para esos filtros."
+                          : "No hay almacenes registrados"}
                     </td>
                   </tr>
                 ) : (
@@ -332,6 +360,7 @@ export default function ListaAlmacenes() {
           onClose={() => setFormOpen(false)}
           onSaved={() => {
             setFormOpen(false);
+            cargarCiudades();
             cargar(pagination.page);
           }}
         />

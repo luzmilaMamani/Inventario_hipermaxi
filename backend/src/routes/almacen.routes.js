@@ -8,6 +8,7 @@ const {
 const router = express.Router();
 
 router.get("/", almacenController.listarAlmacenes);
+router.get("/ciudades", almacenController.listarCiudades);
 router.get("/:id", almacenController.obtenerAlmacen);
 router.get("/:id/stock", almacenController.obtenerStockAlmacen);
 

@@ -63,9 +63,9 @@ const listarAlmacenes = asyncHandler(async (req, res) => {
     condiciones.push(`tipo = $${i++}`);
     valores.push(tipo);
   }
-  if (ciudad) {
-    condiciones.push(`ciudad ILIKE $${i++}`);
-    valores.push(`%${ciudad}%`);
+  if (ciudad && String(ciudad).trim()) {
+    condiciones.push(`BTRIM(ciudad) ILIKE $${i++}`);
+    valores.push(String(ciudad).trim());
   }
   if (activo !== undefined && activo !== "") {
     condiciones.push(`activo = $${i++}`);
@@ -120,6 +120,24 @@ const listarAlmacenes = asyncHandler(async (req, res) => {
     ok: true,
     data: dataResult.rows,
     pagination: { page, limit, total: countResult.rows[0].total },
+  });
+});
+
+/**
+ * GET /api/almacenes/ciudades
+ * Ciudades distintas ya registradas, para el filtro de la lista.
+ */
+const listarCiudades = asyncHandler(async (_req, res) => {
+  const result = await db.query(
+    `SELECT DISTINCT BTRIM(ciudad) AS ciudad
+     FROM almacenes
+     WHERE ciudad IS NOT NULL AND BTRIM(ciudad) <> ''
+     ORDER BY ciudad ASC`,
+  );
+
+  res.json({
+    ok: true,
+    data: result.rows.map((row) => row.ciudad),
   });
 });
 
@@ -313,6 +331,7 @@ const eliminarAlmacen = asyncHandler(async (req, res) => {
 
 module.exports = {
   listarAlmacenes,
+  listarCiudades,
   obtenerAlmacen,
   obtenerStockAlmacen,
   crearAlmacen,

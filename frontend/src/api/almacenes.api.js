@@ -6,6 +6,11 @@ export const listarAlmacenes = (params) => {
   return api.get("/almacenes", { params }).then((r) => r.data);
 };
 
+export const listarCiudades = () => {
+  if (esVistaPrevia) return Promise.resolve({ ok: true, data: ["Santa Cruz"] });
+  return api.get("/almacenes/ciudades").then((r) => r.data);
+};
+
 export const obtenerAlmacen = (id) =>
   api.get(`/almacenes/${id}`).then((r) => r.data);
 
