@@ -26,6 +26,7 @@ const FORM_INICIAL = {
   punto_reposicion: 0,
   unidades_por_pale: "",
   precio: 0,
+  motivo_precio: "",
 };
 
 export default function FormProducto({ producto, onClose, onSaved }) {
@@ -81,6 +82,7 @@ export default function FormProducto({ producto, onClose, onSaved }) {
         punto_reposicion: producto.punto_reposicion ?? 0,
         unidades_por_pale: producto.unidades_por_pale ?? "",
         precio: producto.precio ?? 0,
+        motivo_precio: "",
       });
     } else {
       setForm(FORM_INICIAL);
@@ -107,6 +109,13 @@ export default function FormProducto({ producto, onClose, onSaved }) {
 
     if (Number(form.precio) < 0) {
       return setError("El precio no puede ser negativo");
+    }
+
+    const precioCambio =
+      esEdicion &&
+      Number(form.precio).toFixed(2) !== Number(producto.precio ?? 0).toFixed(2);
+    if (precioCambio && !form.motivo_precio.trim()) {
+      return setError("Indica por qué cambió el precio");
     }
 
     if (
@@ -154,6 +163,7 @@ export default function FormProducto({ producto, onClose, onSaved }) {
             ? null
             : Number(form.unidades_por_pale),
         precio: Number(form.precio) || 0,
+        motivo_precio: form.motivo_precio.trim(),
       };
 
       if (esEdicion) {
@@ -304,6 +314,24 @@ export default function FormProducto({ producto, onClose, onSaved }) {
           <p className="mt-1 text-xs text-gray-500">
             Este importe se multiplica por cada unidad registrada.
           </p>
+          {esEdicion &&
+            Number(form.precio).toFixed(2) !==
+              Number(producto.precio ?? 0).toFixed(2) && (
+              <div className="mt-3">
+                <label className="mb-1 block text-sm font-medium">
+                  Motivo del cambio *
+                </label>
+                <input
+                  className="input-field"
+                  type="text"
+                  name="motivo_precio"
+                  maxLength={200}
+                  value={form.motivo_precio}
+                  onChange={handleChange}
+                  placeholder="Ej. Ajuste por costo del proveedor"
+                />
+              </div>
+            )}
         </div>
 
         <div>

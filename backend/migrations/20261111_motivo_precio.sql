@@ -1,0 +1,2 @@
+ALTER TABLE historial_precios
+  ADD COLUMN IF NOT EXISTS motivo VARCHAR(200);

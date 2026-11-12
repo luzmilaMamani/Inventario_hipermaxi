@@ -75,13 +75,22 @@ function preciosDistintos(anterior, nuevo) {
   return Number(anterior).toFixed(2) !== Number(nuevo).toFixed(2);
 }
 
-async function registrarHistorialPrecio(client, { idProducto, precioAnterior, precioNuevo, idUsuario }) {
+async function registrarHistorialPrecio(client, { idProducto, precioAnterior, precioNuevo, idUsuario, motivo = null }) {
   await client.query(
     `INSERT INTO historial_precios
-       (id_producto, precio_anterior, precio_nuevo, id_usuario)
-     VALUES ($1, $2, $3, $4)`,
-    [idProducto, precioAnterior, precioNuevo, idUsuario || null],
+       (id_producto, precio_anterior, precio_nuevo, id_usuario, motivo)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [idProducto, precioAnterior, precioNuevo, idUsuario || null, motivo],
   );
+}
+
+function leerMotivoPrecio(motivo) {
+  if (motivo === undefined || motivo === null) return "";
+  const texto = String(motivo).trim();
+  if (texto.length > 200) {
+    throw new ApiError(400, "El motivo del cambio de precio no puede superar 200 caracteres");
+  }
+  return texto;
 }
 
 const crearProducto = asyncHandler(async (req, res) => {
@@ -191,6 +200,7 @@ const actualizarProducto = asyncHandler(async (req, res) => {
     unidades_por_pale,
     precio,
     estado,
+    motivo_precio,
   } = req.body;
 
   const catFinal = id_categoria ?? actual.id_categoria;
@@ -218,6 +228,10 @@ const actualizarProducto = asyncHandler(async (req, res) => {
 
   const precioCambio =
     precio !== undefined && preciosDistintos(actual.precio, precio);
+  const motivoPrecio = leerMotivoPrecio(motivo_precio);
+  if (precioCambio && !motivoPrecio) {
+    throw new ApiError(400, "Indica por qué cambió el precio");
+  }
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
@@ -272,6 +286,7 @@ const actualizarProducto = asyncHandler(async (req, res) => {
         precioAnterior: actual.precio,
         precioNuevo: precio,
         idUsuario: req.user?.id_usuario,
+        motivo: motivoPrecio,
       });
     }
     await client.query("COMMIT");
@@ -489,6 +504,7 @@ const obtenerProducto = asyncHandler(async (req, res) => {
        h.id_historial,
        h.precio_anterior,
        h.precio_nuevo,
+       h.motivo,
        h.fecha,
        u.nombre_completo AS usuario
      FROM historial_precios h

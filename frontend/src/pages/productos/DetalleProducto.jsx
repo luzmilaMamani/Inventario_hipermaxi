@@ -125,10 +125,7 @@ export default function DetalleProducto({ productoId, onClose }) {
           </div>
 
           <div className="border-t pt-3">
-            <p className="font-semibold">Historial de precios</p>
-            <p className="mb-2 text-xs text-gray-500">
-              Cada cambio queda con el precio anterior, el nuevo y quién lo guardó.
-            </p>
+            <p className="mb-2 font-semibold">Historial de precios</p>
             {(producto.historial_precios || []).length === 0 ? (
               <p className="text-gray-500">Este producto todavía no tiene precios registrados.</p>
             ) : (
@@ -143,6 +140,9 @@ export default function DetalleProducto({ productoId, onClose }) {
                         ? `Precio inicial: Bs ${Number(movimiento.precio_nuevo).toFixed(2)}`
                         : `Bs ${Number(movimiento.precio_anterior).toFixed(2)} → Bs ${Number(movimiento.precio_nuevo).toFixed(2)}`}
                     </p>
+                    {movimiento.motivo && (
+                      <p className="text-sm text-gray-700">{movimiento.motivo}</p>
+                    )}
                     <p className="text-xs text-gray-500">
                       {movimiento.usuario || "Sistema"}
                       {" · "}
