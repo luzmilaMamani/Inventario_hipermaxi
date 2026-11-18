@@ -9,6 +9,7 @@ const {
 const { publicarStockBajo } = require("../controllers/stockBajoPubSubController");
 const { reporteExistencias } = require("../controllers/reporteExistenciasController");
 const { reporteComparativoSucursales } = require("../controllers/reporteComparativoController");
+const { consultarIndicadores } = require("../controllers/indicadoresController");
 
 const router = express.Router();
 
@@ -61,5 +62,6 @@ router.get("/danos", reporteDanos);
 router.get("/vencimientos", reporteVencimientos);
 router.get("/existencias", reporteExistencias);
 router.get("/comparativo-sucursales", reporteComparativoSucursales);
+router.get("/indicadores", consultarIndicadores);
 
 module.exports = router;
