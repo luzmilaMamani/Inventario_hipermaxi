@@ -36,6 +36,7 @@ import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
+import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 
 // Inventarios Físicos
 import ListaInventarios from "./pages/inventarios/ListaInventarios";
@@ -269,6 +270,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteExistencias />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF67: comparativo de stock entre sucursales */}
+          <Route
+            path="/reportes/comparativo-sucursales"
+            element={
+              <ProtectedRoute>
+                <ComparativoSucursales />
               </ProtectedRoute>
             }
           />

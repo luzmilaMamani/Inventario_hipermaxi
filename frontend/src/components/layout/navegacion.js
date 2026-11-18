@@ -70,6 +70,7 @@ export const MODULOS = [
     descripcion: "Existencias, movimientos, pérdidas e indicadores",
     destinos: [
       { to: "/reportes/existencias", label: "Existencias", icon: "📦", descripcion: "Stock y valor por almacén, categoría o marca" },
+      { to: "/reportes/comparativo-sucursales", label: "Comparativo sucursales", icon: "🏬", descripcion: "Stock de un producto en cada sucursal y qué transferir" },
       { to: "/reportes/perdidas", label: "Pérdidas", icon: "🚨", descripcion: "Robos y extravíos" },
       { to: "/reportes/danos", label: "Daños", icon: "⚠️", descripcion: "Mercadería dañada" },
       { to: "/reportes/vencimientos", label: "Vencimientos", icon: "⏳", descripcion: "Bajas por vencimiento" },
