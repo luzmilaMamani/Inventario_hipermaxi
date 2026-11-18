@@ -71,6 +71,12 @@ function autorizarPorRol(req, _res, next) {
     return next();
   }
 
+  // RF70: el gerente, aunque solo consulta, programa el envío de reportes por
+  // correo.
+  if (rol === "GERENTE" && coincideRuta(path, "/programaciones-reporte")) {
+    return next();
+  }
+
   // RF57: el jefe de sucursal consulta, solicita y cancela transferencias.
   if (rol === "JEFE_SUCURSAL") {
     if (metodo === "POST" && (path === "/transferencias" || RUTA_CANCELAR_TRANSFERENCIA.test(path))) {

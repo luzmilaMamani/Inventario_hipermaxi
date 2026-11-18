@@ -21,6 +21,16 @@ module.exports = {
   pubsubSubscription: process.env.PUBSUB_SUBSCRIPTION || '',
   // RF42: cada cuántos minutos se revisan los lotes (0 desactiva la revisión).
   alertasVencimientoIntervaloMin: Number(process.env.ALERTAS_VENCIMIENTO_INTERVALO_MIN ?? 60),
+  // RF70: cada cuántos segundos se buscan reportes programados (0 desactiva).
+  reportesProgramadosIntervaloSeg: Number(process.env.REPORTES_PROGRAMADOS_INTERVALO_SEG ?? 60),
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
+    password: process.env.SMTP_PASSWORD || '',
+    from: process.env.SMTP_FROM || ''
+  },
   db: {
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT || 5432),

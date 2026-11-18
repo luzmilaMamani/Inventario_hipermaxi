@@ -6,6 +6,7 @@ const { iniciarPublicadorStockBajo } = require("./services/stockBajoPubSub");
 const { iniciarRevisionVencimientos } = require("./services/alertasVencimiento");
 const { iniciarPublicadorEventos } = require("./services/eventosProduccion");
 const { iniciarSuscripcionesProduccion } = require("./services/integracionProduccion");
+const { iniciarEnvioReportes } = require("./services/envioReportes");
 
 aplicarMigraciones(db.pool)
   .then(() => {
@@ -15,6 +16,7 @@ aplicarMigraciones(db.pool)
       iniciarRevisionVencimientos();
       iniciarPublicadorEventos();
       iniciarSuscripcionesProduccion();
+      iniciarEnvioReportes();
     });
   })
   .catch((error) => {
