@@ -30,10 +30,12 @@ function clasificar(filas) {
   const conSalidas = filas
     .filter((f) => Number(f.unidades_salida) > 0)
     .sort((a, b) => b._orden - a._orden);
-  const tercio = Math.ceil(conSalidas.length / 3);
+  // Por posición relativa (i/n) y no por tamaño de tercio redondeado: con pocos
+  // productos ceil(n/3) dejaba la clase BAJA vacía (4 productos → 2 ALTA, 2 MEDIA).
   const clase = new Map();
   conSalidas.forEach((f, i) => {
-    clase.set(f.id_producto, i < tercio ? "ALTA" : i < tercio * 2 ? "MEDIA" : "BAJA");
+    const posicion = i / conSalidas.length;
+    clase.set(f.id_producto, posicion < 1 / 3 ? "ALTA" : posicion < 2 / 3 ? "MEDIA" : "BAJA");
   });
   return filas.map((f) => ({
     ...f,
