@@ -1,0 +1,39 @@
+%% HIP-292 (RF62): consulta del tablero de indicadores del inventario.
+sequenceDiagram
+autonumber
+actor G as Gerente
+participant F as DashboardIndicadores (Frontend)
+participant API as GET /api/reportes/indicadores
+participant C as indicadoresController
+participant K as servicio indicadores
+participant DB as Vistas / BD
+
+G->>F: abrir /reportes/indicadores (sucursal, período)
+F->>API: GET ?id_almacen&fecha_desde&fecha_hasta
+API->>API: authenticate + autorizarPorRol (GET permitido)
+API->>C: consultarIndicadores(req)
+C->>C: validar fechas y almacén (por defecto el mes en curso)
+alt Parámetros inválidos
+  C-->>F: 400 { ok: false, message }
+  F-->>G: mensaje de error
+else Parámetros válidos
+  C->>K: obtenerIndicadores(idAlmacen, desde, hasta)
+  par Consultas en paralelo
+    K->>DB: vw_reporte_existencias (valor actual y quiebre)
+    K->>DB: vw_movimientos_valorizados (ventas, mermas, inventario inicial y final)
+    K->>DB: vw_conteos_inventario (exactitud)
+    K->>DB: lotes_productos (valor en riesgo ≤ 30 días)
+    K->>DB: vw_recepciones_cumplimiento (proveedores)
+    K->>DB: datos de gráficos (valor por sucursal, movimientos por día, top quiebre)
+  end
+  DB-->>K: valores agregados
+  K->>K: calcular rotación, días de inventario y porcentajes
+  K-->>C: { periodo, kpis[7], graficos }
+  C-->>F: 200 JSON
+  F-->>G: tarjetas KPI, gráficos y productos en quiebre
+end
+G->>F: clic en un KPI
+F->>F: navegar al reporte enlazado (kpi.enlace)
+F->>API: GET /api/reportes/{reporte}
+API-->>F: detalle del reporte
+F-->>G: reporte correspondiente
