@@ -41,6 +41,7 @@ import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
 import ReporteValorizacion from "./pages/reportes/ReporteValorizacion";
 import DashboardIntegraciones from "./pages/reportes/DashboardIntegraciones";
 import ReporteMovimientos from "./pages/reportes/ReporteMovimientos";
+import ReporteRotacion from "./pages/reportes/ReporteRotacion";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
 import ProgramacionReportes from "./pages/reportes/ProgramacionReportes";
@@ -313,6 +314,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteMovimientos />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF65: rotación de productos */}
+          <Route
+            path="/reportes/rotacion"
+            element={
+              <ProtectedRoute>
+                <ReporteRotacion />
               </ProtectedRoute>
             }
           />
