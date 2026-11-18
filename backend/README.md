@@ -256,13 +256,16 @@ Flujo:
 5. La revisión programada de vencimientos (`ALERTAS_VENCIMIENTO_INTERVALO_MIN`) y
    `POST /api/alertas-vencimiento/generar` publican `PRODUCTOS_PROXIMOS_VENCER` con
    los lotes con stock que vencen en menos de dos meses (sin vencidos ni lotes en
-   cuarentena). Cada lote se informa una sola vez, al entrar en esa ventana
-   (tabla `lotes_vencimiento_informados`):
+   cuarentena). La revisión programada informa cada lote una sola vez, al entrar
+   en esa ventana (`alcance: "NUEVOS_EN_VENTANA"`, tabla
+   `lotes_vencimiento_informados`). El botón **Revisar lotes ahora** reenvía la
+   lista completa vigente (`alcance: "LISTA_COMPLETA"`):
 
    ```json
    {
      "tipo_evento": "PRODUCTOS_PROXIMOS_VENCER",
      "ventana": "2 meses",
+     "alcance": "LISTA_COMPLETA",
      "productos": [
        {
          "id_producto": 3, "producto_codigo": "BEB-001", "producto": "Coca Cola 2L",

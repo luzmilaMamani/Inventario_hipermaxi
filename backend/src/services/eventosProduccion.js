@@ -48,7 +48,10 @@ const procesarSiguienteEvento = async () => {
   try {
     await client.query("BEGIN");
     const { rows } = await client.query(
-      `SELECT id_evento, tipo_evento, payload, fecha_creacion
+      // fecha_creacion se guarda sin zona horaria, en la hora de la base; se
+      // convierte para que generado_en salga con la hora real y no en UTC.
+      `SELECT id_evento, tipo_evento, payload,
+              fecha_creacion AT TIME ZONE current_setting('TimeZone') AS fecha_creacion
        FROM eventos_integracion
        WHERE estado = 'PENDIENTE'
           OR (estado = 'ERROR' AND intentos < $1

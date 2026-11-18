@@ -1,9 +1,8 @@
 const db = require("../config/db");
 
-// HIP-260: lotes con stock que vencen en menos de dos meses y que todavía no se
-// informaron a Producción y Logística. Los vencidos y los que están en
-// cuarentena no se informan porque no se pueden usar.
-const SQL_LOTES_POR_INFORMAR = `
+// HIP-260: lotes con stock que vencen en menos de dos meses. Los vencidos y los
+// que están en cuarentena no se informan porque no se pueden usar.
+const SQL_LOTES_EN_VENTANA = `
   SELECT lp.id_lote, lp.numero_lote, lp.cantidad_actual,
          TO_CHAR(lp.fecha_vencimiento, 'YYYY-MM-DD') AS fecha_vencimiento,
          (lp.fecha_vencimiento - CURRENT_DATE) AS dias_restantes,
@@ -16,21 +15,25 @@ const SQL_LOTES_POR_INFORMAR = `
     AND lp.estado IN ('DISPONIBLE', 'PROXIMO_A_VENCER')
     AND lp.fecha_vencimiento > CURRENT_DATE
     AND lp.fecha_vencimiento < CURRENT_DATE + INTERVAL '2 months'
-    AND NOT EXISTS (
+    AND ($1::boolean OR NOT EXISTS (
       SELECT 1 FROM lotes_vencimiento_informados li WHERE li.id_lote = lp.id_lote
-    )
+    ))
   ORDER BY lp.fecha_vencimiento, p.nombre, a.nombre, lp.id_lote`;
 
-// Registra un único evento con todos los lotes que entraron en la ventana desde
-// la última revisión. Devuelve cuántos lotes se informaron.
-async function informarProductosProximosVencer() {
+// Registra un único evento PRODUCTOS_PROXIMOS_VENCER y devuelve cuántos lotes
+// incluye.
+// - Revisión automática (todos = false): solo los lotes que entraron en la
+//   ventana desde la última revisión, para no repetir la misma lista cada hora.
+// - Revisión manual (todos = true): la lista completa actual, aunque ya se haya
+//   informado, para que Logística pueda volver a recibirla.
+async function informarProductosProximosVencer({ todos = false } = {}) {
   const client = await db.pool.connect();
   try {
     await client.query("BEGIN");
     // Evita que dos instancias del backend informen los mismos lotes.
     await client.query("SELECT pg_advisory_xact_lock(hashtext('PRODUCTOS_PROXIMOS_VENCER'))");
 
-    const { rows } = await client.query(SQL_LOTES_POR_INFORMAR);
+    const { rows } = await client.query(SQL_LOTES_EN_VENTANA, [todos]);
     if (rows.length === 0) {
       await client.query("COMMIT");
       return 0;
@@ -42,6 +45,8 @@ async function informarProductosProximosVencer() {
         "PRODUCTOS_PROXIMOS_VENCER",
         JSON.stringify({
           ventana: "2 meses",
+          // NUEVOS_EN_VENTANA: solo lotes nuevos; LISTA_COMPLETA: todos los vigentes.
+          alcance: todos ? "LISTA_COMPLETA" : "NUEVOS_EN_VENTANA",
           productos: rows.map((lote) => ({
             id_producto: lote.id_producto,
             producto_codigo: lote.producto_codigo,
@@ -61,7 +66,8 @@ async function informarProductosProximosVencer() {
 
     await client.query(
       `INSERT INTO lotes_vencimiento_informados (id_lote, fecha_vencimiento, id_evento)
-       SELECT id_lote, fecha_vencimiento, $2 FROM lotes_productos WHERE id_lote = ANY($1::int[])`,
+       SELECT id_lote, fecha_vencimiento, $2 FROM lotes_productos WHERE id_lote = ANY($1::int[])
+       ON CONFLICT (id_lote) DO NOTHING`,
       [rows.map((lote) => lote.id_lote), evento[0].id_evento],
     );
 

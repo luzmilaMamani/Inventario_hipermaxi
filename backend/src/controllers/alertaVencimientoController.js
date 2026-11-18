@@ -141,12 +141,18 @@ const marcarVariasLeidas = asyncHandler(async (req, res) => {
   });
 });
 
+// La revisión manual reenvía a Logística la lista completa de lotes que vencen
+// en menos de dos meses (HIP-260).
 const generarAhora = asyncHandler(async (_req, res) => {
-  const nuevas = await generarAlertasVencimiento();
+  const { nuevas, informados } = await generarAlertasVencimiento({ reenviarTodos: true });
+  const alertas = nuevas ? `Se generaron ${nuevas} alerta(s) nueva(s)` : "No hay alertas nuevas";
+  const envio = informados
+    ? `Se envió a Logística la lista de ${informados} lote(s) que vencen en menos de 2 meses`
+    : "No hay lotes que venzan en menos de 2 meses para enviar a Logística";
   res.json({
     ok: true,
-    message: nuevas ? `Se generaron ${nuevas} alerta(s) nueva(s)` : "No hay alertas nuevas",
-    data: { nuevas },
+    message: `${alertas}. ${envio}.`,
+    data: { nuevas, informados },
   });
 });
 
