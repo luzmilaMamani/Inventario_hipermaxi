@@ -37,6 +37,7 @@ import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
 import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes";
+import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
 import ProgramacionReportes from "./pages/reportes/ProgramacionReportes";
@@ -273,6 +274,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteVencimientosLotes />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF64: transferencias entre sucursales */}
+          <Route
+            path="/reportes/transferencias"
+            element={
+              <ProtectedRoute>
+                <ReporteTransferencias />
               </ProtectedRoute>
             }
           />

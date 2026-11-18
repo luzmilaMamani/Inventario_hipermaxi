@@ -15,3 +15,7 @@ export const consultarIndicadores = (params) =>
 // RF63: lotes vencidos y próximos a vencer, valorizados.
 export const reporteVencimientosLotes = (params) =>
   api.get("/reportes/vencimientos-lotes", { params }).then((r) => r.data);
+
+// RF64: transferencias entre sucursales y tiempos de entrega.
+export const reporteTransferencias = (params) =>
+  api.get("/reportes/transferencias", { params }).then((r) => r.data);
