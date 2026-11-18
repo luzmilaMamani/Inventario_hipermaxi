@@ -36,6 +36,7 @@ import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
+import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
 import ProgramacionReportes from "./pages/reportes/ProgramacionReportes";
@@ -263,6 +264,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteVencimientos />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF63: lotes vencidos y próximos a vencer */}
+          <Route
+            path="/reportes/vencimientos-lotes"
+            element={
+              <ProtectedRoute>
+                <ReporteVencimientosLotes />
               </ProtectedRoute>
             }
           />

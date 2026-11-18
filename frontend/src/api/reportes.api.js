@@ -11,3 +11,7 @@ export const reporteComparativoSucursales = (params) =>
 // RF62: los 7 indicadores principales del inventario.
 export const consultarIndicadores = (params) =>
   api.get("/reportes/indicadores", { params }).then((r) => r.data);
+
+// RF63: lotes vencidos y próximos a vencer, valorizados.
+export const reporteVencimientosLotes = (params) =>
+  api.get("/reportes/vencimientos-lotes", { params }).then((r) => r.data);
