@@ -7,6 +7,7 @@ const {
   reporteVencimientos,
 } = require("../controllers/salidaController");
 const { publicarStockBajo } = require("../controllers/stockBajoPubSubController");
+const { reporteExistencias } = require("../controllers/reporteExistenciasController");
 
 const router = express.Router();
 
@@ -57,5 +58,6 @@ router.post("/stock-bajo/publicar", publicarStockBajo);
 router.get("/perdidas", reportePerdidas);
 router.get("/danos", reporteDanos);
 router.get("/vencimientos", reporteVencimientos);
+router.get("/existencias", reporteExistencias);
 
 module.exports = router;
