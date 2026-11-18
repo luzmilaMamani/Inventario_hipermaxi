@@ -72,6 +72,7 @@ export const MODULOS = [
     destinos: [
       { to: "/reportes/indicadores", label: "Indicadores", icon: "🎯", descripcion: "Tablero de KPIs: valor, rotación, quiebre, merma y más" },
       { to: "/reportes/existencias", label: "Existencias", icon: "📦", descripcion: "Stock y valor por almacén, categoría o marca" },
+      { to: "/reportes/valorizacion", label: "Valorización", icon: "💰", descripcion: "Capital invertido por sucursal, almacén y categoría" },
       { to: "/reportes/comparativo-sucursales", label: "Comparativo sucursales", icon: "🏬", descripcion: "Stock de un producto en cada sucursal y qué transferir" },
       { to: "/reportes/perdidas", label: "Pérdidas", icon: "🚨", descripcion: "Pérdidas, daños y vencimientos valorizados por motivo" },
       { to: "/reportes/danos", label: "Daños", icon: "⚠️", descripcion: "Mercadería dañada" },

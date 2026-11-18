@@ -38,6 +38,7 @@ import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
 import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes";
 import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
+import ReporteValorizacion from "./pages/reportes/ReporteValorizacion";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
 import ProgramacionReportes from "./pages/reportes/ProgramacionReportes";
@@ -283,6 +284,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteTransferencias />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF71: valorización del inventario */}
+          <Route
+            path="/reportes/valorizacion"
+            element={
+              <ProtectedRoute>
+                <ReporteValorizacion />
               </ProtectedRoute>
             }
           />

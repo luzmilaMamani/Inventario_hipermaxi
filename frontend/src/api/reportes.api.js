@@ -19,3 +19,7 @@ export const reporteVencimientosLotes = (params) =>
 // RF64: transferencias entre sucursales y tiempos de entrega.
 export const reporteTransferencias = (params) =>
   api.get("/reportes/transferencias", { params }).then((r) => r.data);
+
+// RF71: valorización del inventario por sucursal, almacén y categoría.
+export const reporteValorizacion = (params) =>
+  api.get("/reportes/valorizacion", { params }).then((r) => r.data);
