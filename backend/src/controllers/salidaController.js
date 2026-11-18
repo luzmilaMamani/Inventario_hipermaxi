@@ -12,21 +12,21 @@ async function generarNumeroSalida(client, motivo) {
 
   const year = new Date().getFullYear();
 
+  // Varios motivos comparten el prefijo SAL: el correlativo se lleva por
+  // prefijo y año, no por motivo, para no repetir un número ya usado.
   await client.query(
     "SELECT pg_advisory_xact_lock(hashtext($1), $2)",
-    [motivo, year],
+    [prefijo, year],
   );
 
   const result = await client.query(
-    `SELECT COUNT(*)::int AS total
+    `SELECT COALESCE(MAX(SUBSTRING(numero_salida FROM '^[A-Z]+-\\d{4}-(\\d+)$')::int), 0) AS ultimo
      FROM salidas_inventario
-     WHERE motivo = $1
-       AND fecha_salida >= $2
-       AND fecha_salida < $3`,
-    [motivo, `${year}-01-01 00:00:00`, `${year + 1}-01-01 00:00:00`],
+     WHERE numero_salida LIKE $1`,
+    [`${prefijo}-${year}-%`],
   );
 
-  const siguiente = result.rows[0].total + 1;
+  const siguiente = result.rows[0].ultimo + 1;
   return `${prefijo}-${year}-${String(siguiente).padStart(4, "0")}`;
 }
 

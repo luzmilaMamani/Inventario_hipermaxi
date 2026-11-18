@@ -128,7 +128,9 @@ const procesarSiguienteEvento = async () => {
   try {
     await client.query("BEGIN");
     const { rows } = await client.query(
-      `SELECT id_evento, id_producto, id_almacen, cantidad_anterior, cantidad_actual, fecha_creacion
+      // fecha_creacion se guarda sin zona horaria, en la hora de la base.
+      `SELECT id_evento, id_producto, id_almacen, cantidad_anterior, cantidad_actual,
+              fecha_creacion AT TIME ZONE current_setting('TimeZone') AS fecha_creacion
        FROM eventos_stock_bajo
        WHERE estado <> 'PUBLICADO' AND intentos < $1
        ORDER BY id_evento
