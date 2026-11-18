@@ -31,3 +31,7 @@ export const reporteMovimientos = (params) =>
 // RF65: rotación de productos y días de inventario.
 export const reporteRotacion = (params) =>
   api.get("/reportes/rotacion", { params }).then((r) => r.data);
+
+// RF69: cumplimiento de proveedores según las diferencias en recepciones.
+export const reporteCumplimientoProveedores = (params) =>
+  api.get("/reportes/cumplimiento-proveedores", { params }).then((r) => r.data);
