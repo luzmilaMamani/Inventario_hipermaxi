@@ -1,3 +1,4 @@
+-- Se aplica después de 20261118_rf62_vistas_indicadores.sql: usa vw_movimientos_valorizados.
 -- RF45 (HIP-212): movimientos de inventario de todos los tipos (entradas,
 -- salidas, transferencias y ajustes) en una sola consulta, sobre el historial de
 -- existencias (RF18). Cada fila indica si sumó o restó stock, quién lo hizo y el
