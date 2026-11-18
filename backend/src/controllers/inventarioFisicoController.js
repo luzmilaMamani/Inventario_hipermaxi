@@ -34,7 +34,7 @@ const crearInventario = asyncHandler(async (req, res) => {
   if (!almacen.rowCount) throw new ApiError(400, "El almacén no existe o está inactivo");
 
   const existe = await db.query(
-    `SELECT id_inventario FROM inventarios_fisicos WHERE id_almacen = $1 AND estado IN ('PROGRAMADO', 'EN_CONTEO')`,
+    `SELECT id_inventario FROM inventarios_fisicos WHERE id_almacen = $1 AND estado IN ('PROGRAMADO', 'EN_PROCESO')`,
     [idAlmacen]
   );
   if (existe.rowCount > 0) throw new ApiError(400, "Ya existe un inventario activo para este almacén");
@@ -97,7 +97,7 @@ const registrarConteo = asyncHandler(async (req, res) => {
       [idInventario],
     );
     if (!inv.rowCount) throw new ApiError(404, "Inventario no encontrado");
-    if (!["PROGRAMADO", "EN_CONTEO"].includes(inv.rows[0].estado)) {
+    if (!["PROGRAMADO", "EN_PROCESO"].includes(inv.rows[0].estado)) {
       throw new ApiError(400, "El inventario no está abierto para conteo");
     }
 
@@ -147,10 +147,12 @@ const registrarConteo = asyncHandler(async (req, res) => {
         [idInventario, idProducto, idLote, cantidadSistema, cantidadFisica],
       );
     }
+    // BUG-02: el estado intermedio es EN_PROCESO (chk_inventario_estado); con
+    // EN_CONTEO fallaba el primer conteo de todo inventario.
     if (inv.rows[0].estado === "PROGRAMADO") {
       await client.query(
         `UPDATE inventarios_fisicos
-         SET estado = 'EN_CONTEO', fecha_inicio = CURRENT_TIMESTAMP
+         SET estado = 'EN_PROCESO', fecha_inicio = CURRENT_TIMESTAMP
          WHERE id_inventario = $1`,
         [idInventario],
       );
