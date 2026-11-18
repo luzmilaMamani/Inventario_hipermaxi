@@ -37,6 +37,7 @@ efecto en los datos (stock, movimientos, estados).
 | TRF-02 | Aprobar, enviar y recibir completa | Administrador | Aprobar la de TRF-01, Registrar envío con fecha estimada, Registrar recepción con lo enviado. | Estado RECIBIDA; el stock baja en origen y sube en destino; aparece en Reportes › Transferencias con su tiempo de entrega. |
 | TRF-03 | Recibir con diferencia | Administrador | Repetir con otra transferencia y recibir 1 unidad menos, con observación. | Estado RECIBIDA_CON_DIFERENCIAS y diferencia −1 en el reporte. |
 | TRF-04 | Solicitar desde el comparativo | Encargado de almacén | Reportes › Comparativo sucursales › **Solicitar** en una sugerencia. | Se abre el formulario con origen, destino, producto y cantidad precargados; al guardar queda SOLICITADA. |
+| TRF-05 | Mensaje de confirmación al aprobar | Administrador | Aprobar una transferencia SOLICITADA. | La confirmación pregunta por la aprobación (no por la entrada o salida del almacén). |
 
 ## 4. Inventario físico (RF33–RF35)
 
