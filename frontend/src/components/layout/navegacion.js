@@ -1,5 +1,6 @@
 import {
   ROLES_APROBACION_AJUSTES,
+  ROLES_PROGRAMAN_REPORTES,
   ROLES_GESTION,
   ROLES_LECTURA_Y_OPERACION,
   ROLES_SIN_EMPLEADO,
@@ -75,6 +76,7 @@ export const MODULOS = [
       { to: "/reportes/perdidas", label: "Pérdidas", icon: "🚨", descripcion: "Robos y extravíos" },
       { to: "/reportes/danos", label: "Daños", icon: "⚠️", descripcion: "Mercadería dañada" },
       { to: "/reportes/vencimientos", label: "Vencimientos", icon: "⏳", descripcion: "Bajas por vencimiento" },
+      { to: "/reportes/programacion", label: "Envío por correo", icon: "✉️", descripcion: "Programa reportes diarios, semanales o mensuales", roles: ROLES_PROGRAMAN_REPORTES },
     ],
   },
 ];

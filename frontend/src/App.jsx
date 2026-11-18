@@ -38,6 +38,7 @@ import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
+import ProgramacionReportes from "./pages/reportes/ProgramacionReportes";
 
 // Inventarios Físicos
 import ListaInventarios from "./pages/inventarios/ListaInventarios";
@@ -289,6 +290,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DashboardIndicadores />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF70: envío programado de reportes por correo */}
+          <Route
+            path="/reportes/programacion"
+            element={
+              <ProtectedRoute>
+                <ProgramacionReportes />
               </ProtectedRoute>
             }
           />
