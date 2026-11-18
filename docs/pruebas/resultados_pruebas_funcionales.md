@@ -80,3 +80,52 @@ Se registran en Jira como tipo **Error** y se corrigen en HT07.
   corrige editando el usuario, no el código.
 - En TRF-02 el tiempo de entrega es 0 h porque la prueba envía y recibe en el
   mismo minuto.
+
+## Regresión después de las correcciones (HT07)
+
+| Error | Corrección | Commit |
+|---|---|---|
+| BUG-01 | La confirmación dice lo que hace cada cambio de estado: aprobar, rechazar, salida o entrada al almacén. | `fix(HT07,HIP-253)` |
+| BUG-02 | El primer conteo pasa el inventario a `EN_PROCESO`, el estado que admite la base de datos. | `fix(RF35)` |
+
+Se volvió a cargar la base de pruebas y se ejecutaron **todos** los casos, no solo
+los que fallaron, para descartar efectos secundarios. Además:
+
+- Pruebas unitarias del backend: 63 de 63 pasan; cobertura de líneas de la capa
+  de servicios: 97 %.
+- Compilación del frontend y lint sin errores.
+
+| ID | Caso | Rol | Resultado | Detalle |
+|---|---|---|:---:|---|
+| REC-01 | Recepción conforme | Encargado de almacén | ✅ | Recepción ENT-1795032820931-8ddc63 conforme |
+| REC-02 | Recepción con diferencia | Encargado de almacén | ✅ | Diferencia de 3 visible en RF69 |
+| REC-03 | No recibir un producto vencido | Encargado de almacén | ✅ | Bloqueado con el mensaje esperado |
+| REC-04 | Confirmar recepción actualiza el stock | Encargado de almacén | ✅ | Stock 82 → 102 |
+| SAL-01 | Venta con FEFO | Encargado de almacén | ✅ | Stock 167 → 164 |
+| SAL-02 | Pérdida con subtipo en el reporte RF46 | Encargado de almacén | ✅ | PER-2026-0014 valorizada en Bs 8.69 |
+| SAL-03 | Salida mayor al disponible | Encargado de almacén | ✅ | Error de stock insuficiente y stock sin cambios |
+| TRF-01 | Solicitar transferencia | Encargado de almacén | ✅ | TRF-2026-0037 SOLICITADA |
+| TRF-02 | Aprobar, enviar y recibir completa | Administrador | ✅ | RECIBIDA; origen 130→125, destino 12→17; entrega 0.0 h |
+| TRF-03 | Recibir con diferencia | Administrador | ✅ | TRF-2026-0038 RECIBIDA_CON_DIFERENCIAS (−1) |
+| TRF-04 | Solicitar desde el comparativo | Encargado de almacén | ✅ | TRF-2026-0039 Almacén Central → Sucursal Sur |
+| TRF-05 | Mensaje de confirmación al aprobar | Administrador | ✅ | Pregunta: "¿Confirmas aprobar la transferencia?" |
+| INV-01 | Programar un inventario | Encargado de almacén | ✅ | INV-1795032922435 PROGRAMADO |
+| INV-02 | Registrar conteo con diferencia | Encargado de almacén | ✅ | Sistema 190, físico 188, diferencia −2 |
+| REP-01 | Tablero de indicadores | Gerente | ✅ | 7 KPIs; el clic en merma abre Pérdidas |
+| REP-02 | Existencias con filtros | Gerente | ✅ | Detalle = categorías = resumen = Bs 137310.82 |
+| REP-03 | Movimientos por tipo | Auditor | ✅ | 19 filas, todas ajustes |
+| REP-04 | Pérdidas consolidadas por tipo | Gerente | ✅ | Motivos: Todos, Inutilizable, Deterioro, Roto |
+| REP-05 | Lotes por vencer (7 días) | Supervisor | ✅ | 13 vencidos y 11 por vencer en 7 días |
+| REP-06 | Transferencias por ruta | Gerente | ✅ | Rutas y transferencias tarde marcadas |
+| REP-07 | Rotación: baja rotación | Gerente | ✅ | 9 productos de baja rotación |
+| REP-08 | Comparativo sin permiso de transferir | Gerente | ✅ | Sugerencias visibles, sin botón Solicitar |
+| REP-09 | Cumplimiento de proveedores | Encargado de almacén | ✅ | Detalle filtrado a Proveedor E2E Faltante mwmk6yau |
+| REP-10 | Valorización por almacén y categoría | Gerente | ✅ | El desglose por categoría suma el total de cada almacén |
+| REP-11 | Integraciones y reproceso | Administrador | ✅ | El mensaje sigue INVALIDO |
+| REP-12 | Programar envío por correo | Gerente | ✅ | Creada y enviada; registrada en la bitácora |
+| REP-13 | Exportar existencias a Excel | Gerente | ✅ | CSV de 7007 bytes |
+| PER-01 | Auditor no registra salidas | Auditor | ✅ | Sin botón de registro |
+| PER-02 | Supervisor sin Envío por correo | Supervisor | ✅ | No aparece en el menú |
+| PER-03 | Vista en celular | Gerente | ✅ | scrollWidth 390 / 390 px |
+
+**30 de 30 casos pasan.** Errores de JavaScript en consola: 0.
