@@ -4,6 +4,7 @@ const ApiError = require("../utils/apiError");
 const { obtenerLotesVigentes, asignarLotes } = require("./lotesFefo");
 const { obtenerCantidadNoDisponible } = require("./lotesVencidos");
 const { registrarEvento } = require("./eventosProduccion");
+const { EVENTOS_VENTAS, procesarMensajeVenta } = require("./suscriptorVentas");
 
 const MENSAJE_SOLICITUD = "SOLICITUD_MATERIALES";
 const MENSAJE_TERMINADOS = "PRODUCTOS_TERMINADOS";
@@ -442,9 +443,23 @@ const leerMensaje = (message) => {
   return { contenido_invalido: texto };
 };
 
+// RF72: Ventas publica en el mismo tópico; el atributo tipo_evento distingue
+// sus mensajes. Se pasa la hora de publicación para medir la latencia.
+const procesarVenta = (data, messageId, message) =>
+  procesarMensajeVenta(
+    { ...data, tipo_evento: data.tipo_evento || message?.attributes?.tipo_evento },
+    { messageId, publicado: message?.publishTime ?? null },
+  ).then((resultado) => {
+    if (resultado.estado !== "PROCESADO" && !resultado.duplicado) {
+      console.warn(`Pub/Sub: mensaje de Ventas ${resultado.id_mensaje} quedó ${resultado.estado}: ${resultado.error}`);
+    }
+    return resultado;
+  });
+
 const PROCESADORES = {
   [MENSAJE_SOLICITUD]: procesarSolicitud,
   [MENSAJE_TERMINADOS]: procesarTerminados,
+  ...Object.fromEntries(EVENTOS_VENTAS.map((tipo) => [tipo, procesarVenta])),
 };
 
 const suscribir = (pubsub, nombre) => {
@@ -460,10 +475,13 @@ const suscribir = (pubsub, nombre) => {
     }
 
     try {
-      await procesar(data, message.id);
+      await procesar(data, message.id, message);
       message.ack();
     } catch (error) {
-      console.error(`Pub/Sub: error procesando mensaje de ${nombre}, se reintentará:`, error.message);
+      // Con una política de dead-letter en la suscripción, Pub/Sub informa el
+      // número de entrega y mueve el mensaje al agotarse los intentos.
+      const intento = message.deliveryAttempt ? ` (entrega ${message.deliveryAttempt})` : "";
+      console.error(`Pub/Sub: error procesando mensaje de ${nombre}${intento}, se reintentará:`, error.message);
       message.nack();
     }
   });
