@@ -5,6 +5,7 @@ const { reporteDanos, reporteVencimientos } = require("../controllers/salidaCont
 const { reportePerdidas } = require("../controllers/reportePerdidasController");
 const { reporteVencimientosLotes } = require("../controllers/reporteVencimientosLotesController");
 const { reporteTransferencias } = require("../controllers/reporteTransferenciasController");
+const { reporteValorizacion } = require("../controllers/reporteValorizacionController");
 const { publicarStockBajo } = require("../controllers/stockBajoPubSubController");
 const { reporteExistencias } = require("../controllers/reporteExistenciasController");
 const { reporteComparativoSucursales } = require("../controllers/reporteComparativoController");
@@ -61,6 +62,7 @@ router.get("/danos", reporteDanos);
 router.get("/vencimientos", reporteVencimientos);
 router.get("/vencimientos-lotes", reporteVencimientosLotes);
 router.get("/transferencias", reporteTransferencias);
+router.get("/valorizacion", reporteValorizacion);
 router.get("/existencias", reporteExistencias);
 router.get("/comparativo-sucursales", reporteComparativoSucursales);
 router.get("/indicadores", consultarIndicadores);
