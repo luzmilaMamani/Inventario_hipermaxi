@@ -40,6 +40,7 @@ import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes"
 import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
 import ReporteValorizacion from "./pages/reportes/ReporteValorizacion";
 import DashboardIntegraciones from "./pages/reportes/DashboardIntegraciones";
+import ReporteMovimientos from "./pages/reportes/ReporteMovimientos";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
 import ProgramacionReportes from "./pages/reportes/ProgramacionReportes";
@@ -303,6 +304,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <DashboardIntegraciones />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF45: movimientos de inventario */}
+          <Route
+            path="/reportes/movimientos"
+            element={
+              <ProtectedRoute>
+                <ReporteMovimientos />
               </ProtectedRoute>
             }
           />

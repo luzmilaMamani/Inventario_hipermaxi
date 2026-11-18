@@ -23,3 +23,7 @@ export const reporteTransferencias = (params) =>
 // RF71: valorización del inventario por sucursal, almacén y categoría.
 export const reporteValorizacion = (params) =>
   api.get("/reportes/valorizacion", { params }).then((r) => r.data);
+
+// RF45: movimientos de inventario por período (paginado).
+export const reporteMovimientos = (params) =>
+  api.get("/reportes/movimientos", { params }).then((r) => r.data);
