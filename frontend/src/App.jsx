@@ -37,6 +37,7 @@ import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
+import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
 
 // Inventarios Físicos
 import ListaInventarios from "./pages/inventarios/ListaInventarios";
@@ -279,6 +280,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ComparativoSucursales />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF62: tablero de indicadores del inventario */}
+          <Route
+            path="/reportes/indicadores"
+            element={
+              <ProtectedRoute>
+                <DashboardIndicadores />
               </ProtectedRoute>
             }
           />

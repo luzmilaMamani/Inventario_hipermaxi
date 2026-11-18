@@ -7,3 +7,7 @@ export const reporteExistencias = (params) =>
 // RF67: stock disponible de los productos en cada sucursal.
 export const reporteComparativoSucursales = (params) =>
   api.get("/reportes/comparativo-sucursales", { params }).then((r) => r.data);
+
+// RF62: los 7 indicadores principales del inventario.
+export const consultarIndicadores = (params) =>
+  api.get("/reportes/indicadores", { params }).then((r) => r.data);
