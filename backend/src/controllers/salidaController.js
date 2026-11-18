@@ -415,52 +415,6 @@ const obtenerSalida = asyncHandler(async (req, res) => {
   });
 });
 
-const reportePerdidas = asyncHandler(async (req, res) => {
-  const { fecha_desde, fecha_hasta, id_almacen, subtipo_perdida } = req.query;
-  const condiciones = [];
-  const valores = [];
-  let i = 1;
-
-  if (fecha_desde) {
-    condiciones.push(`fecha_salida >= $${i++}`);
-    valores.push(fecha_desde);
-  }
-  if (fecha_hasta) {
-    condiciones.push(`fecha_salida <= $${i++}`);
-    valores.push(fecha_hasta);
-  }
-  if (id_almacen) {
-    condiciones.push(`id_almacen = $${i++}`);
-    valores.push(id_almacen);
-  }
-  if (subtipo_perdida) {
-    condiciones.push(`subtipo_perdida = $${i++}`);
-    valores.push(subtipo_perdida);
-  }
-
-  const whereSql = condiciones.length
-    ? `WHERE ${condiciones.join(" AND ")}`
-    : "";
-
-  const [detalle, resumen] = await Promise.all([
-    db.query(
-      `SELECT * FROM vw_perdidas ${whereSql} ORDER BY fecha_salida DESC`,
-      valores,
-    ),
-    db.query(
-      `SELECT
-         COUNT(*)::int AS total_registros,
-         COUNT(DISTINCT id_salida)::int AS total_salidas,
-         COALESCE(SUM(cantidad), 0)::numeric AS total_unidades,
-         COALESCE(SUM(valor_total), 0)::numeric AS total_valorizado
-       FROM vw_perdidas ${whereSql}`,
-      valores,
-    ),
-  ]);
-
-  res.json({ ok: true, data: detalle.rows, resumen: resumen.rows[0] });
-});
-
 const reporteDanos = asyncHandler(async (req, res) => {
   const { fecha_desde, fecha_hasta, id_almacen, subtipo_dano } = req.query;
   const condiciones = [];
@@ -555,7 +509,6 @@ module.exports = {
   sugerirLotes,
   listarSalidas,
   obtenerSalida,
-  reportePerdidas,
   reporteDanos,
   reporteVencimientos,
 };

@@ -1,11 +1,8 @@
 const express = require("express");
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
-const {
-  reportePerdidas,
-  reporteDanos,
-  reporteVencimientos,
-} = require("../controllers/salidaController");
+const { reporteDanos, reporteVencimientos } = require("../controllers/salidaController");
+const { reportePerdidas } = require("../controllers/reportePerdidasController");
 const { publicarStockBajo } = require("../controllers/stockBajoPubSubController");
 const { reporteExistencias } = require("../controllers/reporteExistenciasController");
 const { reporteComparativoSucursales } = require("../controllers/reporteComparativoController");
