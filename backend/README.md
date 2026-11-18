@@ -48,6 +48,25 @@ El comando aplica en orden las migraciones versionadas pendientes de
 datos debe existir y tener el esquema inicial del sistema. Este comando no crea
 la base ni carga datos de prueba.
 
+## Pruebas unitarias y cobertura
+
+Las pruebas usan el runner integrado de Node.js (`node:test`), sin dependencias
+extra, y una base de datos simulada (`test/helpers/entorno.js`): no necesitan
+PostgreSQL.
+
+```bash
+npm test                 # ejecuta test/**/*.test.js
+npm run test:cobertura   # además genera coverage/lcov.info y exige 70 % de líneas
+```
+
+La cobertura se mide sobre la capa de servicios (`src/services`, `src/utils`).
+Quedan fuera los adaptadores de transporte (Pub/Sub, correo, PDF de etiquetas),
+que se verifican en las pruebas de integración. Node solo cuenta los archivos
+que alguna prueba carga.
+
+En GitHub, el flujo `.github/workflows/backend-pruebas.yml` corre
+`npm run test:cobertura` en cada push y pull request hacia `main`.
+
 ## Login
 
 El script SQL crea este usuario inicial para pruebas:

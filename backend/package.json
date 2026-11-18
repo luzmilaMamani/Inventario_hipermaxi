@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "migrate": "node scripts/migrate.js"
+    "migrate": "node scripts/migrate.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:cobertura": "node --test --experimental-test-coverage --test-coverage-include=src/services/** --test-coverage-include=src/utils/** --test-coverage-exclude=src/services/integracionProduccion.js --test-coverage-exclude=src/services/eventosProduccion.js --test-coverage-exclude=src/services/stockBajoPubSub.js --test-coverage-exclude=src/services/vencimientosPubSub.js --test-coverage-exclude=src/services/correo.js --test-coverage-exclude=src/services/etiquetasPdf.js --test-coverage-exclude=src/utils/migrar.js --test-coverage-exclude=src/utils/crudFactory.js --test-coverage-lines=70 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \"test/**/*.test.js\""
   },
   "dependencies": {
     "@google-cloud/pubsub": "^6.3.1",
