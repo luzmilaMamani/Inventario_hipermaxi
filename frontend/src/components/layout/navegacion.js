@@ -79,6 +79,7 @@ export const MODULOS = [
       { to: "/reportes/vencimientos", label: "Vencimientos", icon: "⏳", descripcion: "Bajas por vencimiento" },
       { to: "/reportes/transferencias", label: "Transferencias", icon: "🚚", descripcion: "Flujo entre sucursales y tiempos de entrega" },
       { to: "/reportes/vencimientos-lotes", label: "Lotes por vencer", icon: "📆", descripcion: "Lotes vencidos y próximos a vencer, valorizados" },
+      { to: "/reportes/integraciones", label: "Integraciones", icon: "🔌", descripcion: "Mensajes con Compras, Producción y Ventas, errores y reproceso", roles: ROLES_SIN_EMPLEADO },
       { to: "/reportes/programacion", label: "Envío por correo", icon: "✉️", descripcion: "Programa reportes diarios, semanales o mensuales", roles: ROLES_PROGRAMAN_REPORTES },
     ],
   },

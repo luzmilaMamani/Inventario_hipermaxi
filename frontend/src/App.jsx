@@ -39,6 +39,7 @@ import ReporteExistencias from "./pages/reportes/ReporteExistencias";
 import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes";
 import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
 import ReporteValorizacion from "./pages/reportes/ReporteValorizacion";
+import DashboardIntegraciones from "./pages/reportes/DashboardIntegraciones";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
 import ProgramacionReportes from "./pages/reportes/ProgramacionReportes";
@@ -293,6 +294,15 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteValorizacion />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF75: dashboard de integraciones asíncronas */}
+          <Route
+            path="/reportes/integraciones"
+            element={
+              <ProtectedRoute>
+                <DashboardIntegraciones />
               </ProtectedRoute>
             }
           />
