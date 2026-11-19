@@ -27,6 +27,7 @@ const devolucionesRouter = require("./devoluciones.routes");
 const devolucionesProveedorRouter = require("./devolucionesProveedor.routes");
 const solicitudesMaterialesRouter = require("./solicitudesMateriales.routes");
 const lotesRouter = require("./lotes.routes");
+const programacionesReporteRouter = require("./programacionesReporte.routes");
 
 const router = express.Router();
 const recursosSoloLectura = new Set([
@@ -57,6 +58,7 @@ router.use("/etiquetas", etiquetasRouter);
 router.use("/devoluciones", devolucionesRouter);
 router.use("/devoluciones-proveedor", devolucionesProveedorRouter);
 router.use("/solicitudes-materiales", solicitudesMaterialesRouter);
+router.use("/programaciones-reporte", programacionesReporteRouter);
 
 router.use(
   "/entradas-inventario",

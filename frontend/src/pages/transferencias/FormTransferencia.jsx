@@ -11,9 +11,21 @@ const FORM_INICIAL = {
   observaciones: "",
 };
 
-export default function FormTransferencia({ onClose, onSaved }) {
-  const [form, setForm] = useState(FORM_INICIAL);
-  const [detalles, setDetalles] = useState([]);
+// `inicial` permite abrir la solicitud ya armada (RF67: desde el comparativo
+// entre sucursales).
+export default function FormTransferencia({ onClose, onSaved, inicial = null }) {
+  const [form, setForm] = useState(() => ({
+    ...FORM_INICIAL,
+    almacen_origen: inicial?.almacen_origen ? String(inicial.almacen_origen) : "",
+    almacen_destino: inicial?.almacen_destino ? String(inicial.almacen_destino) : "",
+    observaciones: inicial?.observaciones || "",
+  }));
+  const [detalles, setDetalles] = useState(() =>
+    (inicial?.detalles || []).map((d) => ({
+      id_producto: String(d.id_producto),
+      cantidad: Number(d.cantidad),
+    })),
+  );
   const [productoActual, setProductoActual] = useState({
     id_producto: "",
     cantidad: "",
@@ -176,7 +188,7 @@ export default function FormTransferencia({ onClose, onSaved }) {
                 <li key={d.id_producto} className="flex justify-between">
                   <span>
                     {
-                      opcionesProductos.find((p) => p.value === d.id_producto)
+                      opcionesProductos.find((p) => String(p.value) === String(d.id_producto))
                         ?.label
                     }
                   </span>

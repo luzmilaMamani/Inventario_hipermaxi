@@ -1,5 +1,6 @@
 import {
   ROLES_APROBACION_AJUSTES,
+  ROLES_PROGRAMAN_REPORTES,
   ROLES_GESTION,
   ROLES_LECTURA_Y_OPERACION,
   ROLES_SIN_EMPLEADO,
@@ -67,11 +68,15 @@ export const MODULOS = [
     id: "reportes",
     label: "Reportes",
     icon: "📊",
-    descripcion: "Pérdidas, daños y vencimientos valorizados",
+    descripcion: "Existencias, movimientos, pérdidas e indicadores",
     destinos: [
+      { to: "/reportes/indicadores", label: "Indicadores", icon: "🎯", descripcion: "Tablero de KPIs: valor, rotación, quiebre, merma y más" },
+      { to: "/reportes/existencias", label: "Existencias", icon: "📦", descripcion: "Stock y valor por almacén, categoría o marca" },
+      { to: "/reportes/comparativo-sucursales", label: "Comparativo sucursales", icon: "🏬", descripcion: "Stock de un producto en cada sucursal y qué transferir" },
       { to: "/reportes/perdidas", label: "Pérdidas", icon: "🚨", descripcion: "Robos y extravíos" },
       { to: "/reportes/danos", label: "Daños", icon: "⚠️", descripcion: "Mercadería dañada" },
       { to: "/reportes/vencimientos", label: "Vencimientos", icon: "⏳", descripcion: "Bajas por vencimiento" },
+      { to: "/reportes/programacion", label: "Envío por correo", icon: "✉️", descripcion: "Programa reportes diarios, semanales o mensuales", roles: ROLES_PROGRAMAN_REPORTES },
     ],
   },
 ];

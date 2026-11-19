@@ -1,0 +1,35 @@
+# HT04 (HIP-247): pruebas unitarias del backend con reporte de cobertura.
+# Falla si alguna prueba falla o si la cobertura de líneas de la capa de
+# servicios queda por debajo del 70 %.
+name: Pruebas del backend
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", ".github/workflows/backend-pruebas.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["backend/**", ".github/workflows/backend-pruebas.yml"]
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run test:cobertura
+      - name: Publicar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-backend
+          path: backend/coverage/lcov.info
+          if-no-files-found: ignore

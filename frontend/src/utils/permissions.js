@@ -34,6 +34,17 @@ export const ROLES_CANCELAN_TRANSFERENCIA = [
   "JEFE_SUCURSAL",
 ];
 
+// Quienes pueden solicitar una transferencia (POST /transferencias).
+export const ROLES_SOLICITAN_TRANSFERENCIA = [
+  "ADMINISTRADOR",
+  "ENCARGADO_ALMACEN",
+  "EMPLEADO",
+  "JEFE_SUCURSAL",
+];
+
+// RF70: quienes programan el envío automático de reportes por correo.
+export const ROLES_PROGRAMAN_REPORTES = ["GERENTE", "ADMINISTRADOR"];
+
 // RF61: quienes pueden poner un lote en cuarentena o liberarlo.
 export const ROLES_CUARENTENA = ["SUPERVISOR", "ADMINISTRADOR"];
 
