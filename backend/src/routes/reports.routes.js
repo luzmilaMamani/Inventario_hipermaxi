@@ -1,11 +1,11 @@
 const express = require("express");
 const db = require("../config/db");
 const asyncHandler = require("../utils/asyncHandler");
-const {
-  reportePerdidas,
-  reporteDanos,
-  reporteVencimientos,
-} = require("../controllers/salidaController");
+const { reporteDanos, reporteVencimientos } = require("../controllers/salidaController");
+const { reportePerdidas } = require("../controllers/reportePerdidasController");
+const { reporteVencimientosLotes } = require("../controllers/reporteVencimientosLotesController");
+const { reporteTransferencias } = require("../controllers/reporteTransferenciasController");
+const { reporteValorizacion } = require("../controllers/reporteValorizacionController");
 const { publicarStockBajo } = require("../controllers/stockBajoPubSubController");
 const { reporteExistencias } = require("../controllers/reporteExistenciasController");
 const { reporteComparativoSucursales } = require("../controllers/reporteComparativoController");
@@ -60,6 +60,9 @@ router.post("/stock-bajo/publicar", publicarStockBajo);
 router.get("/perdidas", reportePerdidas);
 router.get("/danos", reporteDanos);
 router.get("/vencimientos", reporteVencimientos);
+router.get("/vencimientos-lotes", reporteVencimientosLotes);
+router.get("/transferencias", reporteTransferencias);
+router.get("/valorizacion", reporteValorizacion);
 router.get("/existencias", reporteExistencias);
 router.get("/comparativo-sucursales", reporteComparativoSucursales);
 router.get("/indicadores", consultarIndicadores);

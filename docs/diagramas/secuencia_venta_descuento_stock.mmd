@@ -1,0 +1,46 @@
+%% HIP-277 (RF72): venta confirmada en el SI de Ventas -> descuento de stock en Inventario.
+sequenceDiagram
+autonumber
+participant V as SI Ventas (POS)
+participant PS as Google Pub/Sub (ucb-sis323-sub-i)
+participant S as Suscriptor de Ventas
+participant DB as BD Inventario
+participant ST as servicio ventasRecibidas
+
+V->>PS: publish {id_mensaje, tipo_evento: venta.confirmada, id_venta, sucursal, fecha, detalle}
+PS-->>S: entregar mensaje (suscripción exclusiva de Inventario)
+S->>S: validar esquema del mensaje
+alt Mensaje con formato inválido
+  S->>DB: mensajes_integracion (INVALIDO, motivo)
+  S-->>PS: ack (reentregarlo no lo corregiría)
+else Formato correcto
+  S->>DB: BEGIN + INSERT mensajes_integracion ON CONFLICT DO NOTHING
+  alt id_mensaje ya procesado (duplicado)
+    DB-->>S: sin fila nueva
+    S->>DB: COMMIT
+    S-->>PS: ack (sin cambios en el stock)
+  else Mensaje nuevo
+    S->>ST: registrarVentaConfirmada(venta)
+    ST->>DB: guardar venta_recibida + venta_recibida_detalle (FOR UPDATE)
+    ST->>DB: SAVEPOINT descuento_venta
+    loop cada producto (orden fijo por id)
+      ST->>DB: lotes vigentes por FEFO (FOR UPDATE)
+      ST->>DB: stock del producto (FOR UPDATE) y disponible
+      ST->>DB: descontar lotes + movimiento VENTA + actualizar stock
+    end
+    alt Stock suficiente y productos existentes
+      ST->>DB: venta_recibida = DESCONTADA
+      ST-->>S: DESCONTADA
+      S->>DB: mensajes_integracion (PROCESADO, latencia)
+    else Producto inexistente / sin stock / sucursal desconocida
+      ST->>DB: ROLLBACK TO SAVEPOINT (nada queda a medias)
+      ST->>DB: venta_recibida = ERROR (motivo)
+      ST-->>S: ERROR
+      S->>DB: mensajes_integracion (ERROR, motivo) -> reprocesable desde el dashboard
+    end
+    S->>DB: COMMIT
+    S-->>PS: ack
+  end
+end
+Note over PS,DB: Si Inventario está caído o falla la BD no hay ack: Pub/Sub reentrega el mensaje
+Note over V,ST: venta.anulada: el servicio devuelve a los mismos lotes lo descontado (movimiento ANULACION_VENTA). Si la anulación llega antes, la confirmación posterior se ignora.

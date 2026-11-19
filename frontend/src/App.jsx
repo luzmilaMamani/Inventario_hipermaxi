@@ -36,6 +36,10 @@ import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
+import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes";
+import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
+import ReporteValorizacion from "./pages/reportes/ReporteValorizacion";
+import DashboardIntegraciones from "./pages/reportes/DashboardIntegraciones";
 import ComparativoSucursales from "./pages/reportes/ComparativoSucursales";
 import DashboardIndicadores from "./pages/reportes/DashboardIndicadores";
 import ProgramacionReportes from "./pages/reportes/ProgramacionReportes";
@@ -263,6 +267,42 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteVencimientos />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF63: lotes vencidos y próximos a vencer */}
+          <Route
+            path="/reportes/vencimientos-lotes"
+            element={
+              <ProtectedRoute>
+                <ReporteVencimientosLotes />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF64: transferencias entre sucursales */}
+          <Route
+            path="/reportes/transferencias"
+            element={
+              <ProtectedRoute>
+                <ReporteTransferencias />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF71: valorización del inventario */}
+          <Route
+            path="/reportes/valorizacion"
+            element={
+              <ProtectedRoute>
+                <ReporteValorizacion />
+              </ProtectedRoute>
+            }
+          />
+          {/* RF75: dashboard de integraciones asíncronas */}
+          <Route
+            path="/reportes/integraciones"
+            element={
+              <ProtectedRoute>
+                <DashboardIntegraciones />
               </ProtectedRoute>
             }
           />

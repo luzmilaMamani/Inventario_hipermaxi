@@ -11,3 +11,15 @@ export const reporteComparativoSucursales = (params) =>
 // RF62: los 7 indicadores principales del inventario.
 export const consultarIndicadores = (params) =>
   api.get("/reportes/indicadores", { params }).then((r) => r.data);
+
+// RF63: lotes vencidos y próximos a vencer, valorizados.
+export const reporteVencimientosLotes = (params) =>
+  api.get("/reportes/vencimientos-lotes", { params }).then((r) => r.data);
+
+// RF64: transferencias entre sucursales y tiempos de entrega.
+export const reporteTransferencias = (params) =>
+  api.get("/reportes/transferencias", { params }).then((r) => r.data);
+
+// RF71: valorización del inventario por sucursal, almacén y categoría.
+export const reporteValorizacion = (params) =>
+  api.get("/reportes/valorizacion", { params }).then((r) => r.data);
