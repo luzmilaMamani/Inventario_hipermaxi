@@ -14,6 +14,9 @@ const SUMAS = `
 
 // RF44: existencias por almacén, categoría o marca, con cantidad total,
 // reservada y disponible por producto y totales por almacén y por categoría.
+// El detalle se pagina (page, limit; HT08: el reporte completo con 60.000 filas
+// pesaba 35 MB); los totales siempre cubren todo el filtro. todos=true devuelve
+// hasta 100.000 filas para exportar.
 const reporteExistencias = asyncHandler(async (req, res) => {
   const filtros = crearFiltros();
   filtros.id(req.query.id_almacen, "id_almacen", "El almacén no es válido");
@@ -29,12 +32,16 @@ const reporteExistencias = asyncHandler(async (req, res) => {
   const extra = req.query.solo_con_stock === "true" ? ["cantidad_total > 0"] : [];
   const whereSql = filtros.where(extra);
   const { valores } = filtros;
+  const todos = req.query.todos === "true";
+  const limit = todos ? 100000 : Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
+  const page = todos ? 1 : Math.max(Number(req.query.page) || 1, 1);
 
   const [detalle, resumen, porAlmacen, porCategoria] = await Promise.all([
     db.query(
       `SELECT * FROM vw_reporte_existencias ${whereSql}
-       ORDER BY producto ASC, almacen ASC`,
-      valores,
+       ORDER BY producto ASC, almacen ASC
+       LIMIT $${valores.length + 1} OFFSET $${valores.length + 2}`,
+      [...valores, limit, (page - 1) * limit],
     ),
     db.query(
       `SELECT COUNT(*)::int AS registros, ${SUMAS}
@@ -63,6 +70,7 @@ const reporteExistencias = asyncHandler(async (req, res) => {
     resumen: resumen.rows[0],
     por_almacen: porAlmacen.rows,
     por_categoria: porCategoria.rows,
+    pagination: { page, limit, total: resumen.rows[0].registros },
   });
 });
 

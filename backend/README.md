@@ -318,6 +318,51 @@ node scripts/simular-logistica.js solicitud 1 12:100 15:5
 node scripts/simular-logistica.js terminado 1 12:50:2027-05-01
 ```
 
+#### Integración con el SI de Ventas (RF72)
+
+Ventas publica en el mismo tópico con el atributo `tipo_evento` igual a
+`venta.confirmada` o `venta.anulada`, y la misma suscripción de Inventario los
+recibe:
+
+```json
+{
+  "id_mensaje": "5d0b...",
+  "tipo_evento": "venta.confirmada",
+  "id_venta": "V-1001",
+  "sucursal": "SUC-001",
+  "fecha": "2026-11-18T14:30:00Z",
+  "detalle": [{ "codigo_producto": "PRD-001", "cantidad": 2 }]
+}
+```
+
+- `sucursal` puede ser el código, el nombre o el id del almacén; `codigo_producto`
+  puede ser el código interno o el código de barras.
+- Una venta confirmada descuenta el stock por FEFO (movimiento `VENTA`, referencia
+  `VENTA-<id_venta>`). Una venta anulada devuelve lo descontado a los mismos lotes
+  (movimiento `ANULACION_VENTA`). Si la anulación llega antes que la confirmación,
+  la confirmación se ignora.
+- El `id_mensaje` se registra en `mensajes_integracion` (sistema `VENTAS`) en la
+  misma transacción que el descuento: un mensaje repetido no descuenta dos veces.
+- Formato incorrecto → `INVALIDO`. Producto inexistente, sin stock o sucursal
+  desconocida → `ERROR` (la venta queda en `venta_recibida` con el motivo y no se
+  descuenta nada). Ambos se confirman y se reprocesan desde **Reportes ›
+  Integraciones**. Si la base de datos falla no hay confirmación y Pub/Sub reentrega.
+
+Para que los mensajes que fallan una y otra vez no se reintenten indefinidamente,
+configura una política de dead-letter en la suscripción (requiere permisos sobre el
+proyecto de Google Cloud):
+
+```bash
+gcloud pubsub subscriptions update <PUBSUB_SUBSCRIPTION>   --dead-letter-topic=<topico-dead-letter> --max-delivery-attempts=10
+```
+
+Mensajes de prueba:
+
+```bash
+node scripts/simular-ventas.js confirmada V-1001 SUC-001 PRD-001:2 7770000000012:1
+node scripts/simular-ventas.js anulada V-1001 SUC-001
+```
+
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 En cada línea de recepción, `cantidad_solicitada` es la cantidad esperada y
 `cantidad_recibida` la cantidad física recibida. El backend calcula la

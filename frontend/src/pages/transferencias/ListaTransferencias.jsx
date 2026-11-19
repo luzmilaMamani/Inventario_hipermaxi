@@ -51,8 +51,18 @@ export default function ListaTransferencias() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtroEstado]);
 
+  // BUG-01: cada cambio de estado pide confirmar lo que realmente hace (antes
+  // aprobar o rechazar preguntaba por una "entrada al almacén").
+  const PREGUNTAS_ESTADO = {
+    APROBADA: "¿Confirmas aprobar la transferencia?",
+    RECHAZADA: "¿Confirmas rechazar la transferencia?",
+    ENVIADA: "¿Confirmas registrar la salida del almacén?",
+    RECIBIDA: "¿Confirmas registrar la entrada al almacén?",
+  };
+
   const handleCambiarEstado = async (id, nuevoEstado, payloadExtra = {}) => {
-    if (!window.confirm(`¿Confirmas registrar la ${nuevoEstado === "ENVIADA" ? "salida del almacén" : "entrada al almacén"}?`)) return false;
+    const pregunta = PREGUNTAS_ESTADO[nuevoEstado] || `¿Confirmas cambiar el estado a ${nuevoEstado}?`;
+    if (!window.confirm(pregunta)) return false;
     try {
       await cambiarEstadoTransferencia(id, nuevoEstado, payloadExtra);
       cargar();

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Layout from "../../components/layout/Layout";
 import Select from "../../components/ui/Select";
 import BotonesExportar from "../../components/ui/BotonesExportar";
+import Pagination from "../../components/ui/Pagination";
 import { reporteExistencias } from "../../api/reportes.api";
 import { listarAlmacenes, listarCategorias, listarMarcas } from "../../api/catalogos.api";
 import { formatearValor } from "../../utils/exportar";
@@ -100,6 +101,8 @@ export default function ReporteExistencias() {
   const [marcas, setMarcas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 100, total: 0 });
 
   useEffect(() => {
     listarAlmacenes().then((r) => setAlmacenes(r.data || [])).catch(() => setAlmacenes([]));
@@ -112,10 +115,11 @@ export default function ReporteExistencias() {
     setLoading(true);
     setError("");
     const params = Object.fromEntries(Object.entries(filtros).filter(([, v]) => v !== ""));
-    reporteExistencias(params)
+    reporteExistencias({ ...params, page, limit: 100 })
       .then((data) => {
         if (!vigente) return;
         setRegistros(data.data || []);
+        setPagination(data.pagination || { page: 1, limit: 100, total: 0 });
         setResumen(data.resumen || RESUMEN_VACIO);
         setPorAlmacen(data.por_almacen || []);
         setPorCategoria(data.por_categoria || []);
@@ -129,9 +133,13 @@ export default function ReporteExistencias() {
     return () => {
       vigente = false;
     };
-  }, [filtros]);
+  }, [filtros, page]);
 
-  const cambiar = (campo) => (e) => setFiltros({ ...filtros, [campo]: e.target.value });
+  const cambiar = (campo) => (e) => {
+    setFiltros({ ...filtros, [campo]: e.target.value });
+    setPage(1);
+  };
+  const paramsExportar = Object.fromEntries(Object.entries(filtros).filter(([, v]) => v !== ""));
 
   const subtitulo = useMemo(() => {
     const partes = [];
@@ -175,6 +183,7 @@ export default function ReporteExistencias() {
             nombreArchivo="existencias"
             columnas={COLUMNAS}
             filas={registros}
+            cargarFilas={() => reporteExistencias({ ...paramsExportar, todos: "true" }).then((r) => r.data)}
             resumen={tarjetas}
           />
         </div>
@@ -213,14 +222,21 @@ export default function ReporteExistencias() {
               <input
                 type="checkbox"
                 checked={filtros.solo_con_stock === "true"}
-                onChange={(e) =>
-                  setFiltros({ ...filtros, solo_con_stock: e.target.checked ? "true" : "" })
-                }
+                onChange={(e) => {
+                  setFiltros({ ...filtros, solo_con_stock: e.target.checked ? "true" : "" });
+                  setPage(1);
+                }}
               />
               Solo con stock
             </label>
             <div className="flex items-end">
-              <button className="btn-secondary w-full" onClick={() => setFiltros(FILTROS_INICIALES)}>
+              <button
+                className="btn-secondary w-full"
+                onClick={() => {
+                  setFiltros(FILTROS_INICIALES);
+                  setPage(1);
+                }}
+              >
                 Limpiar filtros
               </button>
             </div>
@@ -315,6 +331,7 @@ export default function ReporteExistencias() {
               </tbody>
             </table>
           </div>
+          <Pagination page={pagination.page} limit={pagination.limit} total={pagination.total} onChange={setPage} />
         </div>
       </div>
     </Layout>

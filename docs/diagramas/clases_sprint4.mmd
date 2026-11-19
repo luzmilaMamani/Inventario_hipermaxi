@@ -1,0 +1,177 @@
+%% HIP-276: diagrama de clases del Sprint 4 (integración con Ventas, dashboards de
+%% KPIs y de integraciones, reportes). Las clases «pendiente» son de historias
+%% aún no implementadas (RF73 publicación de stock, RF74 metas y semáforo).
+classDiagram
+direction LR
+
+class Producto {
+  +id_producto
+  +codigo
+  +codigo_barras
+  +nombre
+  +precio
+  +stock_minimo
+  +punto_reposicion
+}
+class Almacen {
+  +id_almacen
+  +codigo
+  +nombre
+  +tipo
+  +ciudad
+}
+class Lote {
+  +id_lote
+  +numero_lote
+  +fecha_vencimiento
+  +cantidad_actual
+  +estado
+}
+class Stock {
+  +cantidad
+  +cantidad_reservada
+}
+class MovimientoInventario {
+  +id_movimiento
+  +tipo_movimiento
+  +cantidad
+  +stock_anterior
+  +stock_nuevo
+  +referencia
+  +fecha_movimiento
+}
+class VentaRecibida {
+  +id_venta
+  +sucursal
+  +fecha_venta
+  +estado
+  +error
+}
+class VentaRecibidaDetalle {
+  +codigo_producto
+  +cantidad
+}
+class MensajeIntegracion {
+  +tipo_mensaje
+  +id_mensaje
+  +sistema
+  +estado
+  +latencia_ms
+  +intentos
+}
+class EventoIntegracion {
+  +tipo_evento
+  +payload
+  +estado
+  +intentos
+}
+class ProgramacionReporte {
+  +tipo_reporte
+  +frecuencia
+  +hora
+  +destinatarios
+  +proximo_envio
+}
+class BitacoraEnvioReporte {
+  +fecha_envio
+  +estado
+  +mensaje_error
+}
+
+class SuscriptorVentas {
+  +procesarMensajeVenta(data, messageId, publicado)
+  +validarMensajeVenta(data)
+  +aplicarMensaje(client, data, idMensaje)
+}
+class ServicioVentasRecibidas {
+  +registrarVentaConfirmada(client, venta, idMensaje)
+  +registrarVentaAnulada(client, venta, idMensaje)
+  +reprocesarVenta(client, idVenta)
+  -descontarVenta(client, venta)
+}
+class ServicioLotesFefo {
+  +obtenerLotesVigentes(client, producto, almacen)
+  +asignarLotes(client, linea)
+  +planificarFefo(lotes, cantidad)
+}
+class ServicioIndicadores {
+  +obtenerIndicadores(idAlmacen, desde, hasta)
+}
+class KPI {
+  +codigo
+  +nombre
+  +valor
+  +unidad
+  +enlace
+}
+class ServicioMetricasIntegracion {
+  +metricasPorSistema(desde, hasta)
+  +reprocesar(tipoMensaje, idMensaje)
+}
+class ServicioRotacion {
+  +analizarRotacion(filas, dias)
+  +clasificar(filas)
+}
+class ServicioEnvioReportes {
+  +calcularProximoEnvio(programacion, desde)
+  +ejecutarProgramacion(programacion)
+  +procesarPendientes()
+}
+class ReportesProgramables {
+  +generarReporte(tipo, parametros)
+}
+class ReportePdf {
+  +generarPdfReporte(reporte)
+}
+
+class OutboxEvento {
+  <<pendiente RF73>>
+  +tipo_evento
+  +payload
+  +estado
+}
+class PublicadorStock {
+  <<pendiente RF73>>
+  +publicarPendientes()
+}
+class KpiMeta {
+  <<pendiente RF74>>
+  +kpi
+  +meta
+  +umbral_amarillo
+}
+class KpiSnapshot {
+  <<pendiente RF74>>
+  +kpi
+  +mes
+  +valor
+}
+
+Producto "1" --> "*" Lote
+Almacen "1" --> "*" Lote
+Producto "1" --> "*" Stock
+Almacen "1" --> "*" Stock
+Lote "1" --> "*" MovimientoInventario
+VentaRecibida "1" *-- "1..*" VentaRecibidaDetalle
+VentaRecibidaDetalle "*" --> "0..1" Producto
+VentaRecibida "*" --> "0..1" Almacen
+ProgramacionReporte "1" *-- "*" BitacoraEnvioReporte
+
+SuscriptorVentas ..> MensajeIntegracion : registra (idempotencia)
+SuscriptorVentas ..> ServicioVentasRecibidas : usa
+ServicioVentasRecibidas ..> VentaRecibida : guarda
+ServicioVentasRecibidas ..> ServicioLotesFefo : FEFO
+ServicioVentasRecibidas ..> MovimientoInventario : VENTA / ANULACION_VENTA
+ServicioIndicadores ..> KPI : construye
+ServicioIndicadores ..> MovimientoInventario : agrega
+ServicioMetricasIntegracion ..> MensajeIntegracion : consulta / reprocesa
+ServicioMetricasIntegracion ..> EventoIntegracion : consulta
+ServicioMetricasIntegracion ..> SuscriptorVentas : reaplica
+ServicioRotacion ..> MovimientoInventario : stock histórico
+ServicioEnvioReportes ..> ProgramacionReporte : lee
+ServicioEnvioReportes ..> ReportesProgramables : genera
+ServicioEnvioReportes ..> ReportePdf : PDF
+ServicioEnvioReportes ..> BitacoraEnvioReporte : registra
+PublicadorStock ..> OutboxEvento : lee
+ServicioIndicadores ..> KpiMeta : (RF74)
+ServicioIndicadores ..> KpiSnapshot : (RF74)
