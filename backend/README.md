@@ -67,6 +67,26 @@ que alguna prueba carga.
 En GitHub, el flujo `.github/workflows/backend-pruebas.yml` corre
 `npm run test:cobertura` en cada push y pull request hacia `main`.
 
+## Pruebas de integración
+
+Corren contra el backend ya levantado y la base a la que ese backend está
+conectado. Usala solo con una base de prueba.
+
+1. Dejá el backend corriendo (`npm run dev`) apuntando a esa base.
+2. Desde `backend`:
+
+```bash
+npm run test:integracion
+```
+
+Variables opcionales: `API_URL` (por defecto `http://localhost:3000`),
+`API_USUARIO` y `API_PASSWORD` (por defecto el usuario `admin` del script
+`sql/seed_datos_prueba.sql`).
+
+La misma batería está en `postman/Chuby-Hipermaxi.postman_collection.json`.
+Importala en Postman junto con `postman/entorno-prueba.postman_environment.json`
+y ejecutá la colección. El login guarda el token para el resto de las peticiones.
+
 ## Login
 
 El script SQL crea este usuario inicial para pruebas:
