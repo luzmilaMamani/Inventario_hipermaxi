@@ -4,6 +4,10 @@ import api from "./axios";
 export const reporteExistencias = (params) =>
   api.get("/reportes/existencias", { params }).then((r) => r.data);
 
+// Stock bajo: disponible contra stock mínimo (RF13) y punto de reposición (RF15).
+export const reporteStockBajo = (params) =>
+  api.get("/reportes/stock-bajo", { params }).then((r) => r.data);
+
 // RF67: stock disponible de los productos en cada sucursal.
 export const reporteComparativoSucursales = (params) =>
   api.get("/reportes/comparativo-sucursales", { params }).then((r) => r.data);

@@ -36,6 +36,7 @@ import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
+import ReporteStockBajo from "./pages/reportes/ReporteStockBajo";
 import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes";
 import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
 import ReporteValorizacion from "./pages/reportes/ReporteValorizacion";
@@ -342,6 +343,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteExistencias />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes/stock-bajo"
+            element={
+              <ProtectedRoute>
+                <ReporteStockBajo />
               </ProtectedRoute>
             }
           />

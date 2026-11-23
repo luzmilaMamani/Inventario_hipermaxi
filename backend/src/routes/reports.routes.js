@@ -11,6 +11,7 @@ const { reporteRotacion } = require("../controllers/reporteRotacionController");
 const { reporteCumplimientoProveedores } = require("../controllers/reporteCumplimientoController");
 const { publicarStockBajo } = require("../controllers/stockBajoPubSubController");
 const { reporteExistencias } = require("../controllers/reporteExistenciasController");
+const { reporteStockBajo } = require("../controllers/reporteStockBajoController");
 const { reporteComparativoSucursales } = require("../controllers/reporteComparativoController");
 const { consultarIndicadores } = require("../controllers/indicadoresController");
 
@@ -34,29 +35,7 @@ router.get(
   }),
 );
 
-router.get(
-  "/stock-bajo",
-  asyncHandler(async (_req, res) => {
-    const result = await db.query(
-      `SELECT
-        p.id_producto,
-        p.codigo,
-        p.nombre,
-        a.id_almacen,
-        a.nombre AS almacen,
-        s.cantidad,
-        p.stock_minimo,
-        p.punto_reposicion
-      FROM stock s
-      INNER JOIN productos p ON p.id_producto = s.id_producto
-      INNER JOIN almacenes a ON a.id_almacen = s.id_almacen
-      WHERE s.cantidad <= NULLIF(p.punto_reposicion, 0)
-        OR s.cantidad <= p.stock_minimo
-      ORDER BY s.cantidad ASC`,
-    );
-    res.json({ ok: true, data: result.rows });
-  }),
-);
+router.get("/stock-bajo", reporteStockBajo);
 
 router.post("/stock-bajo/publicar", publicarStockBajo);
 
