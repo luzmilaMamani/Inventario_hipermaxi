@@ -418,6 +418,21 @@ SELECT id_mensaje, estado, intentos, message_id, ultimo_error
 FROM outbox_evento ORDER BY id_outbox DESC;
 ```
 
+#### Tablero de KPIs
+
+`GET /api/reportes/indicadores` devuelve los 7 indicadores con su valor del
+período, la meta de la sucursal (o la global si esa sucursal no tiene una), el
+semáforo y la serie de los 6 meses hasta la fecha final. Verde cumple la meta,
+amarillo se desvía hasta un 10 % y rojo se desvía más. Rotación, exactitud y
+cumplimiento buscan superar la meta; valor, quiebre, merma y riesgo buscan no
+pasarla.
+
+Los meses ya cerrados quedan en `kpi_snapshot`. El mes del período se vuelve a
+calcular. El gerente o el administrador cambian la meta con
+`PUT /api/reportes/indicadores/metas` (`codigo`, `meta`, `id_almacen` vacío para
+todas las sucursales). Hay que correr `npm run migrate` para crear `kpi_meta` y
+`kpi_snapshot`.
+
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 En cada línea de recepción, `cantidad_solicitada` es la cantidad esperada y
 `cantidad_recibida` la cantidad física recibida. El backend calcula la

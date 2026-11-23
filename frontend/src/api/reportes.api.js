@@ -24,6 +24,9 @@ export const reporteComparativoSucursales = (params) =>
 export const consultarIndicadores = (params) =>
   api.get("/reportes/indicadores", { params }).then((r) => r.data);
 
+export const guardarMetaKpi = (body) =>
+  api.put("/reportes/indicadores/metas", body).then((r) => r.data);
+
 // RF63: lotes vencidos y próximos a vencer, valorizados.
 export const reporteVencimientosLotes = (params) =>
   api.get("/reportes/vencimientos-lotes", { params }).then((r) => r.data);

@@ -15,7 +15,8 @@ const { reporteStockBajo } = require("../controllers/reporteStockBajoController"
 const { reporteAjustes } = require("../controllers/reporteAjustesController");
 const { reporteKardex } = require("../controllers/reporteKardexController");
 const { reporteComparativoSucursales } = require("../controllers/reporteComparativoController");
-const { consultarIndicadores } = require("../controllers/indicadoresController");
+const { consultarIndicadores, guardarMetaIndicador } = require("../controllers/indicadoresController");
+const { authorizeRoles } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -55,5 +56,6 @@ router.get("/cumplimiento-proveedores", reporteCumplimientoProveedores);
 router.get("/existencias", reporteExistencias);
 router.get("/comparativo-sucursales", reporteComparativoSucursales);
 router.get("/indicadores", consultarIndicadores);
+router.put("/indicadores/metas", authorizeRoles("GERENTE", "ADMINISTRADOR"), guardarMetaIndicador);
 
 module.exports = router;

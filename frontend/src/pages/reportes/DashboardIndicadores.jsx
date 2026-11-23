@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
 import Select from "../../components/ui/Select";
-import { consultarIndicadores } from "../../api/reportes.api";
+import { consultarIndicadores, guardarMetaKpi } from "../../api/reportes.api";
 import { listarAlmacenes } from "../../api/catalogos.api";
+import { useAuth } from "../../context/AuthContext";
 import { formatearValor } from "../../utils/exportar";
 
 // Colores de serie validados (azul / naranja, ΔE CVD 24.7).
@@ -25,15 +26,55 @@ const PERIODOS = [
   { value: "otro", label: "Personalizado" },
 ];
 
-const ICONOS = {
-  VALOR_INVENTARIO: "💰",
-  ROTACION: "🔁",
-  QUIEBRE_STOCK: "📉",
-  MERMA: "🗑️",
-  EXACTITUD: "🎯",
-  VALOR_RIESGO_VENCIMIENTO: "⏳",
-  CUMPLIMIENTO_PROVEEDORES: "🚚",
+const COLOR_SEMAFORO = {
+  verde: { punto: "bg-green-600", texto: "text-green-800", borde: "border-l-green-600", nombre: "Verde" },
+  amarillo: { punto: "bg-amber-400", texto: "text-amber-800", borde: "border-l-amber-400", nombre: "Amarillo" },
+  rojo: { punto: "bg-red-600", texto: "text-red-800", borde: "border-l-red-600", nombre: "Rojo" },
+  sin_datos: { punto: "bg-slate-300", texto: "text-slate-600", borde: "border-l-slate-300", nombre: "Sin datos" },
 };
+
+function textoMeta(kpi) {
+  if (kpi.meta === null || kpi.meta === undefined) return "Sin meta";
+  const numero = kpi.unidad === "Bs"
+    ? formatearValor(kpi.meta, "moneda")
+    : kpi.unidad === "%"
+      ? formatearValor(kpi.meta, "porcentaje")
+      : formatearValor(kpi.meta, "numero");
+  return kpi.sentido === "MAYOR" ? `Meta mínima ${numero}` : `Meta máxima ${numero}`;
+}
+
+function Tendencia({ puntos }) {
+  const numeros = puntos.map((p) => (p.valor === null || p.valor === undefined ? null : Number(p.valor)));
+  const validos = numeros.filter((v) => v !== null);
+  if (!validos.length) return <p className="mt-3 text-xs text-gray-400">Sin tendencia todavía</p>;
+  const min = Math.min(...validos);
+  const max = Math.max(...validos);
+  const ancho = 240;
+  const alto = 48;
+  const paso = ancho / Math.max(puntos.length - 1, 1);
+  const y = (v) => (max === min ? alto / 2 : alto - 6 - ((v - min) / (max - min)) * (alto - 12));
+  const coords = numeros
+    .map((v, i) => (v === null ? null : `${i * paso},${y(v)}`))
+    .filter(Boolean)
+    .join(" ");
+  const resumen = puntos
+    .map((p) => `${p.etiqueta}: ${p.valor === null ? "sin datos" : p.valor}`)
+    .join(", ");
+
+  return (
+    <svg viewBox={`0 0 ${ancho} ${alto + 16}`} className="mt-3 w-full" role="img" aria-label={`Tendencia de 6 meses. ${resumen}`}>
+      <polyline fill="none" stroke="#1769FF" strokeWidth="2" points={coords} />
+      {numeros.map((v, i) => v === null ? null : (
+        <circle key={puntos[i].etiqueta} cx={i * paso} cy={y(v)} r="2.5" fill="#1769FF" />
+      ))}
+      {puntos.map((p, i) => (
+        <text key={p.etiqueta} x={i * paso} y={alto + 13} fontSize="9" textAnchor={i === 0 ? "start" : i === puntos.length - 1 ? "end" : "middle"} fill="#64748b">
+          {p.etiqueta}
+        </text>
+      ))}
+    </svg>
+  );
+}
 
 function valorKpi(kpi) {
   if (kpi.valor === null || kpi.valor === undefined) return "Sin datos";
@@ -204,6 +245,12 @@ export default function DashboardIndicadores() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [verTabla, setVerTabla] = useState(false);
+  const [recarga, setRecarga] = useState(0);
+  const [editando, setEditando] = useState(null);
+  const [metaBorrador, setMetaBorrador] = useState("");
+  const [guardandoMeta, setGuardandoMeta] = useState(false);
+  const { user } = useAuth();
+  const puedeEditarMeta = user?.rol === "GERENTE" || user?.rol === "ADMINISTRADOR";
 
   useEffect(() => {
     listarAlmacenes().then((r) => setAlmacenes(r.data || [])).catch(() => setAlmacenes([]));
@@ -228,7 +275,7 @@ export default function DashboardIndicadores() {
     return () => {
       vigente = false;
     };
-  }, [rango, idAlmacen]);
+  }, [rango, idAlmacen, recarga]);
 
   const serie = useMemo(
     () =>
@@ -247,7 +294,7 @@ export default function DashboardIndicadores() {
         <div>
           <h1 className="text-2xl font-bold">Indicadores del inventario</h1>
           <p className="text-sm text-gray-500">
-            Estado del inventario de un vistazo · {nombreAlmacen} (RF62)
+            Valor, meta y semáforo de cada indicador · {nombreAlmacen}. La línea de cada tarjeta son los 6 meses hasta el fin del período.
           </p>
         </div>
 
@@ -295,29 +342,89 @@ export default function DashboardIndicadores() {
           {rango[0] > rango[1] && (
             <p className="mt-2 text-sm text-red-600">La fecha inicial no puede ser posterior a la final.</p>
           )}
+          <p className="mt-3 text-xs text-gray-500">
+            Verde cumple la meta. Amarillo se desvía hasta un 10 %. Rojo se desvía más. La sucursal y el período cambian todas las tarjetas.
+          </p>
         </div>
 
         {error && <p className="rounded bg-red-50 p-2 text-sm text-red-600">{error}</p>}
 
         <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 ${loading ? "opacity-60" : ""}`}>
-          {(datos?.kpis || []).map((kpi) => (
-            <Link
-              key={kpi.codigo}
-              to={kpi.enlace}
-              className="card group block !p-4 transition hover:border-brand-blue hover:shadow-md"
-              title={`${kpi.descripcion}. Clic para ver el reporte.`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-gray-600">{kpi.nombre}</p>
-                <span aria-hidden="true">{ICONOS[kpi.codigo]}</span>
-              </div>
-              <p className="mt-2 text-2xl font-bold text-brand-dark">{valorKpi(kpi)}</p>
-              <p className="mt-1 text-xs text-gray-500">{detalleKpi(kpi)}</p>
-              <p className="mt-2 text-xs font-semibold text-brand-blue opacity-0 transition group-hover:opacity-100">
-                Ver reporte →
-              </p>
-            </Link>
-          ))}
+          {(datos?.kpis || []).map((kpi) => {
+            const color = COLOR_SEMAFORO[kpi.semaforo] || COLOR_SEMAFORO.sin_datos;
+            const abierto = editando === kpi.codigo;
+            return (
+              <article
+                key={kpi.codigo}
+                className={`card border-l-4 !p-4 ${color.borde}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium text-gray-600">{kpi.nombre}</p>
+                  <span className={`mt-1 inline-flex h-3 w-3 shrink-0 rounded-full ${color.punto}`} title={color.nombre} />
+                </div>
+                <p className="mt-2 text-2xl font-bold text-brand-dark">{valorKpi(kpi)}</p>
+                <p className={`mt-1 text-xs font-semibold ${color.texto}`}>
+                  {color.nombre} · {textoMeta(kpi)}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">{detalleKpi(kpi)}</p>
+                {kpi.tendencia?.length > 0 && <Tendencia puntos={kpi.tendencia} />}
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <Link to={kpi.enlace} className="text-xs font-semibold text-brand-blue hover:underline">
+                    Ver reporte
+                  </Link>
+                  {puedeEditarMeta && !abierto && (
+                    <button
+                      type="button"
+                      className="text-xs text-gray-600 underline"
+                      onClick={() => {
+                        setEditando(kpi.codigo);
+                        setMetaBorrador(kpi.meta ?? "");
+                      }}
+                    >
+                      Editar meta
+                    </button>
+                  )}
+                </div>
+                {abierto && (
+                  <form
+                    className="mt-2 flex gap-2"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setGuardandoMeta(true);
+                      setError("");
+                      try {
+                        await guardarMetaKpi({
+                          codigo: kpi.codigo,
+                          meta: Number(metaBorrador),
+                          id_almacen: idAlmacen || null,
+                        });
+                        setEditando(null);
+                        setRecarga((n) => n + 1);
+                      } catch (err) {
+                        setError(err.response?.data?.message || "No se pudo guardar la meta");
+                      } finally {
+                        setGuardandoMeta(false);
+                      }
+                    }}
+                  >
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="input-field"
+                      aria-label={`Meta de ${kpi.nombre}`}
+                      value={metaBorrador}
+                      onChange={(e) => setMetaBorrador(e.target.value)}
+                      required
+                    />
+                    <button type="submit" className="btn-primary" disabled={guardandoMeta}>
+                      {guardandoMeta ? "..." : "Guardar"}
+                    </button>
+                  </form>
+                )}
+              </article>
+            );
+          })}
           {!datos && loading && <p className="text-sm text-gray-500">Calculando indicadores...</p>}
         </div>
 

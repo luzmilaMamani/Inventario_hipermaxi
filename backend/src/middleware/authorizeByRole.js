@@ -72,8 +72,12 @@ function autorizarPorRol(req, _res, next) {
   }
 
   // RF70: el gerente, aunque solo consulta, programa el envío de reportes por
-  // correo.
-  if (rol === "GERENTE" && coincideRuta(path, "/programaciones-reporte")) {
+  // correo y edita las metas de los indicadores.
+  if (
+    rol === "GERENTE" &&
+    (coincideRuta(path, "/programaciones-reporte") ||
+      (metodo === "PUT" && path === "/reportes/indicadores/metas"))
+  ) {
     return next();
   }
 
