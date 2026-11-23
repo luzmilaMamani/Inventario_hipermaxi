@@ -12,6 +12,10 @@ export const reporteStockBajo = (params) =>
 export const reporteAjustes = (params) =>
   api.get("/reportes/ajustes", { params }).then((r) => r.data);
 
+// Kardex valorizado de un producto por costo promedio ponderado.
+export const reporteKardex = (params) =>
+  api.get("/reportes/kardex", { params }).then((r) => r.data);
+
 // RF67: stock disponible de los productos en cada sucursal.
 export const reporteComparativoSucursales = (params) =>
   api.get("/reportes/comparativo-sucursales", { params }).then((r) => r.data);

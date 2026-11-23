@@ -38,6 +38,7 @@ import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
 import ReporteStockBajo from "./pages/reportes/ReporteStockBajo";
 import ReporteAjustes from "./pages/reportes/ReporteAjustes";
+import ReporteKardex from "./pages/reportes/ReporteKardex";
 import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes";
 import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
 import ReporteValorizacion from "./pages/reportes/ReporteValorizacion";
@@ -360,6 +361,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteAjustes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes/kardex"
+            element={
+              <ProtectedRoute>
+                <ReporteKardex />
               </ProtectedRoute>
             }
           />

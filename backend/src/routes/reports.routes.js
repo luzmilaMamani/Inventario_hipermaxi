@@ -13,6 +13,7 @@ const { publicarStockBajo } = require("../controllers/stockBajoPubSubController"
 const { reporteExistencias } = require("../controllers/reporteExistenciasController");
 const { reporteStockBajo } = require("../controllers/reporteStockBajoController");
 const { reporteAjustes } = require("../controllers/reporteAjustesController");
+const { reporteKardex } = require("../controllers/reporteKardexController");
 const { reporteComparativoSucursales } = require("../controllers/reporteComparativoController");
 const { consultarIndicadores } = require("../controllers/indicadoresController");
 
@@ -38,6 +39,7 @@ router.get(
 
 router.get("/stock-bajo", reporteStockBajo);
 router.get("/ajustes", reporteAjustes);
+router.get("/kardex", reporteKardex);
 
 router.post("/stock-bajo/publicar", publicarStockBajo);
 
