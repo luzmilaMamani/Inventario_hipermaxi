@@ -383,6 +383,41 @@ node scripts/simular-ventas.js confirmada V-1001 SUC-001 PRD-001:2 7770000000012
 node scripts/simular-ventas.js anulada V-1001 SUC-001
 ```
 
+#### Inventario publica el stock disponible a Ventas
+
+Después de cada entrada confirmada, salida, venta, anulación de venta, ajuste
+aplicado (o aprobado) y transferencia que cambia el disponible (reserva,
+liberación, envío o recepción), la misma transacción inserta una fila en
+`outbox_evento`. El mensaje, con
+atributo `tipo_evento = inventario.stock-actualizado`, es:
+
+```json
+{
+  "id_mensaje": "inventario.stock-actualizado:SALIDA:15:4:2",
+  "tipo_evento": "inventario.stock-actualizado",
+  "sucursal": "SUC-NORTE",
+  "codigo_producto": "PROD-001",
+  "stock_disponible": 8,
+  "fecha": "2026-11-23T05:00:00Z"
+}
+```
+
+`sucursal` es el código del almacén y `stock_disponible` resta lo reservado, lo
+vencido y lo que está en cuarentena. `id_mensaje` identifica el movimiento, el
+producto y la sucursal: si el movimiento se registra otra vez no se crea un
+segundo evento, y un reintento de publicación repite ese mismo id.
+
+El publicador corre al iniciar el backend y cada 5 segundos. Publica en
+`PUBSUB_TOPIC` (el tópico `ucb-sis323-sub-i`). Si Pub/Sub no responde, la fila
+pasa a `error` y se vuelve a intentar, sin borrarla, hasta quedar `enviado`.
+Con `PUBSUB_TOPIC` vacío se queda en `pendiente`. Un ajuste que espera
+aprobación no genera evento: el stock todavía no cambió.
+
+```sql
+SELECT id_mensaje, estado, intentos, message_id, ultimo_error
+FROM outbox_evento ORDER BY id_outbox DESC;
+```
+
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 En cada línea de recepción, `cantidad_solicitada` es la cantidad esperada y
 `cantidad_recibida` la cantidad física recibida. El backend calcula la

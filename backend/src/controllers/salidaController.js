@@ -3,6 +3,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 const { obtenerLotesVigentes, planificarFefo, asignarLotes } = require("../services/lotesFefo");
 const { asignarLotesVencidos, obtenerCantidadNoDisponible } = require("../services/lotesVencidos");
+const { registrarStockActualizado } = require("../services/stockVentasOutbox");
 
 async function generarNumeroSalida(client, motivo) {
   let prefijo = "SAL";
@@ -233,6 +234,13 @@ const crearSalida = asyncHandler(async (req, res) => {
          WHERE id_stock = $2`,
         [stockCorriente, stockActual.id_stock],
       );
+
+      await registrarStockActualizado(client, {
+        tipoMovimiento: "SALIDA",
+        idMovimiento: salida.id_salida,
+        idProducto: id_producto,
+        idAlmacen: id_almacen,
+      });
     }
 
     await client.query("COMMIT");

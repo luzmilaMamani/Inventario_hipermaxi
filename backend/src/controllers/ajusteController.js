@@ -7,6 +7,7 @@ const {
   validarAjusteEnLotes,
   aplicarAjusteEnLotes,
 } = require("../services/lotesMovimientos");
+const { registrarStockActualizado } = require("../services/stockVentasOutbox");
 
 const MOTIVOS = [
   "CONTEO_FISICO",
@@ -435,6 +436,15 @@ const crearAjuste = asyncHandler(async (req, res) => {
       ],
     );
 
+    if (estado === "APLICADO") {
+      await registrarStockActualizado(cliente, {
+        tipoMovimiento: "AJUSTE",
+        idMovimiento: ajuste.rows[0].id_ajuste,
+        idProducto,
+        idAlmacen,
+      });
+    }
+
     await cliente.query("COMMIT");
     const detalle = await db.query(`${CONSULTA_AJUSTE} WHERE a.id_ajuste = $1`, [
       ajuste.rows[0].id_ajuste,
@@ -544,6 +554,13 @@ const aprobarAjuste = asyncHandler(async (req, res) => {
        WHERE id_ajuste = $2`,
       [req.user.id_usuario, idAjuste],
     );
+
+    await registrarStockActualizado(cliente, {
+      tipoMovimiento: "AJUSTE",
+      idMovimiento: idAjuste,
+      idProducto,
+      idAlmacen,
+    });
 
     await cliente.query("COMMIT");
     const detalle = await db.query(`${CONSULTA_AJUSTE} WHERE a.id_ajuste = $1`, [idAjuste]);

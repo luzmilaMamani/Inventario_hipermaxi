@@ -5,6 +5,7 @@ const { aplicarMigraciones } = require("./utils/migrar");
 const { iniciarPublicadorStockBajo } = require("./services/stockBajoPubSub");
 const { iniciarRevisionVencimientos } = require("./services/alertasVencimiento");
 const { iniciarPublicadorEventos } = require("./services/eventosProduccion");
+const { iniciarPublicadorStockVentas } = require("./services/stockVentasOutbox");
 const { iniciarSuscripcionesProduccion } = require("./services/integracionProduccion");
 const { iniciarEnvioReportes } = require("./services/envioReportes");
 
@@ -15,6 +16,7 @@ aplicarMigraciones(db.pool)
       iniciarPublicadorStockBajo();
       iniciarRevisionVencimientos();
       iniciarPublicadorEventos();
+      iniciarPublicadorStockVentas();
       iniciarSuscripcionesProduccion();
       iniciarEnvioReportes();
     });
