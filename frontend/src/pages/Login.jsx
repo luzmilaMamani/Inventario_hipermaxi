@@ -65,6 +65,11 @@ export default function Login() {
             {loading ? "Ingresando..." : "Ingresar"}
           </button>
         </form>
+        <p className="mt-4 text-center text-sm text-gray-500">
+          <a className="text-brand-blue hover:underline" href="/manual/manual-usuario.pdf" download>
+            Descargar el manual de usuario (PDF)
+          </a>
+        </p>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 // Auth & Dashboard
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import ManualUsuario from "./pages/ayuda/ManualUsuario";
 
 // Módulos Base
 import ListaProductos from "./pages/productos/ListaProductos";
@@ -69,6 +70,14 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route
+            path="/manual"
+            element={
+              <ProtectedRoute>
+                <ManualUsuario />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/"
             element={
