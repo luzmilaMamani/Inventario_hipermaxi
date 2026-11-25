@@ -1,6 +1,7 @@
 const { asignarLotes } = require("./lotesFefo");
 const { obtenerCantidadNoDisponible } = require("./lotesVencidos");
 const { bloquearLotes, sumarALote } = require("./lotesMovimientos");
+const { registrarStockActualizado } = require("./stockVentasOutbox");
 
 // RF72 (HIP-273): efecto en el stock de las ventas que llegan del SI de Ventas.
 //  - venta.confirmada: salida de stock por FEFO (movimiento VENTA).
@@ -145,6 +146,12 @@ async function descontarVenta(client, venta) {
       "UPDATE stock SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id_stock = $2",
       [saldo, stock.id_stock],
     );
+    await registrarStockActualizado(client, {
+      tipoMovimiento: "VENTA",
+      idMovimiento: venta.id_venta_recibida,
+      idProducto,
+      idAlmacen,
+    });
   }
 
   if (faltantes.length) throw new ErrorVenta(`Stock insuficiente: ${faltantes.join("; ")}`);
@@ -246,6 +253,12 @@ async function registrarVentaAnulada(client, mensaje, idMensaje) {
         "UPDATE stock SET cantidad = $1, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id_stock = $2",
         [saldo, stockRows[0].id_stock],
       );
+      await registrarStockActualizado(client, {
+        tipoMovimiento: "ANULACION_VENTA",
+        idMovimiento: venta.id_venta_recibida,
+        idProducto,
+        idAlmacen,
+      });
     }
   }
 

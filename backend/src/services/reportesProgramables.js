@@ -90,25 +90,27 @@ const TIPOS = {
     async generar(parametros) {
       const idAlmacen = idAlmacenDe(parametros);
       const { rows } = await db.query(
-        `SELECT producto_codigo, producto, almacen, cantidad_disponible, stock_minimo
-         FROM vw_reporte_existencias
-         WHERE estado_producto = 'ACTIVO' AND cantidad_disponible <= stock_minimo
-           AND ($1::int IS NULL OR id_almacen = $1)
-         ORDER BY cantidad_disponible / NULLIF(stock_minimo, 0) NULLS LAST, producto`,
+        `SELECT producto_codigo, producto, almacen, cantidad_disponible,
+                stock_minimo, punto_reposicion, cantidad_sugerida
+         FROM vw_reporte_stock_bajo
+         WHERE ($1::int IS NULL OR id_almacen = $1)
+         ORDER BY bajo_minimo DESC, cantidad_disponible ASC, producto ASC`,
         [idAlmacen],
       );
       return {
         titulo: "Productos con stock bajo",
         subtitulo: await nombreAlmacen(idAlmacen),
         columnas: [
-          { key: "producto_codigo", label: "Código", ancho: 70 },
-          { key: "producto", label: "Producto", ancho: 180 },
-          { key: "almacen", label: "Almacén", ancho: 120 },
-          { key: "cantidad_disponible", label: "Disponible", tipo: "numero" },
+          { key: "producto_codigo", label: "Código", ancho: 60 },
+          { key: "producto", label: "Producto", ancho: 140 },
+          { key: "almacen", label: "Almacén", ancho: 90 },
+          { key: "cantidad_disponible", label: "Disp.", tipo: "numero" },
           { key: "stock_minimo", label: "Mínimo", tipo: "numero" },
+          { key: "punto_reposicion", label: "Reposición", tipo: "numero" },
+          { key: "cantidad_sugerida", label: "A reponer", tipo: "numero" },
         ],
         filas: rows,
-        resumen: [{ label: "Productos bajo mínimo", valor: rows.length, tipo: "numero" }],
+        resumen: [{ label: "Productos a reponer", valor: rows.length, tipo: "numero" }],
       };
     },
   },

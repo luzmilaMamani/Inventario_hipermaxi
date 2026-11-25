@@ -59,6 +59,13 @@ function MenuMovil({ modulos, avisos, moduloActivo, rutaActiva, onElegir }) {
       >
         🏠 Inicio
       </Link>
+      <Link
+        to="/manual"
+        onClick={onElegir}
+        className="block rounded-lg px-3 py-2 font-medium text-white hover:bg-slate-800"
+      >
+        📖 Manual
+      </Link>
       {modulos.map((modulo) => (
         <details key={modulo.id} open={modulo.id === moduloActivo?.id} className="group">
           <summary className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 font-medium text-white hover:bg-slate-800">
@@ -187,6 +194,13 @@ export default function Navbar({ modulos, ubicacion, avisos }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
+          <Link
+            to="/manual"
+            onClick={cerrarMenus}
+            className="hidden rounded-lg px-2 py-1.5 text-sm text-brand-navMuted transition-colors hover:bg-slate-800 hover:text-white sm:inline"
+          >
+            Manual
+          </Link>
           <button
             type="button"
             onClick={() => {

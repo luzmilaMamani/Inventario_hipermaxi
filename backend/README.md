@@ -67,6 +67,26 @@ que alguna prueba carga.
 En GitHub, el flujo `.github/workflows/backend-pruebas.yml` corre
 `npm run test:cobertura` en cada push y pull request hacia `main`.
 
+## Pruebas de integración
+
+Corren contra el backend ya levantado y la base a la que ese backend está
+conectado. Usala solo con una base de prueba.
+
+1. Dejá el backend corriendo (`npm run dev`) apuntando a esa base.
+2. Desde `backend`:
+
+```bash
+npm run test:integracion
+```
+
+Variables opcionales: `API_URL` (por defecto `http://localhost:3000`),
+`API_USUARIO` y `API_PASSWORD` (por defecto el usuario `admin` del script
+`sql/seed_datos_prueba.sql`).
+
+La misma batería está en `postman/Chuby-Hipermaxi.postman_collection.json`.
+Importala en Postman junto con `postman/entorno-prueba.postman_environment.json`
+y ejecutá la colección. El login guarda el token para el resto de las peticiones.
+
 ## Login
 
 El script SQL crea este usuario inicial para pruebas:
@@ -369,6 +389,56 @@ procesamiento que el suscriptor; si faltan `id_mensaje`, `tipo_evento` o `fecha`
 completan (`tipo_evento` por defecto es `venta.confirmada`). Responde 200 si se
 procesó o era repetido, 409 si es un error de negocio reprocesable y 400 si el
 formato es inválido.
+
+#### Inventario publica el stock disponible a Ventas
+
+Después de cada entrada confirmada, salida, venta, anulación de venta, ajuste
+aplicado (o aprobado) y transferencia que cambia el disponible (reserva,
+liberación, envío o recepción), la misma transacción inserta una fila en
+`outbox_evento`. El mensaje, con
+atributo `tipo_evento = inventario.stock-actualizado`, es:
+
+```json
+{
+  "id_mensaje": "inventario.stock-actualizado:SALIDA:15:4:2",
+  "tipo_evento": "inventario.stock-actualizado",
+  "sucursal": "SUC-NORTE",
+  "codigo_producto": "PROD-001",
+  "stock_disponible": 8,
+  "fecha": "2026-11-23T05:00:00Z"
+}
+```
+
+`sucursal` es el código del almacén y `stock_disponible` resta lo reservado, lo
+vencido y lo que está en cuarentena. `id_mensaje` identifica el movimiento, el
+producto y la sucursal: si el movimiento se registra otra vez no se crea un
+segundo evento, y un reintento de publicación repite ese mismo id.
+
+El publicador corre al iniciar el backend y cada 5 segundos. Publica en
+`PUBSUB_TOPIC` (el tópico `ucb-sis323-sub-i`). Si Pub/Sub no responde, la fila
+pasa a `error` y se vuelve a intentar, sin borrarla, hasta quedar `enviado`.
+Con `PUBSUB_TOPIC` vacío se queda en `pendiente`. Un ajuste que espera
+aprobación no genera evento: el stock todavía no cambió.
+
+```sql
+SELECT id_mensaje, estado, intentos, message_id, ultimo_error
+FROM outbox_evento ORDER BY id_outbox DESC;
+```
+
+#### Tablero de KPIs
+
+`GET /api/reportes/indicadores` devuelve los 7 indicadores con su valor del
+período, la meta de la sucursal (o la global si esa sucursal no tiene una), el
+semáforo y la serie de los 6 meses hasta la fecha final. Verde cumple la meta,
+amarillo se desvía hasta un 10 % y rojo se desvía más. Rotación, exactitud y
+cumplimiento buscan superar la meta; valor, quiebre, merma y riesgo buscan no
+pasarla.
+
+Los meses ya cerrados quedan en `kpi_snapshot`. El mes del período se vuelve a
+calcular. El gerente o el administrador cambian la meta con
+`PUT /api/reportes/indicadores/metas` (`codigo`, `meta`, `id_almacen` vacío para
+todas las sucursales). Hay que correr `npm run migrate` para crear `kpi_meta` y
+`kpi_snapshot`.
 
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 En cada línea de recepción, `cantidad_solicitada` es la cantidad esperada y

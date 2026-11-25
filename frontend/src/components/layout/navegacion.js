@@ -72,6 +72,9 @@ export const MODULOS = [
     destinos: [
       { to: "/reportes/indicadores", label: "Indicadores", icon: "🎯", descripcion: "Tablero de KPIs: valor, rotación, quiebre, merma y más" },
       { to: "/reportes/existencias", label: "Existencias", icon: "📦", descripcion: "Stock y valor por almacén, categoría o marca" },
+      { to: "/reportes/stock-bajo", label: "Stock bajo", icon: "📉", descripcion: "Productos en mínimo o punto de reposición y cuánto reponer" },
+      { to: "/reportes/ajustes", label: "Ajustes", icon: "📝", descripcion: "Quién modificó el stock, por qué y quién lo aprobó" },
+      { to: "/reportes/kardex", label: "Kardex", icon: "📒", descripcion: "Movimientos de un producto con costo promedio y saldo valorizado" },
       { to: "/reportes/movimientos", label: "Movimientos", icon: "🔄", descripcion: "Entradas, salidas, transferencias y ajustes por período" },
       { to: "/reportes/rotacion", label: "Rotación", icon: "🔁", descripcion: "Productos de alta y baja rotación y días de inventario" },
       { to: "/reportes/valorizacion", label: "Valorización", icon: "💰", descripcion: "Capital invertido por sucursal, almacén y categoría" },

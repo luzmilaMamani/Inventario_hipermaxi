@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Manual de usuario — Chuby Hipermaxi</title>
+  <style>
+    :root {
+      --nav: #101D35;
+      --azul: #1769FF;
+      --naranja: #F47B20;
+      --texto: #15233D;
+      --suave: #5c6b82;
+      --linea: #e3ebf5;
+      --fondo: #f5f8fd;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--texto);
+      font-family: "Segoe UI", Inter, system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.55;
+      background: #eef3f9;
+    }
+    .hoja {
+      max-width: 920px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px 48px 64px;
+    }
+    header.portada {
+      background: var(--nav);
+      color: white;
+      margin: -40px -48px 32px;
+      padding: 48px 48px 36px;
+    }
+    header.portada .marca { color: var(--naranja); font-weight: 800; letter-spacing: .02em; margin: 0; }
+    header.portada h1 { margin: 8px 0 0; font-size: 34px; line-height: 1.15; }
+    header.portada p { color: #c5d4ea; margin: 10px 0 0; max-width: 38rem; }
+    h2 {
+      font-size: 22px;
+      margin: 36px 0 8px;
+      padding-top: 8px;
+      border-top: 3px solid var(--naranja);
+    }
+    h3 { font-size: 17px; margin: 22px 0 6px; }
+    p { margin: 8px 0; }
+    a { color: var(--azul); }
+    ol, ul { margin: 8px 0 8px 1.2rem; padding: 0; }
+    li { margin: 4px 0; }
+    .indice { columns: 2; gap: 28px; margin-top: 12px; }
+    .indice a { text-decoration: none; }
+    .indice li { break-inside: avoid; }
+    .nota {
+      background: #fff7ed;
+      border-left: 4px solid var(--naranja);
+      padding: 10px 14px;
+      margin: 12px 0;
+    }
+    .paso { font-weight: 650; }
+    figure.captura { margin: 14px 0 18px; break-inside: avoid; }
+    figcaption {
+      font-size: 12px;
+      color: var(--suave);
+      margin-bottom: 6px;
+    }
+    .pantalla {
+      border: 1px solid #d5e0f0;
+      border-radius: 10px;
+      overflow: hidden;
+      background: white;
+      font-size: 11px;
+      line-height: 1.35;
+      box-shadow: 0 8px 20px rgba(16, 29, 53, .06);
+    }
+    .barra {
+      background: var(--nav);
+      color: #AABBD4;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+    }
+    .barra .logo { color: var(--naranja); font-weight: 800; margin-right: 6px; }
+    .chip {
+      background: var(--azul);
+      color: white;
+      border-radius: 6px;
+      padding: 3px 8px;
+    }
+    .cuerpo { background: var(--fondo); padding: 12px 14px 14px; }
+    .fila-titulo { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .fila-titulo h4 { margin: 0; font-size: 15px; color: var(--texto); }
+    .btn {
+      background: var(--azul);
+      color: white;
+      border-radius: 7px;
+      padding: 4px 8px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .btn.sec { background: white; color: var(--texto); border: 1px solid #cbd5e1; }
+    .filtros { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+    .caja {
+      background: white;
+      border: 1px solid #dbe4f0;
+      border-radius: 6px;
+      padding: 4px 8px;
+      color: #64748b;
+      min-width: 90px;
+    }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th { text-align: left; color: #64748b; font-weight: 650; border-bottom: 1px solid #e5e7eb; padding: 5px 6px; }
+    td { padding: 5px 6px; border-bottom: 1px solid #f1f5f9; }
+    .der { text-align: right; }
+    .badge { border-radius: 999px; padding: 1px 7px; font-weight: 700; font-size: 10px; }
+    .ok { background: #dcfce7; color: #166534; }
+    .aviso { background: #fef3c7; color: #92400e; }
+    .malo { background: #fee2e2; color: #991b1b; }
+    .info { background: #dbeafe; color: #1e40af; }
+    .tarjeta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .tarjeta div { background: white; border: 1px solid #dbe4f0; border-radius: 8px; padding: 8px; }
+    .tarjeta strong { display: block; font-size: 14px; }
+    .faq details { border-bottom: 1px solid var(--linea); padding: 8px 0; }
+    .faq summary { cursor: pointer; font-weight: 650; }
+    .faq p { margin: 6px 0 4px; }
+    footer {
+      margin-top: 36px;
+      color: var(--suave);
+      font-size: 12px;
+      border-top: 1px solid var(--linea);
+      padding-top: 12px;
+    }
+    @media print {
+      body { background: white; }
+      .hoja { max-width: none; padding: 0; }
+      header.portada { margin: 0 0 18px; padding: 0 0 16px; }
+      a { color: inherit; text-decoration: none; }
+      h2 { break-after: avoid; }
+      h3, figure, .nota { break-inside: avoid; }
+    }
+    @page { size: A4; margin: 14mm 14mm 16mm; }
+  </style>
+</head>
+<body>
+  <article class="hoja">
+    <header class="portada">
+      <p class="marca">Chuby Hipermaxi</p>
+      <h1>Manual de usuario</h1>
+      <p>Guía para usar el sistema de inventarios: catálogo, stock, entradas, salidas, transferencias, conteos, vencimientos y reportes.</p>
+    </header>
+
+    <p>Este manual está pensado para quien trabaja en almacén, sucursal o supervisión. No hace falta saber de sistemas. Cada sección dice en qué menú está la pantalla, qué se completa y qué queda registrado.</p>
+    <p class="nota">Las figuras muestran la pantalla de cada módulo, con los mismos botones y columnas del sistema y con datos de ejemplo para que se reconozca el lugar donde hay que hacer clic.</p>
+
+    <h2 id="contenido">Contenido</h2>
+    <ol class="indice">
+      <li><a href="#entrar">Entrar y moverse</a></li>
+      <li><a href="#productos">Productos</a></li>
+      <li><a href="#clasificacion">Clasificación</a></li>
+      <li><a href="#almacenes">Almacenes</a></li>
+      <li><a href="#ubicaciones">Ubicaciones</a></li>
+      <li><a href="#codigo">Código de barras y etiquetas</a></li>
+      <li><a href="#stock">Consulta de stock</a></li>
+      <li><a href="#entradas">Entradas (recepciones)</a></li>
+      <li><a href="#salidas">Salidas</a></li>
+      <li><a href="#transferencias">Transferencias</a></li>
+      <li><a href="#devoluciones">Devoluciones y solicitudes</a></li>
+      <li><a href="#inventario">Inventario físico</a></li>
+      <li><a href="#vencimientos">Vencimientos</a></li>
+      <li><a href="#ajustes">Ajustes y alertas de stock</a></li>
+      <li><a href="#reportes">Reportes</a></li>
+      <li><a href="#faq">Preguntas frecuentes</a></li>
+    </ol>
+
+    <h2 id="entrar">1. Entrar y moverse</h2>
+    <ol>
+      <li>Abre el sistema y escribe tu <strong>usuario</strong> y tu <strong>contraseña</strong>. Pulsa <strong>Ingresar</strong>.</li>
+      <li>El inicio saluda con tu nombre y muestra accesos rápidos: buscar por código, consultar stock, nueva recepción, salidas y transferencias.</li>
+      <li>La barra superior agrupa las pantallas en <strong>Catálogo</strong>, <strong>Stock</strong>, <strong>Movimientos</strong>, <strong>Control</strong> y <strong>Reportes</strong>. Abre un grupo y elige la pantalla.</li>
+      <li>Para ir directo a una pantalla, pulsa <strong>Buscar pantalla</strong> o las teclas <strong>Ctrl + K</strong> y escribe, por ejemplo, “kardex” o “vencidos”.</li>
+      <li>Para salir, usa <strong>Salir</strong> en la esquina superior derecha.</li>
+    </ol>
+    <p>Si aparece el aviso “Modo de solo lectura”, tu rol puede consultar y exportar, y no registrar movimientos. Si no ves un botón (por ejemplo <em>Nuevo producto</em>), esa acción está reservada a otro rol. El alta de productos y de almacenes la hace el administrador.</p>
+
+    <h2 id="productos">2. Productos</h2>
+    <p>Menú <strong>Catálogo → Productos</strong>. Aquí se consulta el catálogo y, si eres administrador, se dan de alta o se editan los productos.</p>
+    <figure class="captura">
+      <figcaption>Pantalla de Productos: búsqueda, filtros y listado.</figcaption>
+      <div class="pantalla">
+        <div class="barra"><span class="logo">Chuby Hipermaxi</span><span>Inicio</span><span class="chip">Catálogo</span><span>Stock</span><span>Movimientos</span><span>Reportes</span></div>
+        <div class="cuerpo">
+          <div class="fila-titulo"><h4>Productos</h4><span class="btn">+ Nuevo producto</span></div>
+          <div class="filtros"><span class="caja">Buscar nombre o código</span><span class="caja">Categoría</span><span class="caja">Marca</span><span class="caja">Estado</span></div>
+          <table>
+            <thead><tr><th>Código</th><th>Nombre</th><th>Categoría</th><th class="der">Precio</th><th class="der">Mínimo</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>PROD-001</td><td>Aceite vegetal 900 ml</td><td>Abarrotes</td><td class="der">18.50</td><td class="der">20</td><td><span class="badge ok">ACTIVO</span></td></tr>
+              <tr><td>PROD-014</td><td>Leche entera 1 L</td><td>Lácteos</td><td class="der">7.00</td><td class="der">40</td><td><span class="badge ok">ACTIVO</span></td></tr>
+              <tr><td>PROD-008</td><td>Arroz 1 kg</td><td>Abarrotes</td><td class="der">9.20</td><td class="der">30</td><td><span class="badge aviso">INACTIVO</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </figure>
+    <h3>Dar de alta un producto</h3>
+    <ol>
+      <li>Pulsa <strong>+ Nuevo producto</strong>.</li>
+      <li>Completa código, nombre, categoría y unidad de conteo. Esos campos son obligatorios.</li>
+      <li>Si el producto tiene código de barras, escríbelo. Sirve para la búsqueda por escáner y para las etiquetas.</li>
+      <li>Indica el precio por unidad en bolivianos. Ese precio se usa al valorizar el stock y los movimientos.</li>
+      <li>Si lo conoces, carga unidades por palé, stock mínimo, stock máximo y punto de reposición. El mínimo y el punto de reposición alimentan las alertas y el reporte de stock bajo. Un umbral en 0 no genera alerta.</li>
+      <li>Marca <strong>controla vencimiento</strong> si el producto se guarda por lote y fecha. También puedes marcar perecible o que requiere refrigeración.</li>
+      <li>Pulsa <strong>Guardar</strong>.</li>
+    </ol>
+    <p>Para corregir un producto, usa <strong>Editar</strong> en la fila. Para dejar de usarlo, cambia el estado a <strong>INACTIVO</strong> o <strong>DESCONTINUADO</strong> e indica el motivo. El historial del producto se conserva.</p>
+    <p>La búsqueda acepta nombre, código o código de barras. Puedes filtrar por categoría, subcategoría, marca, estado y si controla vencimiento.</p>
+
+    <h2 id="clasificacion">3. Clasificación</h2>
+    <p>Menú <strong>Catálogo → Clasificación</strong>. Tiene tres pestañas: <strong>Categorías</strong>, <strong>Subcategorías</strong> y <strong>Marcas</strong>.</p>
+    <ol>
+      <li>Crea primero la categoría (por ejemplo, Abarrotes o Lácteos).</li>
+      <li>En Subcategorías elige la categoría padre y agrega el detalle (Aceites, Arroces).</li>
+      <li>En Marcas registra las marcas que luego elegirás en el producto.</li>
+    </ol>
+    <p>El empleado de almacén no ve esta pantalla. Si una categoría ya no se usa, desactívala en lugar de borrarla: los productos ya registrados siguen ligados a ella.</p>
+
+    <h2 id="almacenes">4. Almacenes</h2>
+    <p>Menú <strong>Catálogo → Almacenes</strong>. Un almacén es la sucursal o el depósito donde vive el stock. El alta la hace el administrador.</p>
+    <figure class="captura">
+      <figcaption>Pantalla de Almacenes: código, tipo, ciudad y estado.</figcaption>
+      <div class="pantalla">
+        <div class="barra"><span class="logo">Chuby Hipermaxi</span><span>Inicio</span><span class="chip">Catálogo</span><span>Stock</span><span>Movimientos</span></div>
+        <div class="cuerpo">
+          <div class="fila-titulo"><h4>Almacenes</h4><span class="btn">+ Nuevo almacén</span></div>
+          <div class="filtros"><span class="caja">Buscar</span><span class="caja">Tipo</span><span class="caja">Estado</span></div>
+          <table>
+            <thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th><th>Ciudad</th><th class="der">Stock / capacidad</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>ALM-CENT</td><td>Almacén Central</td><td>Central</td><td>Santa Cruz</td><td class="der">1 240 / 5 000</td><td><span class="badge ok">Activo</span></td></tr>
+              <tr><td>SUC-NORTE</td><td>Sucursal Norte</td><td>Sucursal</td><td>Santa Cruz</td><td class="der">860 / 2 000</td><td><span class="badge ok">Activo</span></td></tr>
+              <tr><td>DEP-01</td><td>Depósito frío</td><td>Depósito</td><td>Santa Cruz</td><td class="der">210 / 800</td><td><span class="badge aviso">Inactivo</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </figure>
+    <ol>
+      <li>Pulsa <strong>+ Nuevo almacén</strong>.</li>
+      <li>Escribe el código (por ejemplo ALM-001) y el nombre.</li>
+      <li>Elige el tipo: <strong>Central</strong>, <strong>Sucursal</strong> o <strong>Depósito</strong>.</li>
+      <li>Completa dirección, ciudad y teléfono si los tienes.</li>
+      <li>Deja marcado <strong>Activo</strong> y guarda.</li>
+    </ol>
+    <p>Desde la fila puedes abrir el detalle del almacén para ver su stock y editar los datos. Un almacén inactivo deja de ofrecerse al registrar movimientos nuevos.</p>
+
+    <h2 id="ubicaciones">5. Ubicaciones</h2>
+    <p>Menú <strong>Catálogo → Ubicaciones</strong>. Indica en qué zona, pasillo, estante y nivel está la mercadería dentro de un almacén.</p>
+    <ol>
+      <li>Pulsa <strong>Nueva ubicación</strong>.</li>
+      <li>Elige el almacén.</li>
+      <li>Completa zona, pasillo, estante y nivel. Los textos de ejemplo son Zona A, P1, E1 y N1.</li>
+      <li>Elige el tipo: <strong>Normal</strong> o <strong>Frío</strong>.</li>
+      <li>Guarda. Luego, al consultar un producto, podrás ver en qué ubicación está.</li>
+    </ol>
+
+    <h2 id="codigo">6. Código de barras y etiquetas</h2>
+    <h3>Buscar por código</h3>
+    <p>Menú <strong>Catálogo → Buscar por código</strong>, o el acceso rápido del inicio. Coloca el cursor en el campo, escanea o escribe el código y confirma. El sistema muestra el producto, el stock disponible y la ubicación en cada almacén.</p>
+    <h3>Imprimir etiquetas</h3>
+    <p>Menú <strong>Catálogo → Imprimir etiquetas</strong>. Elige los productos, la cantidad de etiquetas y genera la hoja con código de barras y precio. Esta pantalla está disponible para administrador y encargado de almacén.</p>
+
+    <h2 id="stock">7. Consulta de stock</h2>
+    <p>Menú <strong>Stock → Consulta de stock</strong>. Muestra cuánto hay de cada producto en cada almacén: cantidad total, reservada y disponible.</p>
+    <ol>
+      <li>Filtra por almacén, categoría o escribe el producto.</li>
+      <li>Abre una fila para ver el historial de ese producto en el almacén.</li>
+      <li>La cantidad disponible es la que se puede vender o transferir. No cuenta lo reservado, lo vencido ni lo que está en cuarentena.</li>
+    </ol>
+
+    <h2 id="entradas">8. Entradas (recepciones)</h2>
+    <p>Menú <strong>Movimientos → Recepciones</strong>. Una recepción es la mercadería que llega del proveedor y entra al stock.</p>
+    <figure class="captura">
+      <figcaption>Pantalla de Recepciones: cada ingreso queda con número, proveedor y unidades.</figcaption>
+      <div class="pantalla">
+        <div class="barra"><span class="logo">Chuby Hipermaxi</span><span>Inicio</span><span>Catálogo</span><span>Stock</span><span class="chip">Movimientos</span></div>
+        <div class="cuerpo">
+          <div class="fila-titulo"><h4>Recepciones de mercadería</h4><span class="btn">+ Registrar recepción</span></div>
+          <table>
+            <thead><tr><th>Número</th><th>Fecha</th><th>Proveedor</th><th>Almacén</th><th class="der">Productos</th><th class="der">Unidades</th></tr></thead>
+            <tbody>
+              <tr><td>REC-1042</td><td>22/11/2026</td><td>Distribuidora Oriental</td><td>Almacén Central</td><td class="der">3</td><td class="der">480</td></tr>
+              <tr><td>REC-1041</td><td>21/11/2026</td><td>Lácteos del Valle</td><td>Sucursal Norte</td><td class="der">1</td><td class="der">120</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </figure>
+    <h3>Registrar una recepción</h3>
+    <ol>
+      <li>Pulsa <strong>+ Registrar recepción</strong> (también está en el inicio como “Nueva recepción”).</li>
+      <li>Elige el <strong>almacén</strong> que recibe, el <strong>proveedor</strong> y la <strong>fecha de recepción</strong>.</li>
+      <li>Si tienes factura o remisión, anótala en la referencia. Las observaciones son opcionales.</li>
+      <li>Agrega cada producto. Indica la cantidad esperada (lo que decía el documento) y la cantidad recibida (lo que contaste).</li>
+      <li>Si el producto controla vencimiento, carga el número de lote y la fecha de vencimiento.</li>
+      <li>Pulsa <strong>Registrar recepción y verificar</strong>.</li>
+    </ol>
+    <p>Si lo esperado y lo recibido coinciden, la línea queda conforme. Si no, queda con diferencia y puedes consultarla en el detalle de esa recepción. El stock del almacén sube por la cantidad recibida, no por la esperada.</p>
+
+    <h2 id="salidas">9. Salidas</h2>
+    <p>Menú <strong>Movimientos → Salidas</strong>. Una salida baja el stock. Úsala para ventas, pérdidas, daños, vencimientos y otros descuentos.</p>
+    <figure class="captura">
+      <figcaption>Pantalla de Salidas: motivo, almacén y valor de lo que salió.</figcaption>
+      <div class="pantalla">
+        <div class="barra"><span class="logo">Chuby Hipermaxi</span><span>Inicio</span><span>Stock</span><span class="chip">Movimientos</span><span>Reportes</span></div>
+        <div class="cuerpo">
+          <div class="fila-titulo"><h4>Salidas de inventario</h4><span class="btn">+ Nueva salida</span></div>
+          <table>
+            <thead><tr><th>Número</th><th>Fecha</th><th>Motivo</th><th>Almacén</th><th class="der">Ítems</th><th class="der">Valor</th></tr></thead>
+            <tbody>
+              <tr><td>SAL-330</td><td>22/11/2026</td><td>Venta</td><td>Sucursal Norte</td><td class="der">4</td><td class="der">186.00</td></tr>
+              <tr><td>SAL-329</td><td>22/11/2026</td><td>Daño</td><td>Almacén Central</td><td class="der">1</td><td class="der">18.50</td></tr>
+              <tr><td>SAL-328</td><td>21/11/2026</td><td>Vencimiento</td><td>Sucursal Norte</td><td class="der">2</td><td class="der">42.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </figure>
+    <ol>
+      <li>Entra a <strong>Nueva salida</strong>.</li>
+      <li>Elige el almacén y el motivo: <strong>Venta</strong>, <strong>Pérdida</strong>, <strong>Daño</strong>, <strong>Vencimiento</strong>, <strong>Ajuste</strong>, <strong>Transferencia</strong> u <strong>Otro</strong>.</li>
+      <li>Si el motivo es pérdida, elige el subtipo: robo, extravío u otro. Si es daño: roto, deteriorado, inutilizable u otro.</li>
+      <li>En pérdida, daño, vencimiento y “otro”, la observación es obligatoria y debe tener al menos 5 caracteres. Explica qué pasó.</li>
+      <li>Agrega los productos y las cantidades. No puedes sacar más de lo disponible.</li>
+      <li>Guarda. El número de salida queda en el listado y el stock baja en ese momento.</li>
+    </ol>
+    <p>El detalle de una salida muestra cada producto, la cantidad y el valor. Esos movimientos alimentan los reportes de pérdidas, daños y vencimientos.</p>
+
+    <h2 id="transferencias">10. Transferencias</h2>
+    <p>Menú <strong>Movimientos → Transferencias</strong>. Mueve mercadería de un almacén a otro. El stock no desaparece: sale del origen cuando se envía y entra al destino cuando se recibe.</p>
+    <figure class="captura">
+      <figcaption>Pantalla de Transferencias y el estado en el que está cada envío.</figcaption>
+      <div class="pantalla">
+        <div class="barra"><span class="logo">Chuby Hipermaxi</span><span>Inicio</span><span class="chip">Movimientos</span><span>Control</span><span>Reportes</span></div>
+        <div class="cuerpo">
+          <div class="fila-titulo"><h4>Transferencias</h4><span class="btn">+ Nueva transferencia</span></div>
+          <div class="filtros"><span class="caja">Todos los estados</span></div>
+          <table>
+            <thead><tr><th>Número</th><th>Origen</th><th>Destino</th><th>Estado</th><th>Llegada est.</th><th class="der">Acciones</th></tr></thead>
+            <tbody>
+              <tr><td>TRF-218</td><td>Almacén Central</td><td>Sucursal Norte</td><td><span class="badge aviso">SOLICITADA</span></td><td>24/11/2026</td><td class="der">Ver · Aprobar</td></tr>
+              <tr><td>TRF-217</td><td>Almacén Central</td><td>Sucursal Sur</td><td><span class="badge info">ENVIADA</span></td><td>23/11/2026</td><td class="der">Ver · Registrar recepción</td></tr>
+              <tr><td>TRF-210</td><td>Sucursal Norte</td><td>Almacén Central</td><td><span class="badge ok">RECIBIDA</span></td><td>18/11/2026</td><td class="der">Ver</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </figure>
+    <h3>Pedir un envío</h3>
+    <ol>
+      <li>Pulsa <strong>+ Nueva transferencia</strong>.</li>
+      <li>Elige almacén origen y almacén destino. Tienen que ser distintos.</li>
+      <li>Indica la fecha estimada de llegada, si la conoces.</li>
+      <li>Agrega productos y cantidades. La cantidad no puede pasar el disponible del origen.</li>
+      <li>Guarda. La transferencia queda en estado <strong>SOLICITADA</strong>.</li>
+    </ol>
+    <h3>Seguir el envío</h3>
+    <ul>
+      <li><strong>Solicitada.</strong> Quien puede decidir pulsa <strong>Aprobar</strong> o <strong>Rechazar</strong>. El sistema pide confirmación.</li>
+      <li><strong>Aprobada.</strong> En el origen se pulsa <strong>Registrar envío</strong> y se confirma. El stock sale del almacén origen.</li>
+      <li><strong>Enviada.</strong> En el destino se pulsa <strong>Registrar recepción</strong> y se anota lo que llegó.</li>
+      <li><strong>Recibida.</strong> El stock ya está en el destino. Si llegó de menos o de más, la diferencia queda registrada.</li>
+    </ul>
+    <p>Mientras no se haya enviado, se puede <strong>cancelar</strong> desde el detalle, con un motivo. Las diferencias de lo recibido están en <strong>Movimientos → Diferencias</strong>.</p>
+
+    <h2 id="devoluciones">11. Devoluciones y solicitudes</h2>
+    <h3>Devoluciones de clientes</h3>
+    <p>Menú <strong>Movimientos → Devoluciones de clientes</strong>. Úsalas cuando un cliente devuelve un producto y ese producto vuelve al stock. Registra la devolución, el almacén que recibe y los productos. El stock de ese almacén aumenta.</p>
+    <h3>Devoluciones a proveedor</h3>
+    <p>Menú <strong>Movimientos → Devoluciones a proveedor</strong>. Úsalas para mercadería defectuosa que se regresa al proveedor. El stock baja. En el mismo flujo puedes dejar constancia de la reposición cuando el proveedor envía el reemplazo.</p>
+    <h3>Solicitudes de materiales</h3>
+    <p>Menú <strong>Movimientos → Solicitudes de materiales</strong>. Son pedidos que llegan de Producción y Logística. Revisa la solicitud, atiende los productos pedidos y el sistema descuenta el stock al despachar.</p>
+
+    <h2 id="inventario">12. Inventario físico</h2>
+    <p>Menú <strong>Stock → Inventarios físicos</strong>. Sirve para contar lo que hay en la estantería y compararlo con el sistema.</p>
+    <figure class="captura">
+      <figcaption>Pantalla de Inventarios físicos: planificar, contar y ver diferencias.</figcaption>
+      <div class="pantalla">
+        <div class="barra"><span class="logo">Chuby Hipermaxi</span><span>Inicio</span><span class="chip">Stock</span><span>Movimientos</span><span>Control</span></div>
+        <div class="cuerpo">
+          <div class="fila-titulo"><h4>Inventarios físicos</h4><span class="btn">+ Planificar inventario</span></div>
+          <table>
+            <thead><tr><th>Número</th><th>Almacén</th><th>Fecha programada</th><th>Estado</th><th class="der">Acciones</th></tr></thead>
+            <tbody>
+              <tr><td>INV-015</td><td>Sucursal Norte</td><td>23/11/2026</td><td><span class="badge info">EN PROCESO</span></td><td class="der">Ingresar conteo · Ver diferencias</td></tr>
+              <tr><td>INV-014</td><td>Almacén Central</td><td>15/11/2026</td><td><span class="badge ok">CERRADO</span></td><td class="der">Ver diferencias</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </figure>
+    <ol>
+      <li>Quien gestiona el almacén pulsa <strong>+ Planificar inventario</strong>.</li>
+      <li>Elige el almacén, la fecha programada y el alcance (todo el almacén, o solo una categoría, por ejemplo Bebidas).</li>
+      <li>Guarda. El conteo aparece en la lista.</li>
+      <li>El día del conteo pulsa <strong>Ingresar conteo</strong> y anota la cantidad física de cada producto.</li>
+      <li>Pulsa <strong>Ver diferencias</strong> para ver sobrantes y faltantes frente al stock del sistema.</li>
+      <li>Las diferencias que se aceptan se convierten en un ajuste de inventario, con motivo de conteo físico. Si el ajuste supera el límite, queda pendiente de aprobación del supervisor.</li>
+    </ol>
+
+    <h2 id="vencimientos">13. Vencimientos</h2>
+    <p>Estas pantallas trabajan juntas. Un producto solo aparece aquí si al darlo de alta se marcó que controla vencimiento y si, al recibirlo, se cargó el lote y la fecha.</p>
+    <figure class="captura">
+      <figcaption>Pantalla de Próximos vencimientos: días de aviso, almacén y categoría.</figcaption>
+      <div class="pantalla">
+        <div class="barra"><span class="logo">Chuby Hipermaxi</span><span>Inicio</span><span class="chip">Stock</span><span>Control</span><span>Reportes</span></div>
+        <div class="cuerpo">
+          <div class="fila-titulo"><h4>Próximos vencimientos</h4><span class="btn sec">Limpiar filtros</span></div>
+          <div class="filtros"><span class="chip">7 días</span><span class="caja">15 días</span><span class="caja">30 días</span><span class="caja">Almacén</span><span class="caja">Categoría</span></div>
+          <table>
+            <thead><tr><th>Producto</th><th>Lote</th><th>Almacén</th><th>Vence</th><th class="der">Días</th><th class="der">Cantidad</th></tr></thead>
+            <tbody>
+              <tr><td>Leche entera 1 L</td><td>L-8841</td><td>Sucursal Norte</td><td>26/11/2026</td><td class="der">3</td><td class="der">24</td></tr>
+              <tr><td>Yogur frutilla</td><td>L-1902</td><td>Almacén Central</td><td>28/11/2026</td><td class="der">5</td><td class="der">18</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </figure>
+    <ul>
+      <li><strong>Stock → Próximos vencimientos.</strong> Lotes que vencen dentro de 7, 15 o 30 días, o según los días configurados por categoría. Filtra por almacén y categoría.</li>
+      <li><strong>Stock → Productos vencidos.</strong> Lotes cuya fecha ya pasó. Desde la fila se puede <strong>dar de baja</strong>: eso genera la salida por vencimiento y saca esas unidades del disponible.</li>
+      <li><strong>Stock → Lotes y cuarentena.</strong> Bloquea un lote que está en revisión (por ejemplo, una duda de calidad) para que no se venda. El supervisor o el administrador pueden liberarlo cuando corresponda.</li>
+      <li><strong>Control → Alertas de vencimiento.</strong> El tablero de lo vencido y lo que está por vencer. El inicio también avisa si hay pendientes.</li>
+      <li><strong>Control → Parámetros de vencimiento.</strong> Días de aviso por categoría. Por ejemplo, lácteos a 7 días y abarrotes a 30. Lo define quien no es empleado de mostrador.</li>
+      <li><strong>Reportes → Vencimientos</strong> resume las bajas ya hechas por vencimiento. <strong>Reportes → Lotes por vencer</strong> valoriza lo vencido y lo próximo a vencer.</li>
+    </ul>
+
+    <h2 id="ajustes">14. Ajustes y alertas de stock</h2>
+    <h3>Ajustes</h3>
+    <p>Menú <strong>Control → Ajustes</strong>. Corrige el stock cuando el conteo, una merma o un error de registro no coinciden con el sistema.</p>
+    <ol>
+      <li>Pulsa <strong>Nuevo ajuste</strong>.</li>
+      <li>Elige almacén, producto y la cantidad que debe quedar, o la diferencia que corresponde.</li>
+      <li>Elige el motivo: conteo físico, merma, daño, error de registro, vencimiento u otro.</li>
+      <li>Escribe la justificación. Queda guardada como comentario del ajuste.</li>
+      <li>Guarda.</li>
+    </ol>
+    <p>Si el valor del ajuste está dentro del límite, se aplica en el momento y quien lo registró queda también como quien lo aprobó. Si supera el límite, queda <strong>PENDIENTE</strong>. El supervisor lo ve en <strong>Control → Aprobación de ajustes</strong> y puede aprobarlo o rechazarlo, con un motivo si lo rechaza.</p>
+    <h3>Alertas de stock</h3>
+    <p>Menú <strong>Control → Alertas de stock</strong>. Lista productos cuya cantidad disponible llegó al stock mínimo o al punto de reposición, siempre que ese umbral sea mayor que cero. Desde ahí se decide reponer. El reporte <strong>Stock bajo</strong> muestra además cuánto conviene pedir.</p>
+
+    <h2 id="reportes">15. Reportes</h2>
+    <p>Menú <strong>Reportes</strong>. Todas las pantallas siguen la misma idea: eliges filtros, revisas la tabla y, cuando hace falta, pulsas <strong>Exportar Excel</strong> o <strong>Exportar PDF</strong>. Excel descarga un archivo para la hoja de cálculo. PDF abre una vista lista para guardar o imprimir.</p>
+    <figure class="captura">
+      <figcaption>Pantalla de un reporte: filtros arriba, totales y botones para exportar.</figcaption>
+      <div class="pantalla">
+        <div class="barra"><span class="logo">Chuby Hipermaxi</span><span>Inicio</span><span>Stock</span><span>Movimientos</span><span class="chip">Reportes</span></div>
+        <div class="cuerpo">
+          <div class="fila-titulo"><h4>Existencias</h4><span><span class="btn sec">Exportar Excel</span> <span class="btn sec">Exportar PDF</span></span></div>
+          <div class="filtros"><span class="caja">Almacén</span><span class="caja">Categoría</span><span class="caja">Marca</span><span class="caja">Activos</span></div>
+          <div class="tarjeta">
+            <div>Productos<strong>128</strong></div>
+            <div>Disponible<strong>4 860</strong></div>
+            <div>Valor<strong>Bs 92 410</strong></div>
+          </div>
+          <table>
+            <thead><tr><th>Producto</th><th>Almacén</th><th class="der">Disponible</th><th class="der">Valor</th></tr></thead>
+            <tbody>
+              <tr><td>Aceite vegetal 900 ml</td><td>Almacén Central</td><td class="der">86</td><td class="der">1 591.00</td></tr>
+              <tr><td>Leche entera 1 L</td><td>Sucursal Norte</td><td class="der">24</td><td class="der">168.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </figure>
+    <ul>
+      <li><strong>Indicadores.</strong> Tablero de cada KPI con su valor, su meta, un semáforo y la tendencia de los últimos 6 meses. El gerente puede cambiar la meta. El filtro de sucursal y de período vale para todas las tarjetas.</li>
+      <li><strong>Existencias.</strong> Stock y valor por almacén, categoría o marca. Muestra total, reservado, vencido o en cuarentena, y disponible.</li>
+      <li><strong>Stock bajo.</strong> Filtra por almacén, categoría y nivel (bajo el mínimo o en punto de reposición). Cada fila trae disponible, mínimo, punto de reposición y cantidad sugerida para reponer.</li>
+      <li><strong>Ajustes.</strong> Para auditoría. Filtra por fechas, responsable, almacén y motivo. Muestra quién lo hizo, quién lo aprobó, el motivo y el valor, más totales por responsable y por motivo.</li>
+      <li><strong>Kardex.</strong> Elige un producto y un almacén, y si quieres un rango de fechas. Cada fila trae fecha, tipo, entrada, salida, saldo, costo unitario y saldo valorizado. El costo es el promedio ponderado. El saldo final, mirando todo el historial, coincide con el stock actual de ese almacén.</li>
+      <li><strong>Movimientos.</strong> Entradas, salidas, transferencias y ajustes de un período. Puedes filtrar por tipo.</li>
+      <li><strong>Rotación.</strong> Productos de alta y baja rotación y días de inventario.</li>
+      <li><strong>Valorización.</strong> Capital invertido por sucursal, almacén y categoría.</li>
+      <li><strong>Comparativo sucursales.</strong> El stock de un producto en cada sucursal y una sugerencia de qué transferir.</li>
+      <li><strong>Pérdidas, Daños y Vencimientos.</strong> Lo descontado por cada motivo, con su valor.</li>
+      <li><strong>Proveedores.</strong> Cumplimiento de cada proveedor y diferencias entre lo esperado y lo recibido.</li>
+      <li><strong>Transferencias.</strong> Flujo entre sucursales y tiempos de entrega.</li>
+      <li><strong>Lotes por vencer.</strong> Lotes vencidos y próximos, con su valor.</li>
+      <li><strong>Integraciones.</strong> Mensajes con Compras, Producción y Ventas, errores y la opción de reprocesar. Visible para quien no es empleado.</li>
+      <li><strong>Envío por correo.</strong> El gerente o el administrador programa un reporte diario, semanal o mensual. El sistema lo envía solo. También se puede disparar un envío manual desde esa pantalla.</li>
+    </ul>
+
+    <h2 id="faq">16. Preguntas frecuentes</h2>
+    <div class="faq">
+      <details open>
+        <summary>No puedo entrar. ¿Cómo recupero la contraseña?</summary>
+        <p>El sistema no tiene “olvidé mi contraseña”. Pide al administrador que revise tu usuario o te asigne una contraseña nueva. Revisa también que no haya espacios de más al escribir el usuario.</p>
+      </details>
+      <details>
+        <summary>¿Por qué no veo el botón de crear o de aprobar?</summary>
+        <p>Cada rol ve lo que le corresponde. El administrador crea productos y almacenes. El supervisor aprueba los ajustes que superan el límite y puede poner un lote en cuarentena. El gerente programa el correo de reportes. Supervisor, gerente y auditor trabajan en modo de consulta. Si necesitas una acción que no aparece, pídela a quien tenga ese rol.</p>
+      </details>
+      <details>
+        <summary>Registré una venta en la caja y el stock no bajó.</summary>
+        <p>El stock baja cuando se registra la salida en <strong>Movimientos → Salidas</strong> con motivo Venta, o cuando el módulo de Ventas envía el movimiento. Revisa el listado de salidas de ese día y el reporte de movimientos.</p>
+      </details>
+      <details>
+        <summary>¿Qué diferencia hay entre cantidad total y disponible?</summary>
+        <p>La total es todo lo que está en el almacén. La disponible resta lo reservado, lo vencido y lo que está en cuarentena. Las ventas, transferencias y alertas usan la disponible.</p>
+      </details>
+      <details>
+        <summary>Un producto está en cero y no sale en stock bajo.</summary>
+        <p>Solo aparece si el stock mínimo o el punto de reposición es mayor que cero y la cantidad disponible es menor o igual a ese número. Si ambos están en 0, el producto no se considera bajo. Edita el producto y carga el mínimo.</p>
+      </details>
+      <details>
+        <summary>La recepción llegó incompleta. ¿Qué hago?</summary>
+        <p>En la recepción anota la cantidad esperada y la recibida. Si no coinciden, la línea queda con diferencia. El stock solo aumenta por lo recibido. El reporte de proveedores resume esas diferencias.</p>
+      </details>
+      <details>
+        <summary>¿En qué momento sale el stock de una transferencia?</summary>
+        <p>Al registrar el envío, no al solicitarla. Entra al destino cuando se registra la recepción. Si todavía está solicitada o aprobada, se puede cancelar desde el detalle.</p>
+      </details>
+      <details>
+        <summary>El ajuste quedó pendiente y el stock no cambió.</summary>
+        <p>Superó el límite y espera al supervisor en <strong>Control → Aprobación de ajustes</strong>. Cuando lo aprueba, el stock cambia. Si lo rechaza, el stock queda como estaba y verás el motivo del rechazo.</p>
+      </details>
+      <details>
+        <summary>El kardex me pide datos y no muestra nada.</summary>
+        <p>Hay que elegir producto y almacén. Sin los dos, el reporte no consulta. Las fechas son opcionales: si las pones, las filas del medio se resumen en un saldo anterior y el recuadro de arriba sigue comparando el saldo de todo el historial con el stock de hoy.</p>
+      </details>
+      <details>
+        <summary>¿Cómo encuentro una pantalla que no recuerdo?</summary>
+        <p>Pulsa <strong>Ctrl + K</strong> y escribe una palabra: “lote”, “kardex”, “etiquetas”, “conteo”. También puedes volver al inicio y abrir el grupo del menú.</p>
+      </details>
+      <details>
+        <summary>Exporté y el archivo salió vacío.</summary>
+        <p>Los botones de Excel y PDF usan el resultado del filtro actual. Si el filtro no devuelve filas, no hay nada que exportar. Quita un filtro o limpia la búsqueda y vuelve a intentar.</p>
+      </details>
+      <details>
+        <summary>¿Dónde leo este manual otra vez?</summary>
+        <p>Dentro del sistema, en <strong>Manual</strong>, arriba a la derecha. Desde el inicio también hay un enlace. El botón <strong>Descargar PDF</strong> guarda esta misma guía para leerla sin conexión. En la pantalla de ingreso hay un enlace al PDF por si todavía no entraste.</p>
+      </details>
+    </div>
+
+    <footer>
+      Chuby Hipermaxi · Manual de usuario del sistema de inventarios. Las figuras usan datos de ejemplo para mostrar la disposición de cada pantalla.
+    </footer>
+  </article>
+</body>
+</html>

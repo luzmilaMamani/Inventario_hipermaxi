@@ -5,6 +5,7 @@ const {
   enviarLotesTransferencia,
   recibirLotesTransferencia,
 } = require("../services/lotesMovimientos");
+const { registrarStockActualizado } = require("../services/stockVentasOutbox");
 
 const ROLES_CANCELAN_TRANSFERENCIA = ["ENCARGADO_ALMACEN", "ADMINISTRADOR", "JEFE_SUCURSAL"];
 
@@ -46,6 +47,12 @@ const liberarReservas = async (client, transferencia) => {
        WHERE id_detalle_transferencia = $1`,
       [d.id_detalle_transferencia],
     );
+    await registrarStockActualizado(client, {
+      tipoMovimiento: "TRANSFERENCIA_LIBERACION",
+      idMovimiento: transferencia.id_transferencia,
+      idProducto: d.id_producto,
+      idAlmacen: transferencia.almacen_origen,
+    });
   }
 };
 
@@ -311,6 +318,12 @@ const crearTransferencia = asyncHandler(async (req, res) => {
          VALUES ($1, $2, $3, $3)`,
         [transferencia.id_transferencia, d.id_producto, cantidad]
       );
+      await registrarStockActualizado(client, {
+        tipoMovimiento: "TRANSFERENCIA_RESERVA",
+        idMovimiento: transferencia.id_transferencia,
+        idProducto: d.id_producto,
+        idAlmacen: idAlmacenOrigen,
+      });
     }
 
     await client.query("COMMIT");
@@ -449,6 +462,12 @@ const cambiarEstado = asyncHandler(async (req, res) => {
            WHERE id_detalle_transferencia = $1`,
           [d.id_detalle_transferencia],
         );
+        await registrarStockActualizado(client, {
+          tipoMovimiento: "TRANSFERENCIA_ENVIO",
+          idMovimiento: transferencia.id_transferencia,
+          idProducto: d.id_producto,
+          idAlmacen: transferencia.almacen_origen,
+        });
       }
 
       await client.query(
@@ -563,6 +582,12 @@ const cambiarEstado = asyncHandler(async (req, res) => {
                 : `Recepción con ${diferencia < 0 ? "faltante" : "sobrante"} de ${Math.abs(diferencia)} (enviado ${Number(d.cantidad_enviada)}): ${observacion}`,
             ]
           );
+          await registrarStockActualizado(client, {
+            tipoMovimiento: "TRANSFERENCIA_RECEPCION",
+            idMovimiento: transferencia.id_transferencia,
+            idProducto: d.id_producto,
+            idAlmacen: transferencia.almacen_destino,
+          });
         }
 
         await client.query(
