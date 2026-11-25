@@ -9,6 +9,7 @@ const {
   resultadoVerificacion,
 } = require("../utils/verificacionRecepcion");
 const { sumarALote } = require("../services/lotesMovimientos");
+const { registrarStockActualizado } = require("../services/stockVentasOutbox");
 
 let columnasVerificacionListas = false;
 
@@ -444,6 +445,13 @@ const confirmarRecepcion = asyncHandler(async (req, res) => {
           linea.observaciones || `Confirmación de la recepción ${entrada.numero_entrada}`,
         ],
       );
+
+      await registrarStockActualizado(cliente, {
+        tipoMovimiento: "ENTRADA",
+        idMovimiento: entrada.id_entrada,
+        idProducto: linea.id_producto,
+        idAlmacen: entrada.id_almacen,
+      });
     }
 
     await cliente.query(

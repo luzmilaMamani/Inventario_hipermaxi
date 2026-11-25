@@ -1,7 +1,7 @@
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/apiError");
 const { esFechaValida } = require("../utils/filtrosReporte");
-const { obtenerIndicadores } = require("../services/indicadores");
+const { obtenerIndicadores, aplicarMetasYTendencia, guardarMetaKpi, DEFINICIONES_KPI } = require("../services/indicadores");
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 const inicioDeMes = () => `${hoy().slice(0, 8)}01`;
@@ -27,7 +27,31 @@ const consultarIndicadores = asyncHandler(async (req, res) => {
   }
 
   const data = await obtenerIndicadores({ idAlmacen, desde, hasta });
+  data.kpis = await aplicarMetasYTendencia(data.kpis, { idAlmacen, hasta });
   res.json({ ok: true, data });
 });
 
-module.exports = { consultarIndicadores };
+const leerAlmacen = (valor) => {
+  if (valor === undefined || valor === null || valor === "") return null;
+  const idAlmacen = Number(valor);
+  if (!Number.isSafeInteger(idAlmacen) || idAlmacen <= 0) {
+    throw new ApiError(400, "El almacén no es válido");
+  }
+  return idAlmacen;
+};
+
+// El gerente cambia la meta global o la de la sucursal que está mirando.
+const guardarMetaIndicador = asyncHandler(async (req, res) => {
+  const codigo = String(req.body?.codigo || "");
+  if (!DEFINICIONES_KPI[codigo]) throw new ApiError(400, "El indicador no existe");
+  const idAlmacen = leerAlmacen(req.body?.id_almacen);
+  const data = await guardarMetaKpi({
+    codigo,
+    idAlmacen,
+    meta: req.body?.meta,
+    idUsuario: req.user?.id_usuario || null,
+  });
+  res.json({ ok: true, message: "Meta actualizada", data });
+});
+
+module.exports = { consultarIndicadores, guardarMetaIndicador };

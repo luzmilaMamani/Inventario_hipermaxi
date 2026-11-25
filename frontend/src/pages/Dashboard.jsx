@@ -56,7 +56,12 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold">
             Hola, {user?.nombre_completo || user?.nombre_usuario}
           </h1>
-          <p className="text-gray-600">¿Qué quieres hacer hoy?</p>
+          <p className="text-gray-600">
+            ¿Qué quieres hacer hoy?{" "}
+            <Link to="/manual" className="font-medium text-brand-blue hover:underline">
+              Abrir el manual de usuario
+            </Link>
+          </p>
         </div>
 
         <section aria-label="Acciones rápidas" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">

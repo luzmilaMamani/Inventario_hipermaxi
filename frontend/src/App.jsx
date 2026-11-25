@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 // Auth & Dashboard
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import ManualUsuario from "./pages/ayuda/ManualUsuario";
 
 // Módulos Base
 import ListaProductos from "./pages/productos/ListaProductos";
@@ -36,6 +37,9 @@ import ReportePerdidas from "./pages/reportes/ReportePerdidas";
 import ReporteDanos from "./pages/reportes/ReporteDanos";
 import ReporteVencimientos from "./pages/reportes/ReporteVencimientos";
 import ReporteExistencias from "./pages/reportes/ReporteExistencias";
+import ReporteStockBajo from "./pages/reportes/ReporteStockBajo";
+import ReporteAjustes from "./pages/reportes/ReporteAjustes";
+import ReporteKardex from "./pages/reportes/ReporteKardex";
 import ReporteVencimientosLotes from "./pages/reportes/ReporteVencimientosLotes";
 import ReporteTransferencias from "./pages/reportes/ReporteTransferencias";
 import ReporteValorizacion from "./pages/reportes/ReporteValorizacion";
@@ -66,6 +70,14 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route
+            path="/manual"
+            element={
+              <ProtectedRoute>
+                <ManualUsuario />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/"
             element={
@@ -342,6 +354,30 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReporteExistencias />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes/stock-bajo"
+            element={
+              <ProtectedRoute>
+                <ReporteStockBajo />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes/ajustes"
+            element={
+              <ProtectedRoute>
+                <ReporteAjustes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reportes/kardex"
+            element={
+              <ProtectedRoute>
+                <ReporteKardex />
               </ProtectedRoute>
             }
           />
