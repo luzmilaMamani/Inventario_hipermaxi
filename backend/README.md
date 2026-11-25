@@ -363,6 +363,13 @@ node scripts/simular-ventas.js confirmada V-1001 SUC-001 PRD-001:2 7770000000012
 node scripts/simular-ventas.js anulada V-1001 SUC-001
 ```
 
+Sin suscripción de Pub/Sub, el mismo JSON se puede enviar por HTTP (solo fuera de
+producción, con token de `ADMINISTRADOR`) a `POST /api/ventas/simular`. Usa el mismo
+procesamiento que el suscriptor; si faltan `id_mensaje`, `tipo_evento` o `fecha`, se
+completan (`tipo_evento` por defecto es `venta.confirmada`). Responde 200 si se
+procesó o era repetido, 409 si es un error de negocio reprocesable y 400 si el
+formato es inválido.
+
 Las recepciones crean automáticamente un lote por línea si no se proporciona un lote existente. Se puede enviar `numero_lote` y `fecha_vencimiento` en cada detalle.
 En cada línea de recepción, `cantidad_solicitada` es la cantidad esperada y
 `cantidad_recibida` la cantidad física recibida. El backend calcula la
